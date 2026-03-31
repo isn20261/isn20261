@@ -4,9 +4,7 @@
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/devcontainers-extra/features/pulumi:1": {},
     "ghcr.io/devcontainers-extra/features/uv-tool:1": {
-      "options": {
-        "uv_version": "latest"
-      }
+      "options": {}
     }
   }
 }
