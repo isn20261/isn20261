@@ -3,7 +3,7 @@ description: A Python program to deploy a serverless application on AWS
 runtime:
   name: python
   options:
-    virtualenv: venv
+    virtualenv: .venv
     toolchain: uv
 config:
   pulumi:tags:

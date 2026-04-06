@@ -1,11 +1,69 @@
-<h1>Serverless with Pulumi</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISN 2026.1 - Serverless App</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        h1 { color: #333; }
+        input { padding: 0.5rem; width: 70%; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
+        ul { list-style: none; padding: 0; }
+        li { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+        #status { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>Serverless with Pulumi</h1>
 
-The current time is: <span id="date"></span>.
+    <p id="status">Loading items...</p>
 
-<script>
-setInterval(() => {
-    fetch('date')
-    .then(response => response.text())
-    .then(data => document.getElementById("date").innerText = data)
-}, 1000);
-</script>
+    <form id="add-form">
+        <input type="text" id="content-input" placeholder="Enter an item..." required>
+        <button type="submit">Add</button>
+    </form>
+
+    <ul id="items-list"></ul>
+
+    <script>
+        const API_PATH = "api";
+
+        async function loadItems() {
+            try {
+                const res = await fetch(API_PATH);
+                const data = await res.json();
+                const list = document.getElementById("items-list");
+                list.innerHTML = "";
+                data.items.forEach(item => {
+                    const li = document.createElement("li");
+                    li.textContent = item.content + " (id: " + item.id.substring(0, 8) + ")";
+                    list.appendChild(li);
+                });
+                document.getElementById("status").textContent =
+                    data.items.length + " item(s) loaded.";
+            } catch (err) {
+                document.getElementById("status").textContent = "Error: " + err.message;
+            }
+        }
+
+        document.getElementById("add-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const input = document.getElementById("content-input");
+            try {
+                await fetch(API_PATH, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: input.value }),
+                });
+                input.value = "";
+                await loadItems();
+            } catch (err) {
+                document.getElementById("status").textContent = "Error: " + err.message;
+            }
+        });
+
+        loadItems();
+    </script>
+</body>
+</html>
