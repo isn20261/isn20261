@@ -136,6 +136,7 @@ Usuário --> CloudFront
 CloudFront --> S3
 CloudFront --> APIGatewayWebSocket
 APIGatewayWebSocket --> Lambda_WS
+APIGatewayWebSocket --> S3
 Lambda_WS --> DynamoDB
 Lambda_WS --> SQS
 SQS --> Lambda_Proc
