@@ -1,24 +1,23 @@
 {
   "features": {
+    "image": "mcr.microsoft.com/devcontainers/python:3.12",
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "installDockerBuildx": true,
-      "dockerDashComposeVersion": "v2"
-    }, 
+      "moby": false,
+    },
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/goldsam/dev-container-features/aws-sam-cli:1": {},
     "ghcr.io/devcontainers-extra/features/pulumi:1": {},
     "ghcr.io/devcontainers-extra/features/uv-tool:1": {
-      "package": "uv"
-    }
+      "package": "uv",
+    },
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "amazonwebservices.aws-toolkit-vscode",
-        "pulumi.pulumi-vscode-tools"
-      ]
-    }
-  }
+        "pulumi.pulumi-vscode-tools",
+      ],
+    },
+  },
 }
- 
