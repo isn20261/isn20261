@@ -1,9 +1,7 @@
 {
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "installDockerBuildx": true,
-      "dockerDashComposeVersion": "v2"
-    }, 
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}, 
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/goldsam/dev-container-features/aws-sam-cli:1": {},
     "ghcr.io/devcontainers-extra/features/pulumi:1": {},
