@@ -2,3 +2,5 @@ venv/
 .venv/
 *.pyc
 __pycache__/
+aws
+sam_installation/

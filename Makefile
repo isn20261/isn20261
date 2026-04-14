@@ -5,7 +5,7 @@ install: aws_cli aws_sam_cli pulumi uv
 run: lambda-run
 
 aws_cli:
-  curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+	curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 	unzip awscliv2.zip
 
 	rm -rf ~/.aws-cli
