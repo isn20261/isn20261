@@ -2,6 +2,46 @@
 
 Projeto da disciplina ISN 75620501, edição 2026.1.
 
+## Preparação da nuvem AWS
+
+No serviço [IAM](https://console.aws.amazon.com/iam/):
+
+1. Criar um [grupo de usuário](https://console.aws.amazon.com/iam#/groups).
+2. Criar um [usuário](https://console.aws.amazon.com/iam#/users) e associá-lo ao grupo criado. Importante: esse usuário não deve ter acesso ao AWS Management Console.
+
+3. De volta ao grupo de usuário criado, associar as seguintes políticas predefinidas:
+
+    - Api Gateway: `AmazonAPIGatewayAdministrator`;
+    - DynamoDB: `AmazonDynamoDBFullAccess`;
+    - Lambda: `AWSLambda_FullAccess`;
+
+4. Além dessas políticas, para  algumas permissões do IAM, deve-de criar uma política manualmente (*inline policy*), dada a amplitude das permissões plenas de `IAMFullAccess`:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:AttachRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetRole",
+                "iam:ListRoles",
+                "iam:TagRole",
+                "iam:UntagRole"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+5. De volta ao usuário criado, deve-se criar uma chave de acesso, a qual é composta por um identificador (`AWS_ACCESS_KEY_ID`) e a chave propriamente dita (`AWS_SECRET_ACCESS_KEY`).
+
 ## Preparação do GitHub Codespaces
 
 Para facilitar o uso da nuvem pública, AWS, foi criado um repositório (monorepo) para uso compartilhado. Entretanto, cada usuário deve configurar suas variáveis de ambiente, o que inclui chaves de acesso.
