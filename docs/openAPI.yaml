@@ -64,6 +64,35 @@ components:
         movieTitle:
           type: string
 
+    Movie:
+      type: object
+      properties:
+        title:
+          type: string
+          format: string
+        year:
+          type: integer
+          format: int32
+        rated:
+          type: string
+          format: string
+        runtime:
+          type: integer
+          format: int32
+        genre:
+          type: array
+          items:
+            type: string
+        director:
+          type: string
+          format: string
+        poster:
+          type: string
+          format: string
+        rating:
+          type: number
+          format: double
+
 security:
   - bearerAuth: []
 
@@ -261,13 +290,11 @@ paths:
       summary: Obtém recomendações para o usuário
       responses:
         '200':
-          description: Lista de filmes recomendados
+          description: Lista um filmes recomendado
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: string # Pode ser atualizado para um objeto Movie se necessário
+                $ref: '#/components/schemas/Movie'
 
   /history:
     get:
