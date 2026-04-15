@@ -207,27 +207,23 @@ paths:
             description: Token inválido ou expirado
 
   /verify-email:
-    post: # Mudado de GET para POST para proteger o token no body
-      tags:
-        - Usuários
-      summary: Verifica o e-mail do usuário
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
+      get:
+        tags:
+          - Usuários
+        summary: Verifica o e-mail do usuário
+        security: []
+        parameters:
+          - in: query
+            name: token
+            required: true
             schema:
-              type: object
-              required: [token]
-              properties:
-                token:
-                  type: string
-                  description: Token de verificação lido da URL pelo frontend
-      responses:
-        '200':
-          description: E-mail verificado com sucesso
-        '400':
-          description: Token inválido ou expirado
+              type: string
+            description: Token de verificação de e-mail (NÃO o token JWT)
+        responses:
+          '200':
+            description: E-mail verificado com sucesso
+          '400':
+            description: Token inválido ou expirado
 
   /preferences:
     get:
