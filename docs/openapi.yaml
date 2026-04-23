@@ -122,7 +122,7 @@ paths:
                   url:
                     type: string
                     format: uri
-                    example: "https://basic-movie-recommender/api/v1/verify-email/?token=abcdef"      
+                    example: "https://basic-movie-recommender.com/api/v1/verify-email?token=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"      
         "400":
           description: Bad Request
         "401":
