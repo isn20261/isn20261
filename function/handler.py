@@ -5,19 +5,32 @@ from botocore.exceptions import ClientError
 
 
 def handler(event, context):
-    host = os.environ.get("DYNAMODB_HOST", "dynamodb-local")
+    endpoint_url = os.environ.get("DYNAMODB_ENDPOINT_URL")
+    host = os.environ.get("DYNAMODB_HOST")
     port = os.environ.get("DYNAMODB_PORT", "8000")
-    key_id = os.environ.get("AWS_ACCESS_KEY_ID", "fake")
-    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "fake")
-    region = os.environ.get("AWS_REGION", "local")
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     table_name = os.environ.get("DYNAMODB_TABLE", "isn20261")
-    dynamodb = boto3.resource(
-        "dynamodb",
-        endpoint_url=f"http://{host}:{port}",
-        aws_access_key_id=key_id,
-        aws_secret_access_key=secret_key,
-        region_name=region,
-    )
+
+    resource_kwargs = {"service_name": "dynamodb"}
+
+    if endpoint_url:
+        resource_kwargs["endpoint_url"] = endpoint_url
+    elif host:
+        resource_kwargs["endpoint_url"] = f"http://{host}:{port}"
+
+    if "endpoint_url" in resource_kwargs:
+        key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+        if key_id:
+            resource_kwargs["aws_access_key_id"] = key_id
+        if secret_key:
+            resource_kwargs["aws_secret_access_key"] = secret_key
+        if region:
+            resource_kwargs["region_name"] = region
+    elif region:
+        resource_kwargs["region_name"] = region
+
+    dynamodb = boto3.resource(**resource_kwargs)
     table = dynamodb.Table(table_name)
 
     tables = [
