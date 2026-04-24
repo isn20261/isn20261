@@ -122,7 +122,7 @@ paths:
                   url:
                     type: string
                     format: uri
-                    example: "https://basic-movie-recommender.com/api/v1/verify-email?token=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                    example: "https://basic-movie-recommender.com/api/v1/verify-email?token=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"      
         "400":
           description: Bad Request
         "401":
@@ -308,9 +308,29 @@ paths:
                   title:
                     type: string
                     example: "The Matrix"
+                  year:
+                    type: integer
+                    example: 1999
+                  rated:
+                    type: string
+                    example: "R"
                   genre:
                     type: string
                     example: "action"
+                  director:
+                    type: string
+                    example: "The Wachowskis"
+                  runtime:
+                    type: integer
+                    example: 136
+                  poster:
+                    type: string
+                    format: uri
+                    example: "https://image.tmdb.org/t/p/w600_and_h900_face/lDqMDI3xpbB9UQRyeXfei0MXhqb.jpg"
+                  imdbRating:
+                    type: number
+                    format: double
+                    example: 8.7
                   streaming-services:
                     type: array
                     items:
