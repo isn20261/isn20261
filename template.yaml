@@ -8,6 +8,6 @@ Resources:
     Properties:
       CodeUri: function
       Handler: handler.handler
-      Runtime: python3.13
-      Timeout: 10
+      Runtime: python3.9
+      Timeout: 30
       MemorySize: 128
