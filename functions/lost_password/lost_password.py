@@ -40,7 +40,9 @@ def handler(event, context):
         return ok()
 
     now        = datetime.now(timezone.utc)
-    expires_at = (now + timedelta(hours=1)).isoformat()
+    expires_dt = now + timedelta(hours=1)
+    expires_at = expires_dt.isoformat()
+    ttl = int(expires_dt.timestamp())
     token_value = secrets.token_hex(32)
 
     tokens().put_item(Item={
@@ -48,6 +50,7 @@ def handler(event, context):
         "sub":       sub,
         "type":      "reset-password",
         "expiresAt": expires_at,
+        "ttl":       ttl,
     })
     write_log(sub, now.isoformat(), "PASSWORD_RESET_REQUESTED", {"email": email})
 

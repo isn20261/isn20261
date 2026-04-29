@@ -1,0 +1,2 @@
+# Dependências de terceiros empacotadas na Lambda Layer ( boto3 ja existe no runtime da AWS)
+PyJWT[crypto]==2.8.0

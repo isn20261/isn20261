@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
-from shared.db import get_sub_by_email, write_log
+from shared.db import get_sub_by_email, get_user, write_log
 from shared.response import ok, bad_request, unauthorized, server_error
 
 cognito   = boto3.client("cognito-idp")
@@ -52,6 +52,9 @@ def handler(event, context):
 
     sub = get_sub_by_email(email)
     if sub:
+        user = get_user(sub)
+        if user and not user.get("emailVerified"):
+            return unauthorized("Email not verified")
         write_log(sub, datetime.now(timezone.utc).isoformat(), "LOGIN", {"email": email})
 
     return ok({

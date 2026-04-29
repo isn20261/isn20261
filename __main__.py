@@ -1,8 +1,16 @@
 import pulumi
 import pulumi_aws as aws
+import base64
+import hashlib
 import json
 import os
 import mimetypes
+import shutil
+import stat
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
 
 # --- 1. Configurações do Ambiente (12-Factor) ---
 config = pulumi.Config()
@@ -15,10 +23,52 @@ users_table = aws.dynamodb.Table(
     f"users-table-{env}",
     name=f"users_{env}",
     billing_mode="PAY_PER_REQUEST",
-    hash_key="user_id",
-    attributes=[aws.dynamodb.TableAttributeArgs(name="user_id", type="S")],
+    hash_key="sub",
+    attributes=[aws.dynamodb.TableAttributeArgs(name="sub", type="S")],
 )
 
+email_to_sub_table = aws.dynamodb.Table(
+    f"email-to-sub-table-{env}",
+    name=f"email_to_sub_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="email",
+    attributes=[aws.dynamodb.TableAttributeArgs(name="email", type="S")],
+)
+
+tokens_table = aws.dynamodb.Table(
+    f"tokens-table-{env}",
+    name=f"tokens_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="token",
+    attributes=[aws.dynamodb.TableAttributeArgs(name="token", type="S")],
+    ttl=aws.dynamodb.TableTtlArgs(attribute_name="ttl", enabled=True),
+)
+
+historico_table = aws.dynamodb.Table(
+    f"historico-table-{env}",
+    name=f"historico_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="sub",
+    range_key="timestamp",
+    attributes=[
+        aws.dynamodb.TableAttributeArgs(name="sub", type="S"),
+        aws.dynamodb.TableAttributeArgs(name="timestamp", type="S"),
+    ],
+)
+
+logs_table = aws.dynamodb.Table(
+    f"logs-table-{env}",
+    name=f"logs_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="sub",
+    range_key="timestamp",
+    attributes=[
+        aws.dynamodb.TableAttributeArgs(name="sub", type="S"),
+        aws.dynamodb.TableAttributeArgs(name="timestamp", type="S"),
+    ],
+)
+
+# Mantida para uso futuro/compatibilidade.
 recommendations_table = aws.dynamodb.Table(
     f"recommendations-table-{env}",
     name=f"recommendations_{env}",
@@ -56,52 +106,243 @@ lambda_role = aws.iam.Role(
     ),
 )
 
+
 aws.iam.RolePolicyAttachment(
-    f"lambda-basic-execution-{env}",
+    f"lambda-basic-exec-{env}",
     role=lambda_role.name,
     policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
 )
 
+
+def _dynamo_resources(*table_arns: str) -> list[str]:
+    resources: list[str] = []
+    for arn in table_arns:
+        resources.append(arn)
+        resources.append(f"{arn}/index/*")
+    return resources
+
+
 aws.iam.RolePolicy(
-    f"lambda-dynamodb-cognito-policy-{env}",
-    role=lambda_role.name,
-    policy=pulumi.Output.all(users_table.arn, recommendations_table.arn).apply(
-        lambda arns: json.dumps(
+    f"lambda-app-policy-{env}",
+    role=lambda_role.id,
+    policy=pulumi.Output.all(
+        users_table.arn,
+        email_to_sub_table.arn,
+        tokens_table.arn,
+        historico_table.arn,
+        logs_table.arn,
+        user_pool.arn,
+    ).apply(
+        lambda args: json.dumps(
             {
                 "Version": "2012-10-17",
                 "Statement": [
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "dynamodb:PutItem",
                             "dynamodb:GetItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:DeleteItem",
                             "dynamodb:Query",
                             "dynamodb:Scan",
                         ],
-                        "Resource": arns,
+                        "Resource": _dynamo_resources(
+                            args[0],
+                            args[1],
+                            args[2],
+                            args[3],
+                            args[4],
+                        ),
                     },
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "cognito-idp:AdminInitiateAuth",
-                            "cognito-idp:SignUp",
-                            "cognito-idp:AdminConfirmSignUp",
+                            "cognito-idp:AdminCreateUser",
+                            "cognito-idp:AdminSetUserPassword",
+                            "cognito-idp:InitiateAuth",
+                            "cognito-idp:AdminUpdateUserAttributes",
                         ],
-                        "Resource": "*",
+                        "Resource": args[5],
                     },
                 ],
             }
         )
     ),
 )
-
 # --- 5. AWS Lambdas ---
 env_vars = {
     "USERS_TABLE": users_table.name,
+    "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
+    "TOKENS_TABLE": tokens_table.name,
+    "HISTORICO_TABLE": historico_table.name,
+    "LOGS_TABLE": logs_table.name,
     "RECOMMENDATIONS_TABLE": recommendations_table.name,
-    "USER_POOL_ID": user_pool.id,
-    "CLIENT_ID": user_pool_client.id,
+    "COGNITO_USER_POOL_ID": user_pool.id,
+    "COGNITO_CLIENT_ID": user_pool_client.id,
 }
+
+
+_ZIP_FIXED_DT = (1980, 1, 1, 0, 0, 0)
+
+
+def _zip_dir_deterministic(src_dir: str, zip_path: str, arc_prefix: str | None = None) -> None:
+    src = Path(src_dir)
+    zip_file = Path(zip_path)
+    zip_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if zip_file.exists():
+        zip_file.unlink()
+
+    with zipfile.ZipFile(zip_file, "w") as zf:
+        for file_path in sorted(src.rglob("*")):
+            if not file_path.is_file():
+                continue
+            rel = file_path.relative_to(src).as_posix()
+            arcname = f"{arc_prefix}/{rel}" if arc_prefix else rel
+            info = zipfile.ZipInfo(arcname, date_time=_ZIP_FIXED_DT)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            mode = stat.S_IMODE(file_path.stat().st_mode)
+            info.external_attr = (mode & 0xFFFF) << 16
+            with open(file_path, "rb") as f:
+                zf.writestr(info, f.read())
+
+
+def _sha256_b64(file_path: str) -> str:
+    h = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return base64.b64encode(h.digest()).decode("utf-8")
+
+
+def build_python_deps_layer() -> aws.lambda_.LayerVersion:
+    """Build a Lambda Layer containing Python dependencies.
+
+    This project ships Lambda code as source-only. For third-party libs
+    (e.g. PyJWT used by shared/auth.py), we provide them via a Layer.
+    """
+
+    build_root = ".pulumi-build"
+    layer_name = f"python-deps-layer-{env}"
+    layer_dir = os.path.join(build_root, layer_name)
+    python_dir = os.path.join(layer_dir, "python")
+    zip_path = os.path.join(build_root, f"{layer_name}.zip")
+    wheelhouse_dir = os.path.join(layer_dir, ".wheelhouse")
+
+    # Target do runtime do Lambda para seleção/instalação de wheels.
+    target_platform = "manylinux2014_x86_64"
+    target_python = "3.13"
+    target_impl = "cp"
+    target_abi = "cp313"
+
+    req_file = os.path.join("functions", "layer-requirements.txt")
+    if not os.path.exists(req_file):
+        raise FileNotFoundError(
+            f"Arquivo de dependências da Layer não encontrado: {req_file}"
+        )
+
+    with open(req_file, "rb") as f:
+        req_hash = hashlib.sha256(f.read()).hexdigest()
+
+    marker_file = os.path.join(layer_dir, f".deps-installed-{req_hash}")
+
+    if not os.path.exists(marker_file) or not os.path.exists(zip_path):
+        shutil.rmtree(layer_dir, ignore_errors=True)
+        os.makedirs(python_dir, exist_ok=True)
+
+        os.makedirs(wheelhouse_dir, exist_ok=True)
+
+        # Baixa wheels compatíveis com o runtime do Lambda (Python 3.13, manylinux).
+        # Isso evita instalar wheels de uma versão diferente do Python (ex.: Pulumi rodando em 3.14).
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "download",
+                "--no-cache-dir",
+                "--dest",
+                wheelhouse_dir,
+                "--platform",
+                target_platform,
+                "--implementation",
+                target_impl,
+                "--python-version",
+                target_python,
+                "--abi",
+                target_abi,
+                "--only-binary",
+                ":all:",
+                "-r",
+                req_file,
+            ],
+            check=True,
+        )
+
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--no-cache-dir",
+                "--platform",
+                target_platform,
+                "--implementation",
+                target_impl,
+                "--python-version",
+                target_python,
+                "--abi",
+                target_abi,
+                "--only-binary",
+                ":all:",
+                "--no-index",
+                "--find-links",
+                wheelhouse_dir,
+                "-r",
+                req_file,
+                "-t",
+                python_dir,
+            ],
+            check=True,
+        )
+
+        for old in Path(layer_dir).glob(".deps-installed-*"):
+            try:
+                old.unlink()
+            except OSError:
+                pass
+
+        with open(marker_file, "w", encoding="utf-8") as f:
+            f.write(req_hash + "\n")
+
+        _zip_dir_deterministic(python_dir, zip_path, arc_prefix="python")
+
+    return aws.lambda_.LayerVersion(
+        f"python-deps-layer-{env}",
+        layer_name=f"python-deps-{env}",
+        compatible_runtimes=["python3.13"],
+        code=pulumi.FileArchive(zip_path),
+        source_code_hash=_sha256_b64(zip_path),
+    )
+
+
+python_deps_layer = build_python_deps_layer()
+
+
+def build_lambda_archive(name: str) -> pulumi.AssetArchive:
+
+    lambda_dir = os.path.join("functions", name)
+    assets: dict[str, pulumi.Asset] = {}
+
+    for root, _dirs, files in os.walk(lambda_dir, followlinks=True):
+        for file in files:
+            file_path = os.path.join(root, file)
+            rel_path = os.path.relpath(file_path, lambda_dir).replace("\\", "/")
+            assets[rel_path] = pulumi.FileAsset(file_path)
+
+    return pulumi.AssetArchive(assets)
 
 
 def create_lambda(name, entry_point):
@@ -110,8 +351,9 @@ def create_lambda(name, entry_point):
         runtime="python3.13",
         role=lambda_role.arn,
         handler=entry_point,
-        code=pulumi.FileArchive(f"./functions/{name}"),
+        code=build_lambda_archive(name),
         environment=aws.lambda_.FunctionEnvironmentArgs(variables=env_vars),
+        layers=[python_deps_layer.arn],
     )
 
 

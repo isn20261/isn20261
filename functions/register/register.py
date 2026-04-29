@@ -73,8 +73,11 @@ def handler(event, context):
             return bad_request("Password does not meet requirements")
         return server_error("Could not create user")
 
-    now = datetime.now(timezone.utc).isoformat()
-    expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.isoformat()
+    expires_dt = now_dt + timedelta(hours=24)
+    expires_at = expires_dt.isoformat()
+    ttl = int(expires_dt.timestamp())
     token_value = secrets.token_hex(32)  # 64 hex chars
 
     users().put_item(Item={
@@ -97,6 +100,7 @@ def handler(event, context):
         "sub":       sub,
         "type":      "verify-email",
         "expiresAt": expires_at,
+        "ttl":       ttl,
     })
     write_log(sub, now, "REGISTER", {"email": email})
 

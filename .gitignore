@@ -1,6 +1,12 @@
 venv/
 .venv/
+.pulumi-build/
+.pulumi/
+.pytest_cache/
 *.pyc
 __pycache__/
 aws
+awscliv2.zip
+aws-sam-cli-linux-x86_64.zip
 sam_installation/
+sam-installation/
