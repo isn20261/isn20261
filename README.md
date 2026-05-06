@@ -253,6 +253,31 @@ Para Pulumi:
 
 Fonte: [pulumi login | CLI commands](https://www.pulumi.com/docs/iac/cli/commands/pulumi_login/).
 
+## Rodando a aplicação
+
+### Ambiente de desenvolvimento local
+
+```bash
+make install       # instala AWS CLI, SAM CLI, Pulumi e uv
+uv sync            # instala dependências Python
+make sam           # executa função Lambda localmente com DynamoDB via Docker
+```
+
+### Deploy para AWS
+
+```bash
+uv run pulumi preview --stack dev   # simula alterações
+uv run pulumi up --stack dev        # implanta infraestrutura
+```
+
+### Testes
+
+```bash
+uv run pytest functions/ -v         # testes unitários com pytest + moto
+```
+
+Os testes usam `moto` para simular DynamoDB e Cognito, sem precisar de Docker ou credenciais AWS. O plano de testes está documentado em [`docs/test-plan-layer1.md`](docs/test-plan-layer1.md).
+
 ## Requisitos
 
 São requisitos funcionais:

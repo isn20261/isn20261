@@ -8,3 +8,11 @@ dependencies = [
     "pulumi-aws-apigateway>=3.0.0,<4.0.0",
     "pulumi-awsx>=3.0.0,<4.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "moto[cognitoidp,dynamodb]>=5",
+    "pyjwt>=2",
+    "cryptography>=44",
+]
