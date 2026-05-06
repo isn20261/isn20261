@@ -111,7 +111,7 @@ Plans:
 Plans:
 - [x] 04-01-mock-auth-seam-PLAN.md - Cognito-shaped lib/api/auth.ts mock seam (D-02..D-04) + scaffold shadcn Popover primitive (D-07) — COMPLETED 2026-05-06
 - [x] 04-02-field-component-PLAN.md - Reusable <Field> Client Component with floating label, show/hide toggle, error/hint slot (D-08) — COMPLETED 2026-05-06
-- [ ] 04-03-login-register-pages-PLAN.md - /login + /register Client Components with validation D-09, two-tier errors D-10, signIn/signUp submit + router.push(/) on success (D-11)
+- [x] 04-03-login-register-pages-PLAN.md - /login + /register Client Components with validation D-09, two-tier errors D-10, signIn/signUp submit + router.push(/) on success (D-11) — COMPLETED 2026-05-06
 - [ ] 04-04-account-menu-and-forgot-stub-PLAN.md - /forgot Server Component stub (D-01) + AccountMenu popover wrapper (D-05) + Sidebar/Navbar wiring (AUTH-06)
 - [ ] 04-05-verification-PLAN.md - End-of-phase verification: 16 UI-SPEC hooks + tsc/lint/build + manual 3-breakpoint check + register-then-sign-in end-to-end
 **UI hint**: yes
@@ -238,7 +238,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Foundation | 4/4 | Complete | 2026-05-05 |
 | 2. Design System | 3/3 | Complete | 2026-05-05 |
 | 3. Layout | 5/5 | Complete | 2026-05-06 |
-| 4. Login + Register UI | 0/5 | In progress (planned) | - |
+| 4. Login + Register UI | 3/5 | In progress | - |
 | 5. Auth Context + Protected Routes | 0/TBD | Not started | - |
 | 6. Home / Hero | 0/TBD | Not started | - |
 | 7. Recommendation Result | 0/TBD | Not started | - |

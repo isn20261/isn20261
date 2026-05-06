@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 04 Plan 02 (Field component) complete — components/Field.tsx landed; ready for Plan 03 (login + register pages)
-last_updated: "2026-05-06T15:30:00.000Z"
-last_activity: 2026-05-06 -- Plan 04-02 completed
+stopped_at: Phase 04 Plan 03 (login + register pages) complete — /login and /register Client Components landed; ready for Plan 04 (AccountMenu + forgot stub)
+last_updated: "2026-05-06T05:06:41.000Z"
+last_activity: 2026-05-06 -- Plan 04-03 completed
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -27,31 +27,31 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 ## Current Position
 
 Phase: 04 (auth-ui) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Executing Phase 04
-Last activity: 2026-05-06 -- Plan 04-02 (Field component) completed
+Last activity: 2026-05-06 -- Plan 04-03 (login + register pages) completed
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: 12 min
-- Total execution time: 1.0 hours
+- Total plans completed: 6
+- Average duration: 11 min
+- Total execution time: 1.05 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 4/4 | 57 min | 14 min |
-| 04-auth-ui    | 2/5 | 15 min | 7 min  |
+| 04-auth-ui    | 3/5 | 17 min | 6 min  |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-02 (12 min), 01-03 (8 min), 01-04 (12 min), 04-01 (10 min), 04-02 (5 min)
-- Trend: Steady ~5-15 min per plan; Plan 04-02 was a resumed run (draft pre-existed)
+- Last 5 plans: 01-03 (8 min), 01-04 (12 min), 04-01 (10 min), 04-02 (5 min), 04-03 (2 min)
+- Trend: Steady ~2-15 min per plan; Plan 04-03 fast because the action body was byte-precise (zero deviations needed)
 
 *Updated after each plan completion*
 
@@ -112,6 +112,15 @@ Recent decisions affecting current work:
 - Show/hide eye toggle is a sibling `<button type="button">` (not a wrapper), keeping tab order natural and preventing form submission on click
 - `useId()` generates per-instance `inputId` and `msgId`; `<label htmlFor>` + `aria-describedby` + `aria-invalid` complete the a11y contract (UI-SPEC verification hook #13)
 
+### Decisions (Plan 04-03)
+
+- Both /login and /register inline their forms inside the page component (no <LoginForm>/<RegisterForm> extraction) — CONTEXT §Claude's Discretion recommendation; bespoke per-page forms gain nothing from extraction
+- Catch blocks in BOTH pages collapse ALL errors (including unknown variants) into the safe hardcoded copy — `if (err instanceof X) {...} else {...}` both branches set the same string; Cognito-internal messages cannot leak (T-04-13 mitigation)
+- "Passwords don't match" uses STRAIGHT ASCII apostrophe (U+0027); curly U+2019 forbidden by UI-SPEC hook #10 — verified 0 hits for the curly form
+- Submit button retains "Sign in" / "Create account" label in loading state; only the trailing ArrowRight icon swaps for an animate-spin 16px circle (UI-SPEC §Empty/loading/disabled)
+- Terms checkbox is the ONLY raw <input> allowed in /register (UI-SPEC hook #5 explicitly permits checkbox raw inputs); email/password/confirm all go through <Field>
+- text-accent on bottom-card link is the Phase 4 supplement entry #8 to the accent reserved-for list (the other 7 entries inherited from Phase 3 + Plan 04-01/02)
+
 ### Pending Todos
 
 None yet.
@@ -132,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T15:30:00Z
-Stopped at: Plan 04-02 (Field component) completed — components/Field.tsx landed (commit 445f208)
-Resume file: .planning/phases/04-auth-ui/04-03-login-register-pages-PLAN.md
+Last session: 2026-05-06T05:06:41Z
+Stopped at: Plan 04-03 (login + register pages) completed — app/(auth)/login/page.tsx (commit 43b47bc) and app/(auth)/register/page.tsx (commit ea64d06) landed
+Resume file: .planning/phases/04-auth-ui/04-04-account-menu-and-forgot-stub-PLAN.md
