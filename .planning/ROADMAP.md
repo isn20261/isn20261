@@ -83,7 +83,13 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
   2. Navbar, sidebar and footer are reusable React components in `frontend/web/components/` — none of them imports JSX from `_design-reference/`.
   3. Layout matches the reference design at all 3 breakpoints (~375px / ~768px / 1440px) — sidebar collapses or transforms appropriately on mobile, content reflows correctly, no horizontal scroll at 375px.
   4. The page wrapper exposes a content slot so screen phases (6–10) only author the screen-specific markup, never re-implement chrome.
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 03-01-deps-and-brand-mark-PLAN.md - Install lucide-react + author components/BrandMark.tsx (Server Component, fresh re-author)
+- [ ] 03-02-sidebar-PLAN.md - Sidebar Client Component (desktop rail + mobile tab bar in one file, usePathname active state, 5 routes)
+- [ ] 03-03-navbar-and-footer-PLAN.md - Navbar (home + mobile variants) + Footer (disclaimer + 2 stub anchors), both Server Components
+- [ ] 03-04-page-layout-and-route-groups-PLAN.md - PageLayout composer + (app)/layout.tsx + (auth)/layout.tsx + migrate root + tokens pages into (app) group
+- [ ] 03-05-verification-PLAN.md - End-of-phase verification: 5 UI-SPEC verification hooks + tsc/lint/build + manual 3-breakpoint visual check (LAYT-05)
 **UI hint**: yes
 
 **Notes / risks:**
@@ -225,7 +231,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete | 2026-05-05 |
 | 2. Design System | 3/3 | Complete | 2026-05-05 |
-| 3. Layout | 0/TBD | Not started | - |
+| 3. Layout | 0/5 | In progress (planned) | - |
 | 4. Login + Register UI | 0/TBD | Not started | - |
 | 5. Auth Context + Protected Routes | 0/TBD | Not started | - |
 | 6. Home / Hero | 0/TBD | Not started | - |
