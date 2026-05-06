@@ -2,7 +2,7 @@
 
 /*
  * Phase 1 (FOUND-04): canonical Tailwind v4 entry point.
- * Phase 2 (DSGN-01..06) populates an `@theme { ... }` block here that
+ * Phase 2 (DSGN-01..06) populates a theme block here that
  * mirrors frontend/_design-reference/styles.css :root tokens
  * (--color-bg, --color-accent, --fs-16, --r-md, --rail-w, etc.).
  * Do NOT add design tokens in Phase 1 — they belong to Phase 2.
