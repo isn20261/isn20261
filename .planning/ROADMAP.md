@@ -19,7 +19,7 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
 - Decimal phases (e.g. 5.1): Reserved for urgent insertions (none planned)
 
 - [x] **Phase 1: Foundation** — Initialize Next.js 16 + TS + Tailwind project at `frontend/web/` with strict TS, lint, fonts, folder layout, and a working dev server (issue #90)
-- [ ] **Phase 2: Design System** — Mirror `_design-reference/styles.css` tokens into Tailwind theme (colors, type, radii, shadows, layout) with a tokens demo route (issue #91)
+- [x] **Phase 2: Design System** — Mirror `_design-reference/styles.css` tokens into Tailwind theme (colors, type, radii, shadows, layout) with a tokens demo route (issue #91)
 - [ ] **Phase 3: Layout** — Build navbar / sidebar / footer / page wrapper from scratch, responsive at all 3 breakpoints (issue #92)
 - [ ] **Phase 4: Login + Register UI** — Design-faithful auth screens with validation and the mock `lib/api/auth` Cognito-shaped seam (issue #93)
 - [ ] **Phase 5: Auth Context + Protected Routes** — Global auth context, `RequireAuth` wrapper, localStorage rehydration, expiry redirect (issue #94)
@@ -63,7 +63,10 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
   2. Tailwind utilities exist for the type scale (`text-12`/`14`/`16`/`20`/`28`/`40`/`64`), font families (`font-display` → Manrope, `font-body` → Inter), radii (`rounded-sm`/`md`/`lg`/`xl` = 6/10/16/22 px), shadows (`shadow-md`/`lg`), and layout sizes (`w-rail` = 64px, `h-tab` = 64px).
   3. A `/tokens` (or equivalent) route renders every token visually — color swatches, type samples, radius and shadow examples — so visual drift against `_design-reference/styles.css` is spottable in one screen.
   4. No component file in `frontend/web/components/` or `frontend/web/app/` contains a hardcoded hex color or px font-size — enforced via lint rule or documented author rule that PR review checks.
-**Plans**: TBD
+**Plans**: 3 plans
+- [x] `02-01-theme-block-and-base-reset-PLAN.md` — Author Tailwind v4 `@theme` block mirroring all reference tokens + `@layer base` reset (DSGN-01..04) — COMPLETED 2026-05-05
+- [x] `02-02-tokens-demo-route-PLAN.md` — Visible tokens demo gallery at `/tokens` with 16 color swatches, 7 type-scale rows, 4 radii, 2 shadows, 2 layout demos (DSGN-05) — COMPLETED 2026-05-05
+- [x] `02-03-author-rule-and-verification-PLAN.md` — Document DSGN-06 author rule in AGENTS.md, add visible banner at /tokens, end-to-end verification (DSGN-06) — COMPLETED 2026-05-05
 
 **Notes / risks:**
 - Tailwind v4 token authoring differs from v3; lock the approach (`@theme` block vs `tailwind.config.ts`) before the design demo route is built.
@@ -221,7 +224,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete | 2026-05-05 |
-| 2. Design System | 0/TBD | Not started | - |
+| 2. Design System | 3/3 | Complete | 2026-05-05 |
 | 3. Layout | 0/TBD | Not started | - |
 | 4. Login + Register UI | 0/TBD | Not started | - |
 | 5. Auth Context + Protected Routes | 0/TBD | Not started | - |
