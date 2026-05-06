@@ -1,7 +1,8 @@
 ---
 phase: 4
 slug: auth-ui
-status: draft
+status: approved
+reviewed_at: 2026-05-06
 shadcn_initialized: true
 preset: none (manual init via shadcn CLI in Phase 1; no preset string — components.json style "base-nova", iconLibrary "lucide")
 created: 2026-05-06
@@ -482,11 +483,11 @@ These hooks are designed to survive routine refactors — they verify the load-b
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS — all auth strings declared verbatim, validation errors exact, API-error banner copy exact, forgot stub copy exact, apostrophe checks pass
-- [ ] Dimension 2 Visuals: PASS — form geometry matches reference at 375 / 768 / 1440 (fluid-width within the 420 px max card; no breakpoint-specific layout); floating-label transitions match reference timing
-- [ ] Dimension 3 Color: PASS — only existing Phase 2 tokens used; accent reserved-for list extended by 4 entries (submit fill, Field focus border, Terms accent-color, bottom-card link) all justified per-row; destructive reserved-for list introduced (Field error, form banner, popover Sign-out)
-- [ ] Dimension 4 Typography: PASS — only `font-display` (titles only) and `font-body` (everything else); `text-12` / `text-14` / `text-16` from existing tokens; nine documented arbitrary values for floating-label geometry + display copy, each with a `// non-tokenized: ...` comment, all confined to `components/Field.tsx` plus the two auth page title/subtitle pairs
-- [ ] Dimension 5 Spacing: PASS — Tailwind default spacing scale + four documented arbitrary values for the floating-label geometry (`pt-[18px]`, `top-[14px]`, etc.); all live inside `components/Field.tsx`; zero arbitrary spacing in pages or in `<AccountMenu>`
-- [ ] Dimension 6 Registry Safety: PASS — single shadcn primitive (`popover`) from the official registry; no third-party registries declared; vetting gate not required
+- [x] Dimension 1 Copywriting: PASS — all auth strings declared verbatim, validation errors exact, API-error banner copy exact, forgot stub copy exact, apostrophe checks pass
+- [x] Dimension 2 Visuals: PASS — form geometry matches reference at 375 / 768 / 1440 (fluid-width within the 420 px max card; no breakpoint-specific layout); floating-label transitions match reference timing
+- [x] Dimension 3 Color: PASS — only existing Phase 2 tokens used; accent reserved-for list extended by 4 entries (submit fill, Field focus border, Terms accent-color, bottom-card link) all justified per-row; destructive reserved-for list introduced (Field error, form banner, popover Sign-out)
+- [x] Dimension 4 Typography: PASS — only `font-display` (titles only) and `font-body` (everything else); `text-12` / `text-14` / `text-16` from existing tokens; nine documented arbitrary values for floating-label geometry + display copy, each with a `// non-tokenized: ...` comment, all confined to `components/Field.tsx` plus the two auth page title/subtitle pairs
+- [x] Dimension 5 Spacing: PASS — Tailwind default spacing scale + four documented arbitrary values for the floating-label geometry (`pt-[18px]`, `top-[14px]`, etc.); all live inside `components/Field.tsx`; zero arbitrary spacing in pages or in `<AccountMenu>`
+- [x] Dimension 6 Registry Safety: PASS — single shadcn primitive (`popover`) from the official registry; no third-party registries declared; vetting gate not required
 
-**Approval:** pending
+**Approval:** approved 2026-05-06 by gsd-ui-checker
