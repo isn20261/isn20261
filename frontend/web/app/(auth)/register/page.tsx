@@ -21,10 +21,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { signUp, UsernameExistsException } from "@/lib/api/auth";
+import { UsernameExistsException } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");

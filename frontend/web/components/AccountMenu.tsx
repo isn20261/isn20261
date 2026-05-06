@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { signOut } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 type AccountMenuProps = {
   children: React.ReactNode;
@@ -34,6 +34,7 @@ export function AccountMenu({
   align = "end",
 }: AccountMenuProps) {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const handleSignOut = () => {
     signOut();

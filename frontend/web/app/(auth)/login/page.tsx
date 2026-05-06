@@ -19,10 +19,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { signIn, NotAuthorizedException } from "@/lib/api/auth";
+import { NotAuthorizedException } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});

@@ -50,6 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Rehydrate session from localStorage on mount. setState inside an effect
+    // is the documented pattern for syncing browser-only state into React —
+    // localStorage is unavailable during SSR.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const persisted = getSession();
     if (persisted && persisted.ExpiresAt > Date.now()) {
       setSession(persisted);
@@ -57,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       seamSignOut();
     }
     setIsLoading(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const signIn = useCallback(async (creds: Credentials) => {
