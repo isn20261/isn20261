@@ -24,6 +24,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Clock, Sparkles, Bookmark, User } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { AccountMenu } from "@/components/AccountMenu";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -49,9 +50,10 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
 
 type SidebarProps = {
   loggedIn?: boolean;
+  userName?: string;
 };
 
-export function Sidebar({ loggedIn = false }: SidebarProps) {
+export function Sidebar({ loggedIn = false, userName = "June" }: SidebarProps) {
   const pathname = usePathname();
   const avatarHref = loggedIn ? "/preferences" : "/login";
   const avatarLabel = loggedIn ? "Account: June" : "Sign in";
@@ -97,19 +99,28 @@ export function Sidebar({ loggedIn = false }: SidebarProps) {
           })}
         </ul>
         <div className="mt-auto flex flex-col items-center pb-3">
-          <Link
-            href={avatarHref}
-            aria-label={avatarLabel}
-            title={avatarLabel}
-            className="w-9 h-9 rounded-full border border-border-strong flex items-center justify-center text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-          >
-            {loggedIn ? (
-              // TODO Phase 5: derive initials from useAuth().user
-              <span className="font-display text-12 font-semibold text-text-primary">JR</span>
-            ) : (
+          {loggedIn ? (
+            <AccountMenu side="right" align="start" userName={userName}>
+              <button
+                type="button"
+                aria-label={`Account menu for ${userName}`}
+                title={`Account menu for ${userName}`}
+                className="w-9 h-9 rounded-full border border-border-strong flex items-center justify-center text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+              >
+                {/* TODO Phase 5: derive initials from useAuth().user */}
+                <span className="font-display text-12 font-semibold text-text-primary">JR</span>
+              </button>
+            </AccountMenu>
+          ) : (
+            <Link
+              href={avatarHref}
+              aria-label={avatarLabel}
+              title={avatarLabel}
+              className="w-9 h-9 rounded-full border border-border-strong flex items-center justify-center text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+            >
               <User size={16} />
-            )}
-          </Link>
+            </Link>
+          )}
         </div>
       </aside>
 

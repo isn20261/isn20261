@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 03 complete — ready to ship PR (issue #92), then plan Phase 04
-last_updated: "2026-05-06T12:00:00Z"
-last_activity: 2026-05-06 -- Phase 03 executed (5 plans across 4 waves) — branch feature/issue-92-layout, all LAYT-01..05 verified
+stopped_at: Phase 04 (auth-ui) COMPLETE — verification gate green, ready for /gsd:transition to Phase 5
+last_updated: "2026-05-06T06:00:00.000Z"
+last_activity: 2026-05-06 -- Plan 04-05 verification approved; Phase 4 closed
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 12
-  percent: 30
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -22,35 +22,37 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (created 2026-05-04)
 
 **Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 03 complete — ready to open PR (issue #92); next is Phase 04 (Login + Register UI, issue #93)
+**Current focus:** Phase 04 — auth-ui
 
 ## Current Position
 
-Phase: 03 (layout) — COMPLETE (verified 2026-05-06, manual 3-breakpoint check approved)
-Plan: 5 of 5 complete
-Status: Phase 03 ready to ship — `/gsd-ship 3` opens PR `feature/issue-92-layout` → `frontend`
-Last activity: 2026-05-06 -- Phase 03 executed across 4 waves: BrandMark + Sidebar + Navbar + Footer + PageLayout + (app)/(auth) route groups + page migration; tsc/lint/build all 0; LAYT-01..05 verified
+Phase: 04 (auth-ui) — COMPLETE
+Plan: 5 of 5
+Status: Phase 04 closed; ready for /gsd:transition to Phase 5
+Last activity: 2026-05-06 -- Plan 04-05 verification gate approved (automated + manual all PASS)
 
-Progress: [██████░░░░] 30%
+Progress: [██████████] 100% (Phase 04)
+Overall: 4/10 phases complete
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
-- Average duration: 15 min
-- Total execution time: 0.75 hours
+- Total plans completed: 8
+- Average duration: ~10 min
+- Total execution time: ~1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 4/4 | 57 min | 14 min |
+| 04-auth-ui    | 5/5 | ~30 min | 6 min  |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min)
-- Trend: Establishing baseline
+- Last 5 plans: 04-01 (10 min), 04-02 (5 min), 04-03 (2 min), 04-04 (10 min), 04-05 (verification gate, ~5 min automated + manual smoke)
+- Trend: Steady ~2-15 min per plan
 
 *Updated after each plan completion*
 
@@ -96,6 +98,30 @@ Recent decisions affecting current work:
 - app/page.tsx is locked as Phase 1 placeholder — Phase 6 (HOME-01..05) replaces in place
 - pnpm build verified clean; .next/ contains zero fonts.googleapis.com references (ROADMAP success #4)
 
+### Decisions (Plan 04-01)
+
+- shadcn 'base-nova' style emits a Popover backed by @base-ui/react (not @radix-ui/react-popover); plan §key_links expectation diverged but @base-ui/react was already a Phase 1 dep, so no new package landed
+- Mock auth seam exposes MOCK_LATENCY_MS / SESSION_KEY / USERS_KEY as `as const` literal types; tests can override latency to [0, 0]
+- Plain-text passwords in `recommend-a.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
+- Defensive guards landed: `typeof window === 'undefined'` on every storage path, `Object.prototype.hasOwnProperty.call` for prototype-pollution, JSON.parse shape check rejects null/array/primitive
+
+### Decisions (Plan 04-02)
+
+- Floating label expressed via Tailwind v4 `peer` + `peer-[&:not(:placeholder-shown)]` arbitrary variants — zero inline `style` props (UI-SPEC verification hook #2 satisfied)
+- `placeholder=" "` (single literal space) is the load-bearing trick that keeps `:placeholder-shown` toggling correctly without rendering visible placeholder text
+- Five DSGN-06 escape hatches (pt-[18px], top-[14px], text-[10px], text-[13px], tracking-[0.06em]) confined to this single file, each carrying an inline `// non-tokenized:` comment per AGENTS.md
+- Show/hide eye toggle is a sibling `<button type="button">` (not a wrapper), keeping tab order natural and preventing form submission on click
+- `useId()` generates per-instance `inputId` and `msgId`; `<label htmlFor>` + `aria-describedby` + `aria-invalid` complete the a11y contract (UI-SPEC verification hook #13)
+
+### Decisions (Plan 04-03)
+
+- Both /login and /register inline their forms inside the page component (no <LoginForm>/<RegisterForm> extraction) — CONTEXT §Claude's Discretion recommendation; bespoke per-page forms gain nothing from extraction
+- Catch blocks in BOTH pages collapse ALL errors (including unknown variants) into the safe hardcoded copy — `if (err instanceof X) {...} else {...}` both branches set the same string; Cognito-internal messages cannot leak (T-04-13 mitigation)
+- "Passwords don't match" uses STRAIGHT ASCII apostrophe (U+0027); curly U+2019 forbidden by UI-SPEC hook #10 — verified 0 hits for the curly form
+- Submit button retains "Sign in" / "Create account" label in loading state; only the trailing ArrowRight icon swaps for an animate-spin 16px circle (UI-SPEC §Empty/loading/disabled)
+- Terms checkbox is the ONLY raw <input> allowed in /register (UI-SPEC hook #5 explicitly permits checkbox raw inputs); email/password/confirm all go through <Field>
+- text-accent on bottom-card link is the Phase 4 supplement entry #8 to the accent reserved-for list (the other 7 entries inherited from Phase 3 + Plan 04-01/02)
+
 ### Pending Todos
 
 None yet.
@@ -116,6 +142,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T12:00:00Z
-Stopped at: Phase 03 complete on branch feature/issue-92-layout — ready for /gsd-ship 3 (PR back into frontend), then /gsd-discuss-phase 04 or /gsd-plan-phase 04
-Resume file: .planning/phases/03-layout/03-05-VERIFICATION.md
+Last session: 2026-05-06T06:00:00Z
+Stopped at: Phase 04 (auth-ui) COMPLETE — Plan 04-05 verification gate approved (automated + manual all PASS).
+  Deliverables shipped this phase: lib/api/auth.ts, components/Field.tsx, components/AccountMenu.tsx,
+  app/(auth)/login/page.tsx, app/(auth)/register/page.tsx, app/(auth)/forgot/page.tsx,
+  Sidebar/Navbar wired with AccountMenu.
+Next step: `/gsd:transition` to Phase 5 (Auth Context + Protected Routes, issue #94)
+Resume file: .planning/ROADMAP.md §"Phase 5: Auth Context + Protected Routes"

@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { AccountMenu } from "@/components/AccountMenu";
 
 type NavbarProps = {
   variant?: "home" | "mobile";
@@ -57,7 +58,15 @@ export function Navbar({ variant = "home", loggedIn = false, userName = "June" }
           >
             <Bell size={18} />
           </button>
-          <span className="text-text-secondary text-14 font-medium">Hi, {userName}</span>
+          <AccountMenu userName={userName}>
+            <button
+              type="button"
+              aria-label={`Account menu for ${userName}`}
+              className="text-text-secondary hover:text-text-primary text-14 font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
+            >
+              Hi, {userName}
+            </button>
+          </AccountMenu>
         </div>
       ) : (
         <div className="flex items-center gap-2">
