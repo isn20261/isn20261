@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-05-05T00:59:03.620Z"
-last_activity: 2026-05-04 — ROADMAP.md and STATE.md initialized; 56/56 v1 requirements mapped across 10 phases.
+status: executing
+stopped_at: Phase 01, Plan 01 complete
+last_updated: "2026-05-05T00:00:00Z"
+last_activity: 2026-05-05 -- Phase 01 Plan 01 (project-init) completed
 progress:
   total_phases: 10
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 3
 ---
 
 # Project State
@@ -22,35 +22,35 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (created 2026-05-04)
 
 **Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 1 — Foundation (issue #90)
+**Current focus:** Phase 01 — foundation
 
 ## Current Position
 
-Phase: 1 of 10 (Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-04 — ROADMAP.md and STATE.md initialized; 56/56 v1 requirements mapped across 10 phases.
+Phase: 01 (foundation) — EXECUTING
+Plan: 2 of 4 (Plan 01 complete)
+Status: Executing Phase 01
+Last activity: 2026-05-05 -- Phase 01 Plan 01 (project-init) completed
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 3%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 25 min
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
+| 01-foundation | 1/4 | 25 min | 25 min |
 
 **Recent Trend:**
 
-- Last 5 plans: —
-- Trend: —
+- Last 5 plans: 01-01 (25 min)
+- Trend: Establishing baseline
 
 *Updated after each plan completion*
 
@@ -66,6 +66,13 @@ Recent decisions affecting current work:
 - Project init: 1 GSD phase = 1 GitHub sub-issue = 1 feature branch off `frontend` = 1 PR.
 - Project init: Skip Research agent (Lean workflow); stack is fixed by issue #88.
 - Project init: Defer `_design-reference/` deletion until just before final `frontend → main` PR.
+
+### Decisions (Plan 01-01)
+
+- pnpm 10.33.3 via corepack (not pre-installed on host; corepack enable resolved it)
+- Node 22 pinned via .nvmrc and engines.node (host runs Node v24.15.0, compatible)
+- next-env.d.ts correctly excluded from git (auto-generated at build time)
+- exactOptionalPropertyTypes deliberately NOT enabled (D-05: fights React/Next types)
 
 ### Pending Todos
 
@@ -87,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T00:59:03.611Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-foundation/01-CONTEXT.md
+Last session: 2026-05-05T00:00:00Z
+Stopped at: Phase 01 Plan 01 complete — ready for Plan 02 (Tailwind v4 + shadcn init)
+Resume file: .planning/phases/01-foundation/01-02-PLAN.md
