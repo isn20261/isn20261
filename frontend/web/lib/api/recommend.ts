@@ -278,6 +278,9 @@ export const MOODS = [
   { id: "nostalgic", label: "Nostalgic", icon: "◌" },
 ] as const;
 
+export const RATINGS = ["G", "PG", "PG-13", "R", "NC-17"] as const;
+export type Rating = (typeof RATINGS)[number];
+
 const PICK_LATENCY_MS = 250;
 
 export const posterUrl = (m: Movie, w = 360, h = 540): string =>
