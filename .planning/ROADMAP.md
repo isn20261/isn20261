@@ -23,7 +23,7 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
 - [x] **Phase 3: Layout** — Build navbar / sidebar / footer / page wrapper from scratch, responsive at all 3 breakpoints (issue #92) — COMPLETED 2026-05-06
 - [x] **Phase 4: Login + Register UI** — Design-faithful auth screens with validation and the mock `lib/api/auth` Cognito-shaped seam (issue #93) — COMPLETED 2026-05-06
 - [x] **Phase 5: Auth Context + Protected Routes** — Global auth context, `RequireAuth` wrapper, localStorage rehydration, expiry redirect (issue #94) — COMPLETED 2026-05-06
-- [ ] **Phase 6: Home / Hero** — Home screen using one of the 3 backdrop variants, CTA wired to `/recommendation` (issue #95)
+- [x] **Phase 6: Home / Hero** — Home screen using one of the 3 backdrop variants, CTA wired to `/recommendation` (issue #95) — COMPLETED 2026-05-06 (gradient variant)
 - [ ] **Phase 7: Recommendation Result** — Mocked recommendation result screen (poster, title, summary, metadata) (issue #96)
 - [ ] **Phase 8: Preferences** — Mocked, protected preferences screen (issue #97)
 - [ ] **Phase 9: History** — Mocked, protected history screen (issue #98)
@@ -240,7 +240,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Layout | 5/5 | Complete | 2026-05-06 |
 | 4. Login + Register UI | 5/5 | Complete | 2026-05-06 |
 | 5. Auth Context + Protected Routes | 2/2 | Complete | 2026-05-06 |
-| 6. Home / Hero | 0/TBD | Not started | - |
+| 6. Home / Hero | 1/1 | Complete | 2026-05-06 |
 | 7. Recommendation Result | 0/TBD | Not started | - |
 | 8. Preferences | 0/TBD | Not started | - |
 | 9. History | 0/TBD | Not started | - |
