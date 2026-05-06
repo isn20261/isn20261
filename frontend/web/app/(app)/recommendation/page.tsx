@@ -77,11 +77,14 @@ export default function RecommendationPage() {
   const primaryService = movie.services[0];
 
   return (
-    <section className="relative isolate w-full min-h-screen overflow-hidden bg-bg">
-      {/* Backdrop */}
+    <section
+      key={movie.id}
+      className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
+    >
+      {/* Backdrop — fades in on its own */}
       <div
         aria-hidden
-        className="absolute top-0 left-0 right-0 h-[360px] md:h-[560px] overflow-hidden"
+        className="absolute top-0 left-0 right-0 h-[360px] md:h-[560px] overflow-hidden animate-fade-in"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -99,7 +102,7 @@ export default function RecommendationPage() {
         {/* Header */}
         {/* non-tokenized: pt-[220px] mobile / pt-[280px] md+ — backdrop clearance primitives */}
         {/* non-tokenized: max-w-[880px] — header column width primitive */}
-        <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px]">
+        <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px] animate-fade-up [animation-delay:60ms]">
           <p className={`${EYEBROW} text-accent flex items-center gap-2 mb-3`}>
             <span aria-hidden>✦</span>
             <span>We think you&apos;ll like this one</span>
@@ -183,7 +186,7 @@ export default function RecommendationPage() {
 
         {/* Cast / Director */}
         {/* non-tokenized: 160px Director column primitive at md+ */}
-        <div className="px-6 md:px-14 mb-9 max-w-[880px] grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6">
+        <div className="px-6 md:px-14 mb-9 max-w-[880px] grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6 animate-fade-up [animation-delay:220ms]">
           <div>
             <p className={`${EYEBROW} mb-1.5`}>Director</p>
             <p className="text-14 font-semibold text-text-primary">
@@ -199,7 +202,7 @@ export default function RecommendationPage() {
         </div>
 
         {/* Similar films */}
-        <div className="px-6 md:px-14 pb-14">
+        <div className="px-6 md:px-14 pb-14 animate-fade-up [animation-delay:380ms]">
           <h2 className="font-display text-20 font-bold text-text-primary mb-3.5">
             Similar films
           </h2>
