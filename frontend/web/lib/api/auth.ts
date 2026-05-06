@@ -134,3 +134,33 @@ export function getSession(): Session | null {
     return null;
   }
 }
+
+/**
+ * AUTH-13 test hook (Phase 5) — backdates the persisted session's
+ * ExpiresAt by 1s so the next AuthContext rehydrate detects expiry.
+ * No-op when there's no session. Real Cognito (v2) replaces this with
+ * refresh-token rotation; the rehydrate path doesn't change.
+ */
+export function forceExpire(): void {
+  if (typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      parsed.ExpiresAt = Date.now() - 1000;
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+// Dev-only: expose forceExpire on window so manual smoke can run
+//   window.__authTest.forceExpire()
+// in devtools. Stripped from production bundles by NODE_ENV check.
+if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+  (window as unknown as { __authTest?: { forceExpire: typeof forceExpire } }).__authTest = {
+    forceExpire,
+  };
+}

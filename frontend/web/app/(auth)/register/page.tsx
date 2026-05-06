@@ -16,15 +16,37 @@
  *   - Terms checkbox checked               → "Required"
  */
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { signUp, UsernameExistsException } from "@/lib/api/auth";
+import { UsernameExistsException } from "@/lib/api/auth";
+import { useAuth } from "@/lib/auth/AuthContext";
+
+const AUTH_PATHS = new Set(["/login", "/register", "/forgot"]);
+
+function safeReturnPath(raw: string | null): string {
+  if (!raw) return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  for (const p of AUTH_PATHS) {
+    if (raw === p || raw.startsWith(`${p}/`) || raw.startsWith(`${p}?`)) return "/";
+  }
+  return raw;
+}
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[400px]" aria-busy="true" />}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
@@ -50,7 +72,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     try {
       await signUp({ email, password: pw1 });
-      router.push("/"); // D-11
+      router.push(safeReturnPath(searchParams.get("from")));
     } catch (err) {
       // Collapse all unknown failures into the safe "An account with this email already exists."
       // copy — never leak Cognito-internal messages (UI-SPEC §Interaction Contracts).
