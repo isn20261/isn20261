@@ -30,7 +30,7 @@ export default function HomePage() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <section className="relative w-full min-h-screen overflow-hidden">
+    <section className="relative isolate w-full min-h-screen overflow-hidden">
       <HomeBackdrop />
 
       <div className="relative z-10">
