@@ -53,6 +53,16 @@ function ColorSwatch({ utility, name, value, isText }: { utility: string; name: 
 export default function TokensPage() {
   return (
     <main className="min-h-screen bg-bg text-primary font-body p-8 md:p-12">
+      <div
+        role="note"
+        className="mb-8 rounded-md border border-accent bg-accent-soft p-4 text-14 text-accent"
+      >
+        <strong className="font-display font-semibold">Author rule:</strong>{" "}
+        components in <code className="font-mono">app/</code> and{" "}
+        <code className="font-mono">components/</code> may use only Tailwind theme variables —
+        no hardcoded hex or px. See{" "}
+        <code className="font-mono">frontend/web/AGENTS.md</code>.
+      </div>
       <header className="mb-12">
         <h1 className="font-display text-40 leading-none mb-2">recommend-a — design tokens</h1>
         <p className="text-secondary text-14">
