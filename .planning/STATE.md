@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 04 context captured — ready for /gsd-plan-phase 4 on branch feature/issue-93-auth-ui
-last_updated: "2026-05-06T13:00:00Z"
-last_activity: 2026-05-06 -- Phase 04 CONTEXT.md authored (12 decisions across forgot-pw scope, mock auth seam, logout placement, form architecture)
+stopped_at: Phase 04 UI-SPEC approved — ready for /gsd-plan-phase 4 on branch feature/issue-93-auth-ui
+last_updated: "2026-05-06T13:30:00Z"
+last_activity: 2026-05-06 -- Phase 04 UI-SPEC.md authored and checker-approved (6/6 dimensions PASS); CONTEXT.md prior
 progress:
   total_phases: 10
   completed_phases: 3
@@ -26,10 +26,10 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 
 ## Current Position
 
-Phase: 04 (auth-ui) — DISCUSSED (CONTEXT.md ready for planning)
+Phase: 04 (auth-ui) — UI-SPEC APPROVED (CONTEXT + UI-SPEC ready for planning)
 Plan: 0 of TBD (planning next)
-Status: Phase 04 context captured — run `/gsd-plan-phase 4` next on branch feature/issue-93-auth-ui
-Last activity: 2026-05-06 -- Phase 04 CONTEXT.md authored, 12 decisions; branch feature/issue-93-auth-ui created off frontend
+Status: Phase 04 UI-SPEC approved — run `/gsd-plan-phase 4` next on branch feature/issue-93-auth-ui
+Last activity: 2026-05-06 -- Phase 04 UI-SPEC.md authored, all 6 design dimensions PASS
 
 Progress: [██████░░░░] 30%
 
