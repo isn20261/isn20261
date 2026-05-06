@@ -34,6 +34,11 @@ import {
   getSimilar,
   type Movie,
 } from "@/lib/api/recommend";
+import {
+  addToWatchLater,
+  isInWatchLater,
+  removeFromWatchLater,
+} from "@/lib/api/watch-later";
 
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
@@ -48,6 +53,7 @@ export default function RecommendationPage() {
       const next = await getRecommendation();
       if (!cancelled) {
         setMovie(next);
+        setSaved(isInWatchLater(next.id));
         setPicking(false);
       }
     })();
@@ -58,10 +64,21 @@ export default function RecommendationPage() {
 
   async function handleAnother() {
     setPicking(true);
-    setSaved(false);
     const next = await getRecommendation();
     setMovie(next);
+    setSaved(isInWatchLater(next.id));
     setPicking(false);
+  }
+
+  function handleToggleSave() {
+    if (!movie) return;
+    if (saved) {
+      removeFromWatchLater(movie.id);
+      setSaved(false);
+    } else {
+      addToWatchLater(movie.id);
+      setSaved(true);
+    }
   }
 
   if (!movie) {
@@ -143,7 +160,7 @@ export default function RecommendationPage() {
             )}
             <button
               type="button"
-              onClick={() => setSaved((s) => !s)}
+              onClick={handleToggleSave}
               aria-pressed={saved}
               className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-surface-2 border border-border hover:border-border-strong text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
             >
