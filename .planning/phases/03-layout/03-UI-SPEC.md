@@ -1,10 +1,15 @@
 ---
 phase: 3
 slug: layout
-status: draft
+status: approved
 shadcn_initialized: true
 preset: none (manual init via shadcn CLI in Phase 1; no preset string)
 created: 2026-05-05
+reviewed_at: 2026-05-05
+checker_verdict: APPROVED (4 PASS / 2 FLAG / 0 BLOCK)
+checker_flags:
+  - "Dim4 typography: 4 font weights (Tailwind core, font-weight not in DSGN-06 scope) — accepted"
+  - "Dim5 spacing: px-1.5 (6px) tab bar inner padding (Tailwind core scale step, matches reference) — accepted"
 ---
 
 # Phase 3 — UI Design Contract
