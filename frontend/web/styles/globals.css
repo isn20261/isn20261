@@ -122,3 +122,12 @@
 
   a { color: inherit; text-decoration: none; }
 }
+
+/* Phase 7 layout utility: horizontally-scrolled rails (Similar films, etc.)
+ * hide the scrollbar but keep scrolling functional. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
