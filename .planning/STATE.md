@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Phase 01, Plan 04 complete — Phase 1 DONE
+last_updated: "2026-05-05T00:00:00Z"
+last_activity: 2026-05-05 -- Phase 01 Plan 04 (routes-and-verification) completed — Phase 1 closed
+progress:
+  total_phases: 10
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+  percent: 10
+---
+
 # Project State
 
 ## Project Reference
@@ -6,33 +22,35 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (created 2026-05-04)
 
 **Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 1 — Foundation (issue #90)
+**Current focus:** Phase 01 — foundation
 
 ## Current Position
 
-Phase: 1 of 10 (Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-04 — ROADMAP.md and STATE.md initialized; 56/56 v1 requirements mapped across 10 phases.
+Phase: 01 (foundation) — COMPLETE
+Plan: 4 of 4 (All 4 plans complete)
+Status: Phase 01 complete — ready for Phase 02 (Design System, issue #91)
+Last activity: 2026-05-05 -- Phase 01 Plan 04 (routes-and-verification) completed — Phase 1 closed
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+
+- Total plans completed: 3
+- Average duration: 15 min
+- Total execution time: 0.75 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
+| 01-foundation | 4/4 | 57 min | 14 min |
 
 **Recent Trend:**
-- Last 5 plans: —
-- Trend: —
+
+- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min)
+- Trend: Establishing baseline
 
 *Updated after each plan completion*
 
@@ -48,6 +66,35 @@ Recent decisions affecting current work:
 - Project init: 1 GSD phase = 1 GitHub sub-issue = 1 feature branch off `frontend` = 1 PR.
 - Project init: Skip Research agent (Lean workflow); stack is fixed by issue #88.
 - Project init: Defer `_design-reference/` deletion until just before final `frontend → main` PR.
+
+### Decisions (Plan 01-01)
+
+- pnpm 10.33.3 via corepack (not pre-installed on host; corepack enable resolved it)
+- Node 22 pinned via .nvmrc and engines.node (host runs Node v24.15.0, compatible)
+- next-env.d.ts correctly excluded from git (auto-generated at build time)
+- exactOptionalPropertyTypes deliberately NOT enabled (D-05: fights React/Next types)
+
+### Decisions (Plan 01-02)
+
+- shadcn CLI 4.7.0 used with --defaults (--base-color flag not supported in this version)
+- shadcn-scaffolded button.tsx deleted per Convention 8 (components/ stays empty)
+- shadcn modifications to styles/globals.css reverted to Phase 1 minimal form (D-01)
+- components.json written with tailwind.css: styles/globals.css and correct @/* aliases
+
+### Decisions (Plan 01-03)
+
+- public/ had create-next-app SVG assets so no .gitkeep added (only truly empty dirs get .gitkeep)
+- lib/api/ uses .gitkeep not index.ts — deliberate Phase 4 boundary marker
+- Manrope+Inter weights ['400','500','600','700'] — baseline; Phase 2 may extend to '800' for 64px display
+- Font .variable classes on <html> (not <body>) — CSS vars resolve from root
+
+### Decisions (Plan 01-04)
+
+- Used next/link instead of <a href> for internal navigation — required by @next/next/no-html-link-for-pages ESLint rule
+- Both routes are server components (no 'use client') — static JSX only per PATTERNS.md Convention 4
+- app/tokens/page.tsx file path is locked — Phase 2 (DSGN-05) fills this file in place
+- app/page.tsx is locked as Phase 1 placeholder — Phase 6 (HOME-01..05) replaces in place
+- pnpm build verified clean; .next/ contains zero fonts.googleapis.com references (ROADMAP success #4)
 
 ### Pending Todos
 
@@ -69,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04
-Stopped at: Roadmap created — 10 phases, 56/56 requirements mapped. Awaiting `/gsd-plan-phase 1`.
-Resume file: None
+Last session: 2026-05-05T00:00:00Z
+Stopped at: Phase 01 complete (Plan 04 done) — ready for Phase 02 (Design System, issue #91)
+Resume file: None — start /gsd-execute-phase 02 on branch feature/issue-91-design-system

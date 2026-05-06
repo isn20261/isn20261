@@ -18,7 +18,7 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
 - Integer phases (1, 2, 3): Planned milestone work — one per GitHub sub-issue
 - Decimal phases (e.g. 5.1): Reserved for urgent insertions (none planned)
 
-- [ ] **Phase 1: Foundation** — Initialize Next.js 16 + TS + Tailwind project at `frontend/web/` with strict TS, lint, fonts, folder layout, and a working dev server (issue #90)
+- [x] **Phase 1: Foundation** — Initialize Next.js 16 + TS + Tailwind project at `frontend/web/` with strict TS, lint, fonts, folder layout, and a working dev server (issue #90)
 - [ ] **Phase 2: Design System** — Mirror `_design-reference/styles.css` tokens into Tailwind theme (colors, type, radii, shadows, layout) with a tokens demo route (issue #91)
 - [ ] **Phase 3: Layout** — Build navbar / sidebar / footer / page wrapper from scratch, responsive at all 3 breakpoints (issue #92)
 - [ ] **Phase 4: Login + Register UI** — Design-faithful auth screens with validation and the mock `lib/api/auth` Cognito-shaped seam (issue #93)
@@ -42,7 +42,11 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
   2. Navigating to a second route (e.g. `/_health` or `/tokens`) renders successfully — proves App Router wiring.
   3. `pnpm lint` passes with no errors against ESLint + Prettier config, and `tsc --noEmit` passes under `strict: true`.
   4. The `frontend/web/` tree contains `app/`, `components/`, `lib/`, `lib/api/`, `public/`, `styles/` directories, and Manrope + Inter are loaded via `next/font` (no Google Fonts CDN at runtime).
-**Plans**: TBD
+**Plans**: 4 plans
+- [x] `01-01-project-init-PLAN.md` — Bootstrap Next.js 16 + TS, pin Node/pnpm, ESLint flat config, Prettier+tailwindcss plugin, strict tsconfig with noUncheckedIndexedAccess (FOUND-01, 02, 03 lint setup) — COMPLETED 2026-05-05
+- [x] `01-02-tailwind-shadcn-init-PLAN.md` — Consolidate Tailwind v4 entry at `styles/globals.css`, run shadcn init (no example component), produce `lib/utils.ts` + `components.json` (FOUND-04 Tailwind+shadcn portion) — COMPLETED 2026-05-06
+- [x] `01-03-skeleton-and-fonts-PLAN.md` — Create `{app,components,lib,lib/api,public,styles}` skeleton with .gitkeeps, wire Manrope+Inter via `next/font/google` exposing `--font-display` + `--font-body` (FOUND-04 font portion, FOUND-05) — COMPLETED 2026-05-06
+- [x] `01-04-routes-and-verification-PLAN.md` — Author `/` and `/tokens` placeholder routes, run `pnpm dev`/`build`/`lint`/`tsc`, grep `.next/` for `fonts.googleapis.com` = 0 hits (FOUND-03 lint pass, FOUND-06, FOUND-07) — COMPLETED 2026-05-05
 
 **Notes / risks:**
 - Next.js 16 is recent — verify pnpm + Node compatibility before committing the lockfile.
@@ -216,7 +220,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 4/4 | Complete | 2026-05-05 |
 | 2. Design System | 0/TBD | Not started | - |
 | 3. Layout | 0/TBD | Not started | - |
 | 4. Login + Register UI | 0/TBD | Not started | - |
