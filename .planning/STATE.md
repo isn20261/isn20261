@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 01, Plan 02 complete
-last_updated: "2026-05-06T00:00:00Z"
-last_activity: 2026-05-06 -- Phase 01 Plan 02 (tailwind-shadcn-init) completed
+stopped_at: Phase 01, Plan 03 complete
+last_updated: "2026-05-06T01:00:00Z"
+last_activity: 2026-05-06 -- Phase 01 Plan 03 (skeleton-and-fonts) completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 5
+  completed_plans: 3
+  percent: 7
 ---
 
 # Project State
@@ -27,29 +27,29 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 3 of 4 (Plans 01 + 02 complete)
+Plan: 4 of 4 (Plans 01 + 02 + 03 complete)
 Status: Executing Phase 01
-Last activity: 2026-05-06 -- Phase 01 Plan 02 (tailwind-shadcn-init) completed
+Last activity: 2026-05-06 -- Phase 01 Plan 03 (skeleton-and-fonts) completed
 
-Progress: [█░░░░░░░░░] 5%
+Progress: [█░░░░░░░░░] 7%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 25 min
-- Total execution time: 0.4 hours
+- Total plans completed: 3
+- Average duration: 15 min
+- Total execution time: 0.75 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 2/4 | 37 min | 18.5 min |
+| 01-foundation | 3/4 | 45 min | 15 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min), 01-02 (12 min)
+- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min)
 - Trend: Establishing baseline
 
 *Updated after each plan completion*
@@ -81,6 +81,13 @@ Recent decisions affecting current work:
 - shadcn modifications to styles/globals.css reverted to Phase 1 minimal form (D-01)
 - components.json written with tailwind.css: styles/globals.css and correct @/* aliases
 
+### Decisions (Plan 01-03)
+
+- public/ had create-next-app SVG assets so no .gitkeep added (only truly empty dirs get .gitkeep)
+- lib/api/ uses .gitkeep not index.ts — deliberate Phase 4 boundary marker
+- Manrope+Inter weights ['400','500','600','700'] — baseline; Phase 2 may extend to '800' for 64px display
+- Font .variable classes on <html> (not <body>) — CSS vars resolve from root
+
 ### Pending Todos
 
 None yet.
@@ -102,5 +109,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-06T00:00:00Z
-Stopped at: Phase 01 Plan 02 complete — ready for Plan 03 (skeleton + fonts)
-Resume file: .planning/phases/01-foundation/01-03-skeleton-and-fonts-PLAN.md
+Stopped at: Phase 01 Plan 03 complete — ready for Plan 04 (routes + verification)
+Resume file: .planning/phases/01-foundation/01-04-routes-and-verification-PLAN.md
