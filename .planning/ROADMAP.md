@@ -110,7 +110,7 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] 04-01-mock-auth-seam-PLAN.md - Cognito-shaped lib/api/auth.ts mock seam (D-02..D-04) + scaffold shadcn Popover primitive (D-07) — COMPLETED 2026-05-06
-- [ ] 04-02-field-component-PLAN.md - Reusable <Field> Client Component with floating label, show/hide toggle, error/hint slot (D-08)
+- [x] 04-02-field-component-PLAN.md - Reusable <Field> Client Component with floating label, show/hide toggle, error/hint slot (D-08) — COMPLETED 2026-05-06
 - [ ] 04-03-login-register-pages-PLAN.md - /login + /register Client Components with validation D-09, two-tier errors D-10, signIn/signUp submit + router.push(/) on success (D-11)
 - [ ] 04-04-account-menu-and-forgot-stub-PLAN.md - /forgot Server Component stub (D-01) + AccountMenu popover wrapper (D-05) + Sidebar/Navbar wiring (AUTH-06)
 - [ ] 04-05-verification-PLAN.md - End-of-phase verification: 16 UI-SPEC hooks + tsc/lint/build + manual 3-breakpoint check + register-then-sign-in end-to-end

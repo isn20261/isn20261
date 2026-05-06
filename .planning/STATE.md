@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 04 Plan 01 (mock auth seam) complete — lib/api/auth.ts + components/ui/popover.tsx landed; ready for Plan 02 (Field component)
-last_updated: "2026-05-06T15:00:00.000Z"
-last_activity: 2026-05-06 -- Plan 04-01 completed
+stopped_at: Phase 04 Plan 02 (Field component) complete — components/Field.tsx landed; ready for Plan 03 (login + register pages)
+last_updated: "2026-05-06T15:30:00.000Z"
+last_activity: 2026-05-06 -- Plan 04-02 completed
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -27,31 +27,31 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 ## Current Position
 
 Phase: 04 (auth-ui) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Executing Phase 04
-Last activity: 2026-05-06 -- Plan 04-01 (mock auth seam) completed
+Last activity: 2026-05-06 -- Plan 04-02 (Field component) completed
 
-Progress: [███████░░░] 76%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: 14 min
-- Total execution time: 0.92 hours
+- Total plans completed: 5
+- Average duration: 12 min
+- Total execution time: 1.0 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 4/4 | 57 min | 14 min |
-| 04-auth-ui    | 1/5 | 10 min | 10 min |
+| 04-auth-ui    | 2/5 | 15 min | 7 min  |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min), 04-01 (10 min)
-- Trend: Steady ~10-15 min per plan
+- Last 5 plans: 01-02 (12 min), 01-03 (8 min), 01-04 (12 min), 04-01 (10 min), 04-02 (5 min)
+- Trend: Steady ~5-15 min per plan; Plan 04-02 was a resumed run (draft pre-existed)
 
 *Updated after each plan completion*
 
@@ -104,6 +104,14 @@ Recent decisions affecting current work:
 - Plain-text passwords in `recommend-a.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
 - Defensive guards landed: `typeof window === 'undefined'` on every storage path, `Object.prototype.hasOwnProperty.call` for prototype-pollution, JSON.parse shape check rejects null/array/primitive
 
+### Decisions (Plan 04-02)
+
+- Floating label expressed via Tailwind v4 `peer` + `peer-[&:not(:placeholder-shown)]` arbitrary variants — zero inline `style` props (UI-SPEC verification hook #2 satisfied)
+- `placeholder=" "` (single literal space) is the load-bearing trick that keeps `:placeholder-shown` toggling correctly without rendering visible placeholder text
+- Five DSGN-06 escape hatches (pt-[18px], top-[14px], text-[10px], text-[13px], tracking-[0.06em]) confined to this single file, each carrying an inline `// non-tokenized:` comment per AGENTS.md
+- Show/hide eye toggle is a sibling `<button type="button">` (not a wrapper), keeping tab order natural and preventing form submission on click
+- `useId()` generates per-instance `inputId` and `msgId`; `<label htmlFor>` + `aria-describedby` + `aria-invalid` complete the a11y contract (UI-SPEC verification hook #13)
+
 ### Pending Todos
 
 None yet.
@@ -124,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T15:00:00Z
-Stopped at: Plan 04-01 (mock auth seam) completed — lib/api/auth.ts + components/ui/popover.tsx landed (commits 0f047e8, 85b3dcb)
-Resume file: .planning/phases/04-auth-ui/04-02-field-component-PLAN.md
+Last session: 2026-05-06T15:30:00Z
+Stopped at: Plan 04-02 (Field component) completed — components/Field.tsx landed (commit 445f208)
+Resume file: .planning/phases/04-auth-ui/04-03-login-register-pages-PLAN.md
