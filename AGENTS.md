@@ -27,7 +27,7 @@ uv run pytest functions/ -v          # run unit tests (Layer 1 — no Docker/AWS
   - `response.py` — HTTP helpers: `ok()`, `bad_request()`, `unauthorized()`, etc. (handles `Decimal` serialization)
 - **Frontend** (`www/`) is a placeholder `index.html`, served via S3 + CloudFront.
 - **Dev stack** (`Pulumi.dev.yaml`): no domain, CloudFront uses default cert.
-- **Prod stack** (`Pulumi.prod.yaml`): domain `recommend.movies`, Route53 + ACM (us-east-1) for HTTPS.
+- **Prod stack** (`Pulumi.prod.yaml`): domain `cinedica.video`, Route53 + ACM (us-east-1) for HTTPS.
 
 ## Known issues — fix before deploying
 

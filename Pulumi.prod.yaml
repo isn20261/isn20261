@@ -1,4 +1,4 @@
 config:
   aws:region: sa-east-1
   isn20261:environment: prod
-  isn20261:domainName: recommend.movies
+  isn20261:domainName: cinedica.video
