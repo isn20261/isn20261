@@ -28,11 +28,11 @@ Each `[CATEGORY]-N` requirement is atomic and testable. Categories map 1:1 to Gi
 
 ### Layout (issue #92)
 
-- [ ] **LAYT-01**: Navbar component built from scratch and visually matches the reference
-- [ ] **LAYT-02**: Sidebar component built from scratch and visually matches the reference
-- [ ] **LAYT-03**: Footer component built from scratch and visually matches the reference
-- [ ] **LAYT-04**: Page layout wrapper composes navbar + sidebar + footer + page-content slot
-- [ ] **LAYT-05**: Layout components are responsive at ~375px / ~768px / 1440px
+- [x] **LAYT-01**: Navbar component built from scratch and visually matches the reference — Phase 3 (03-03)
+- [x] **LAYT-02**: Sidebar component built from scratch and visually matches the reference — Phase 3 (03-02)
+- [x] **LAYT-03**: Footer component built from scratch and visually matches the reference — Phase 3 (03-03)
+- [x] **LAYT-04**: Page layout wrapper composes navbar + sidebar + footer + page-content slot — Phase 3 (03-04)
+- [x] **LAYT-05**: Layout components are responsive at ~375px / ~768px / 1440px — Phase 3 (03-05 manual 3-breakpoint check approved)
 
 ### Authentication UI (issue #93)
 

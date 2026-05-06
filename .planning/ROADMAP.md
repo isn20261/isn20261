@@ -20,7 +20,7 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
 
 - [x] **Phase 1: Foundation** — Initialize Next.js 16 + TS + Tailwind project at `frontend/web/` with strict TS, lint, fonts, folder layout, and a working dev server (issue #90)
 - [x] **Phase 2: Design System** — Mirror `_design-reference/styles.css` tokens into Tailwind theme (colors, type, radii, shadows, layout) with a tokens demo route (issue #91)
-- [ ] **Phase 3: Layout** — Build navbar / sidebar / footer / page wrapper from scratch, responsive at all 3 breakpoints (issue #92)
+- [x] **Phase 3: Layout** — Build navbar / sidebar / footer / page wrapper from scratch, responsive at all 3 breakpoints (issue #92) — COMPLETED 2026-05-06
 - [ ] **Phase 4: Login + Register UI** — Design-faithful auth screens with validation and the mock `lib/api/auth` Cognito-shaped seam (issue #93)
 - [ ] **Phase 5: Auth Context + Protected Routes** — Global auth context, `RequireAuth` wrapper, localStorage rehydration, expiry redirect (issue #94)
 - [ ] **Phase 6: Home / Hero** — Home screen using one of the 3 backdrop variants, CTA wired to `/recommendation` (issue #95)
@@ -83,7 +83,13 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
   2. Navbar, sidebar and footer are reusable React components in `frontend/web/components/` — none of them imports JSX from `_design-reference/`.
   3. Layout matches the reference design at all 3 breakpoints (~375px / ~768px / 1440px) — sidebar collapses or transforms appropriately on mobile, content reflows correctly, no horizontal scroll at 375px.
   4. The page wrapper exposes a content slot so screen phases (6–10) only author the screen-specific markup, never re-implement chrome.
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [x] 03-01-deps-and-brand-mark-PLAN.md - Install lucide-react + author components/BrandMark.tsx (Server Component, fresh re-author) — COMPLETED 2026-05-06
+- [x] 03-02-sidebar-PLAN.md - Sidebar Client Component (desktop rail + mobile tab bar in one file, usePathname active state, 5 routes) — COMPLETED 2026-05-06
+- [x] 03-03-navbar-and-footer-PLAN.md - Navbar (home + mobile variants) + Footer (disclaimer + 2 stub anchors), both Server Components — COMPLETED 2026-05-06
+- [x] 03-04-page-layout-and-route-groups-PLAN.md - PageLayout composer + (app)/layout.tsx + (auth)/layout.tsx + migrate root + tokens pages into (app) group — COMPLETED 2026-05-06
+- [x] 03-05-verification-PLAN.md - End-of-phase verification: 5 UI-SPEC verification hooks + tsc/lint/build + manual 3-breakpoint visual check (LAYT-05) — COMPLETED 2026-05-06
 **UI hint**: yes
 
 **Notes / risks:**
@@ -225,7 +231,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete | 2026-05-05 |
 | 2. Design System | 3/3 | Complete | 2026-05-05 |
-| 3. Layout | 0/TBD | Not started | - |
+| 3. Layout | 0/5 | In progress (planned) | - |
 | 4. Login + Register UI | 0/TBD | Not started | - |
 | 5. Auth Context + Protected Routes | 0/TBD | Not started | - |
 | 6. Home / Hero | 0/TBD | Not started | - |
