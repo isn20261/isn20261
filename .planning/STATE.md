@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready-to-execute
-stopped_at: Phase 04 plans verified (5 plans, 3 waves) — ready for /gsd-execute-phase 4 on branch feature/issue-93-auth-ui
-last_updated: "2026-05-06T14:00:00Z"
-last_activity: 2026-05-06 -- Phase 04 PLAN.md files generated (5 plans across 3 waves); plan-checker PASSED with 0 blockers, 2 informational warnings
+status: executing
+stopped_at: Phase 04 Plan 01 (mock auth seam) complete — lib/api/auth.ts + components/ui/popover.tsx landed; ready for Plan 02 (Field component)
+last_updated: "2026-05-06T15:00:00.000Z"
+last_activity: 2026-05-06 -- Plan 04-01 completed
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 22
-  completed_plans: 12
-  percent: 30
+  total_plans: 17
+  completed_plans: 13
+  percent: 76
 ---
 
 # Project State
@@ -22,35 +22,36 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (created 2026-05-04)
 
 **Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 04 — Login + Register UI (issue #93)
+**Current focus:** Phase 04 — auth-ui
 
 ## Current Position
 
-Phase: 04 (auth-ui) — PLANS VERIFIED (5 plans, 3 waves; plan-checker PASS)
-Plan: 0 of 5 (ready to execute)
-Status: Phase 04 plans verified — run `/gsd-execute-phase 4` next on branch feature/issue-93-auth-ui
-Last activity: 2026-05-06 -- Phase 04 PLAN.md files generated and verified by plan-checker (0 blockers)
+Phase: 04 (auth-ui) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 04
+Last activity: 2026-05-06 -- Plan 04-01 (mock auth seam) completed
 
-Progress: [██████░░░░] 30%
+Progress: [███████░░░] 76%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
-- Average duration: 15 min
-- Total execution time: 0.75 hours
+- Total plans completed: 4
+- Average duration: 14 min
+- Total execution time: 0.92 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 4/4 | 57 min | 14 min |
+| 04-auth-ui    | 1/5 | 10 min | 10 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min)
-- Trend: Establishing baseline
+- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min), 04-01 (10 min)
+- Trend: Steady ~10-15 min per plan
 
 *Updated after each plan completion*
 
@@ -96,6 +97,13 @@ Recent decisions affecting current work:
 - app/page.tsx is locked as Phase 1 placeholder — Phase 6 (HOME-01..05) replaces in place
 - pnpm build verified clean; .next/ contains zero fonts.googleapis.com references (ROADMAP success #4)
 
+### Decisions (Plan 04-01)
+
+- shadcn 'base-nova' style emits a Popover backed by @base-ui/react (not @radix-ui/react-popover); plan §key_links expectation diverged but @base-ui/react was already a Phase 1 dep, so no new package landed
+- Mock auth seam exposes MOCK_LATENCY_MS / SESSION_KEY / USERS_KEY as `as const` literal types; tests can override latency to [0, 0]
+- Plain-text passwords in `recommend-a.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
+- Defensive guards landed: `typeof window === 'undefined'` on every storage path, `Object.prototype.hasOwnProperty.call` for prototype-pollution, JSON.parse shape check rejects null/array/primitive
+
 ### Pending Todos
 
 None yet.
@@ -116,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T14:00:00Z
-Stopped at: Phase 04 plans generated and verified on branch feature/issue-93-auth-ui — ready for /gsd-execute-phase 4
-Resume file: .planning/phases/04-auth-ui/04-01-mock-auth-seam-PLAN.md
+Last session: 2026-05-06T15:00:00Z
+Stopped at: Plan 04-01 (mock auth seam) completed — lib/api/auth.ts + components/ui/popover.tsx landed (commits 0f047e8, 85b3dcb)
+Resume file: .planning/phases/04-auth-ui/04-02-field-component-PLAN.md

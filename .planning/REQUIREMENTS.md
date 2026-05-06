@@ -39,8 +39,8 @@ Each `[CATEGORY]-N` requirement is atomic and testable. Categories map 1:1 to Gi
 - [ ] **AUTH-01**: Login screen at `/login` matches reference design
 - [ ] **AUTH-02**: Register screen at `/register` matches reference design
 - [ ] **AUTH-03**: Client-side form validation (email format, password rules) with inline error messaging that matches the design's error treatment
-- [ ] **AUTH-04**: `lib/api/auth` mocks Cognito `signUp` + `signIn` shapes (returns fake tokens, simulates failure cases)
-- [ ] **AUTH-05**: Successful login/register stores a mock session token in `localStorage`
+- [x] **AUTH-04**: `lib/api/auth` mocks Cognito `signUp` + `signIn` shapes (returns fake tokens, simulates failure cases) — Phase 4 (04-01)
+- [x] **AUTH-05**: Successful login/register stores a mock session token in `localStorage` — Phase 4 (04-01)
 - [ ] **AUTH-06**: Logout button (in app shell) clears the localStorage session
 - [ ] **AUTH-07**: Login + register screens responsive at ~375px / ~768px / 1440px
 
@@ -142,8 +142,8 @@ Populated by `gsd-roadmapper` on 2026-05-04. Each requirement maps to exactly on
 | AUTH-01 | Phase 4 (Login + Register UI) | #93 | Pending |
 | AUTH-02 | Phase 4 (Login + Register UI) | #93 | Pending |
 | AUTH-03 | Phase 4 (Login + Register UI) | #93 | Pending |
-| AUTH-04 | Phase 4 (Login + Register UI) | #93 | Pending |
-| AUTH-05 | Phase 4 (Login + Register UI) | #93 | Pending |
+| AUTH-04 | Phase 4 (Login + Register UI) | #93 | Complete (04-01) |
+| AUTH-05 | Phase 4 (Login + Register UI) | #93 | Complete (04-01) |
 | AUTH-06 | Phase 4 (Login + Register UI) | #93 | Pending |
 | AUTH-07 | Phase 4 (Login + Register UI) | #93 | Pending |
 | AUTH-08 | Phase 5 (Auth Context + Protected Routes) | #94 | Pending |

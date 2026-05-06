@@ -109,7 +109,7 @@ Plans:
   4. A logout control (in the app shell) clears the `localStorage` session entry — verifiable by checking devtools Application > Local Storage before and after.
 **Plans**: 5 plans
 Plans:
-- [ ] 04-01-mock-auth-seam-PLAN.md - Cognito-shaped lib/api/auth.ts mock seam (D-02..D-04) + scaffold shadcn Popover primitive (D-07)
+- [x] 04-01-mock-auth-seam-PLAN.md - Cognito-shaped lib/api/auth.ts mock seam (D-02..D-04) + scaffold shadcn Popover primitive (D-07) — COMPLETED 2026-05-06
 - [ ] 04-02-field-component-PLAN.md - Reusable <Field> Client Component with floating label, show/hide toggle, error/hint slot (D-08)
 - [ ] 04-03-login-register-pages-PLAN.md - /login + /register Client Components with validation D-09, two-tier errors D-10, signIn/signUp submit + router.push(/) on success (D-11)
 - [ ] 04-04-account-menu-and-forgot-stub-PLAN.md - /forgot Server Component stub (D-01) + AccountMenu popover wrapper (D-05) + Sidebar/Navbar wiring (AUTH-06)
