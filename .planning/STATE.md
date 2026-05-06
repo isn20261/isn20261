@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 01, Plan 03 complete
-last_updated: "2026-05-06T01:00:00Z"
-last_activity: 2026-05-06 -- Phase 01 Plan 03 (skeleton-and-fonts) completed
+stopped_at: Phase 01, Plan 04 complete — Phase 1 DONE
+last_updated: "2026-05-05T00:00:00Z"
+last_activity: 2026-05-05 -- Phase 01 Plan 04 (routes-and-verification) completed — Phase 1 closed
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 7
+  completed_plans: 4
+  percent: 10
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 
 ## Current Position
 
-Phase: 01 (foundation) — EXECUTING
-Plan: 4 of 4 (Plans 01 + 02 + 03 complete)
-Status: Executing Phase 01
-Last activity: 2026-05-06 -- Phase 01 Plan 03 (skeleton-and-fonts) completed
+Phase: 01 (foundation) — COMPLETE
+Plan: 4 of 4 (All 4 plans complete)
+Status: Phase 01 complete — ready for Phase 02 (Design System, issue #91)
+Last activity: 2026-05-05 -- Phase 01 Plan 04 (routes-and-verification) completed — Phase 1 closed
 
-Progress: [█░░░░░░░░░] 7%
+Progress: [██░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -45,11 +45,11 @@ Progress: [█░░░░░░░░░] 7%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 3/4 | 45 min | 15 min |
+| 01-foundation | 4/4 | 57 min | 14 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min)
+- Last 5 plans: 01-01 (25 min), 01-02 (12 min), 01-03 (8 min), 01-04 (12 min)
 - Trend: Establishing baseline
 
 *Updated after each plan completion*
@@ -88,6 +88,14 @@ Recent decisions affecting current work:
 - Manrope+Inter weights ['400','500','600','700'] — baseline; Phase 2 may extend to '800' for 64px display
 - Font .variable classes on <html> (not <body>) — CSS vars resolve from root
 
+### Decisions (Plan 01-04)
+
+- Used next/link instead of <a href> for internal navigation — required by @next/next/no-html-link-for-pages ESLint rule
+- Both routes are server components (no 'use client') — static JSX only per PATTERNS.md Convention 4
+- app/tokens/page.tsx file path is locked — Phase 2 (DSGN-05) fills this file in place
+- app/page.tsx is locked as Phase 1 placeholder — Phase 6 (HOME-01..05) replaces in place
+- pnpm build verified clean; .next/ contains zero fonts.googleapis.com references (ROADMAP success #4)
+
 ### Pending Todos
 
 None yet.
@@ -108,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T00:00:00Z
-Stopped at: Phase 01 Plan 03 complete — ready for Plan 04 (routes + verification)
-Resume file: .planning/phases/01-foundation/01-04-routes-and-verification-PLAN.md
+Last session: 2026-05-05T00:00:00Z
+Stopped at: Phase 01 complete (Plan 04 done) — ready for Phase 02 (Design System, issue #91)
+Resume file: None — start /gsd-execute-phase 02 on branch feature/issue-91-design-system
