@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 01, Plan 01 complete
-last_updated: "2026-05-05T00:00:00Z"
-last_activity: 2026-05-05 -- Phase 01 Plan 01 (project-init) completed
+stopped_at: Phase 01, Plan 02 complete
+last_updated: "2026-05-06T00:00:00Z"
+last_activity: 2026-05-06 -- Phase 01 Plan 02 (tailwind-shadcn-init) completed
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 3
+  completed_plans: 2
+  percent: 5
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/ROADMAP.md (created 2026-05-04)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 2 of 4 (Plan 01 complete)
+Plan: 3 of 4 (Plans 01 + 02 complete)
 Status: Executing Phase 01
-Last activity: 2026-05-05 -- Phase 01 Plan 01 (project-init) completed
+Last activity: 2026-05-06 -- Phase 01 Plan 02 (tailwind-shadcn-init) completed
 
-Progress: [█░░░░░░░░░] 3%
+Progress: [█░░░░░░░░░] 5%
 
 ## Performance Metrics
 
@@ -45,11 +45,11 @@ Progress: [█░░░░░░░░░] 3%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 1/4 | 25 min | 25 min |
+| 01-foundation | 2/4 | 37 min | 18.5 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (25 min)
+- Last 5 plans: 01-01 (25 min), 01-02 (12 min)
 - Trend: Establishing baseline
 
 *Updated after each plan completion*
@@ -74,6 +74,13 @@ Recent decisions affecting current work:
 - next-env.d.ts correctly excluded from git (auto-generated at build time)
 - exactOptionalPropertyTypes deliberately NOT enabled (D-05: fights React/Next types)
 
+### Decisions (Plan 01-02)
+
+- shadcn CLI 4.7.0 used with --defaults (--base-color flag not supported in this version)
+- shadcn-scaffolded button.tsx deleted per Convention 8 (components/ stays empty)
+- shadcn modifications to styles/globals.css reverted to Phase 1 minimal form (D-01)
+- components.json written with tailwind.css: styles/globals.css and correct @/* aliases
+
 ### Pending Todos
 
 None yet.
@@ -94,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05T00:00:00Z
-Stopped at: Phase 01 Plan 01 complete — ready for Plan 02 (Tailwind v4 + shadcn init)
-Resume file: .planning/phases/01-foundation/01-02-PLAN.md
+Last session: 2026-05-06T00:00:00Z
+Stopped at: Phase 01 Plan 02 complete — ready for Plan 03 (skeleton + fonts)
+Resume file: .planning/phases/01-foundation/01-03-skeleton-and-fonts-PLAN.md

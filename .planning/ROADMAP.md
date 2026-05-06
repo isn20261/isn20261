@@ -44,7 +44,7 @@ Ten sequential phases that ship a polished, design-faithful Next.js 16 + TypeScr
   4. The `frontend/web/` tree contains `app/`, `components/`, `lib/`, `lib/api/`, `public/`, `styles/` directories, and Manrope + Inter are loaded via `next/font` (no Google Fonts CDN at runtime).
 **Plans**: 4 plans
 - [x] `01-01-project-init-PLAN.md` — Bootstrap Next.js 16 + TS, pin Node/pnpm, ESLint flat config, Prettier+tailwindcss plugin, strict tsconfig with noUncheckedIndexedAccess (FOUND-01, 02, 03 lint setup) — COMPLETED 2026-05-05
-- [ ] `01-02-tailwind-shadcn-init-PLAN.md` — Consolidate Tailwind v4 entry at `styles/globals.css`, run shadcn init (no example component), produce `lib/utils.ts` + `components.json` (FOUND-04 Tailwind+shadcn portion)
+- [x] `01-02-tailwind-shadcn-init-PLAN.md` — Consolidate Tailwind v4 entry at `styles/globals.css`, run shadcn init (no example component), produce `lib/utils.ts` + `components.json` (FOUND-04 Tailwind+shadcn portion) — COMPLETED 2026-05-06
 - [ ] `01-03-skeleton-and-fonts-PLAN.md` — Create `{app,components,lib,lib/api,public,styles}` skeleton with .gitkeeps, wire Manrope+Inter via `next/font/google` exposing `--font-display` + `--font-body` (FOUND-04 font portion, FOUND-05)
 - [ ] `01-04-routes-and-verification-PLAN.md` — Author `/` and `/tokens` placeholder routes, run `pnpm dev`/`build`/`lint`/`tsc`, grep `.next/` for `fonts.googleapis.com` = 0 hits (FOUND-03 lint pass, FOUND-06, FOUND-07)
 
@@ -220,7 +220,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 2/4 | In progress | - |
 | 2. Design System | 0/TBD | Not started | - |
 | 3. Layout | 0/TBD | Not started | - |
 | 4. Login + Register UI | 0/TBD | Not started | - |
