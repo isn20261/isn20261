@@ -1,27 +1,27 @@
+"use client";
+
 /**
- * Phase 3 (LAYT-01, issue #92) — top-bar component.
+ * Phase 5 (AUTH-08, issue #94) — top-bar component (Client).
  *
- * Reusable top bar rendered as an opt-in `header` slot on `<PageLayout>` (CONTEXT D-03).
- * The `(app)` route-group layout does NOT render Navbar globally — pages opt in by
- * including <Navbar variant="..." /> in their own JSX. This matches the reference:
- * home shows a top bar; detail / settings do not.
- *
- * Server Component — `loggedIn` is a prop (not a hook). Phase 5 will swap callers to
- * pass `useAuth().isAuthenticated` at the page level (page becomes the client boundary).
+ * Phase 4 kept this Server; Phase 5 makes it Client so it can react to auth
+ * context changes directly without a wrapper. No SSR data is lost — the
+ * markup only depends on auth state.
  */
 
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { AccountMenu } from "@/components/AccountMenu";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 type NavbarProps = {
   variant?: "home" | "mobile";
-  loggedIn?: boolean;
-  userName?: string;
 };
 
-export function Navbar({ variant = "home", loggedIn = false, userName = "June" }: NavbarProps) {
+export function Navbar({ variant = "home" }: NavbarProps) {
+  const { isAuthenticated, user } = useAuth();
+  const loggedIn = isAuthenticated;
+  const userName = user?.email.split("@")[0] ?? "there";
   if (variant === "mobile") {
     return (
       // non-tokenized: 18px vertical padding from reference home.jsx:221 — between p-4 (16px) and p-5 (20px)

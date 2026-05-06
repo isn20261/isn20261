@@ -25,6 +25,7 @@ import { usePathname } from "next/navigation";
 import { Home, Clock, Sparkles, Bookmark, User } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { AccountMenu } from "@/components/AccountMenu";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -48,15 +49,14 @@ function isActive(pathname: string, href: string, exact: boolean): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type SidebarProps = {
-  loggedIn?: boolean;
-  userName?: string;
-};
-
-export function Sidebar({ loggedIn = false, userName = "June" }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
+  const { isAuthenticated, user } = useAuth();
+  const loggedIn = isAuthenticated;
+  const userName = user?.email.split("@")[0] ?? "there";
+  const initials = userName.slice(0, 2).toUpperCase();
   const avatarHref = loggedIn ? "/preferences" : "/login";
-  const avatarLabel = loggedIn ? "Account: June" : "Sign in";
+  const avatarLabel = loggedIn ? `Account: ${userName}` : "Sign in";
 
   return (
     <>
@@ -107,8 +107,7 @@ export function Sidebar({ loggedIn = false, userName = "June" }: SidebarProps) {
                 title={`Account menu for ${userName}`}
                 className="w-9 h-9 rounded-full border border-border-strong flex items-center justify-center text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
-                {/* TODO Phase 5: derive initials from useAuth().user */}
-                <span className="font-display text-12 font-semibold text-text-primary">JR</span>
+                <span className="font-display text-12 font-semibold text-text-primary">{initials}</span>
               </button>
             </AccountMenu>
           ) : (
