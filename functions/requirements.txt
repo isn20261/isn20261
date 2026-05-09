@@ -1,1 +1,2 @@
 boto3
+PyJWT[crypto]>=2.12.1

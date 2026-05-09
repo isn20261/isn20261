@@ -1,13 +1,33 @@
 services:
-  dynamodb-local:
-    image: amazon/dynamodb-local
-    container_name: dynamodb-local
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
+    image: localstack/localstack-pro
     ports:
-      - "8000:8000"
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
+      - LOCALSTACK_HOSTNAME=${LOCALSTACK_DOCKER_NAME:-localstack-main}
+      - DEBUG=${DEBUG:-0}
+      - SERVICES=${LOCALSTACK_SERVICES:-dynamodb,cognito-idp}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-sa-east-1}
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "./scripts/localstack/init/ready.d:/etc/localstack/init/ready.d"
+      - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
-      - sam-local
-    command: -jar DynamoDBLocal.jar -sharedDb
+      sam-local:
+        aliases:
+          - localhost.localstack.cloud
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4566/_localstack/health').read()"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
 
 networks:
   sam-local:
     name: sam-local
+    external: true

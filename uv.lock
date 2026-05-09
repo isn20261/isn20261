@@ -114,6 +114,7 @@ dependencies = [
     { name = "pulumi-aws" },
     { name = "pulumi-aws-apigateway" },
     { name = "pulumi-awsx" },
+    { name = "pyjwt" },
 ]
 
 [package.metadata]
@@ -122,6 +123,7 @@ requires-dist = [
     { name = "pulumi-aws", specifier = ">=7.0.0,<8.0.0" },
     { name = "pulumi-aws-apigateway", specifier = ">=3.0.0,<4.0.0" },
     { name = "pulumi-awsx", specifier = ">=3.0.0,<4.0.0" },
+    { name = "pyjwt", specifier = ">=2.12.1" },
 ]
 
 [[package]]
@@ -366,6 +368,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/76/31/9b9e9fe7c4fea6f0f5fcfa37110888b9c772cfb15ef1740ba6338a936378/pulumi_docker_build-0.0.15.tar.gz", hash = "sha256:a6301d9c1bfc749a3bce37280ef60c3f9a3dc767f89b62e99edf24ec46de0a6e", size = 38723, upload-time = "2025-10-17T11:03:54.948Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/77/2a/cbbd2bf07f2082e6187d52c463166a522f1960aaf7d34bf59a57e7a51327/pulumi_docker_build-0.0.15-py3-none-any.whl", hash = "sha256:6121e09e6ccdbc8c60695631e7f3d7da22a6188a9ccba16ec3b37dc449d6c45e", size = 43384, upload-time = "2025-10-17T11:03:52.891Z" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.12.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/27/a3b6e5bf6ff856d2509292e95c8f57f0df7017cf5394921fc4e4ef40308a/pyjwt-2.12.1.tar.gz", hash = "sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b", size = 102564, upload-time = "2026-03-13T19:27:37.25Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/7a/8dd906bd22e79e47397a61742927f6747fe93242ef86645ee9092e610244/pyjwt-2.12.1-py3-none-any.whl", hash = "sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c", size = 29726, upload-time = "2026-03-13T19:27:35.677Z" },
 ]
 
 [[package]]

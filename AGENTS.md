@@ -4,14 +4,17 @@
 
 ```
 make install       # install AWS CLI, SAM CLI, Pulumi, uv
-make sam           # local Lambda invocation with DynamoDB Local (docker compose + SAM)
+make sam           # smoke-test local: LocalStack PRO + SAM invoke (RecommendFunction)
+make sam-api       # LocalStack PRO + SAM start-api (rotas /api/v1/*)
 uv sync            # install Python deps from lockfile
 uv run pulumi preview --stack dev    # dry-run infra diff
 uv run pulumi up --stack dev         # deploy infra to AWS
 ```
 
-* `make sam` starts `dynamodb-local` (Docker, port 8000, network `sam-local`), invokes the function via SAM with `event.json`, then tears down.
-* `make sam-start` / `make sam-stop` let you run the Docker/SAM steps separately.
+* `make sam` sobe o LocalStack (porta 4566, network `sam-local`), cria recursos (DynamoDB + Cognito), gera `tmp/sam-env.json`, invoca a Lambda via SAM e derruba.
+* Para rodar como API local (para usar curl/Postman), use `make sam-api`.
+
+Pré-requisito: exportar `LOCALSTACK_AUTH_TOKEN` (LocalStack PRO).
 
 ## Architecture
 
@@ -41,10 +44,10 @@ Pulumi IaC (`__main__.py:143-144`) sets env vars on the Lambda as **`USER_POOL_I
 
 ## Local dev with SAM + Docker
 
-- `compose.yaml` runs `amazon/dynamodb-local` on port 8000, network `sam-local`.
-- `template.yaml` references `functions/handler.py` (the old handler, not the per-endpoint ones). It passes `dummy` credentials and `http://dynamodb-local:8000` as the endpoint.
-- `event.json` is the test payload: `{"sub": "123456", "email": "user@example.com"}`.
-- The DynamoDB table is created on-the-fly inside `handler.py` if it doesn't exist.
+- `compose.yaml` runs LocalStack PRO on port 4566, network `sam-local`.
+- `template.yaml` references the real endpoint lambdas under `functions/` (recommend/history/preferences/watch_later).
+- `scripts/localstack/init/ready.d/*` creates DynamoDB tables and a Cognito user pool + test user.
+- `tmp/sam-env.json` is generated from `volume/isn20261-localstack-outputs.json` via `scripts/localstack/gen_sam_env.py`.
 
 ## API conventions
 

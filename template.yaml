@@ -1,13 +1,79 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Local SAM template for the function handler
+Description: Local SAM template for isn20261 lambdas (LocalStack + SAM)
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 30
+    MemorySize: 128
 
 Resources:
-  HandlerFunction:
+  LocalApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: local
+
+  RecommendFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: function
-      Handler: handler.handler
-      Runtime: python3.13
-      Timeout: 30
-      MemorySize: 128
+      CodeUri: functions
+      Handler: recommend.recommend.handler
+      Events:
+        RecommendGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/recommend
+            Method: GET
+
+  HistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions
+      Handler: history.history.handler
+      Events:
+        HistoryGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/history
+            Method: GET
+
+  PreferencesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions
+      Handler: preferences.preferences.handler
+      Events:
+        PreferencesGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/preferences
+            Method: GET
+        PreferencesPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/preferences
+            Method: POST
+
+  WatchLaterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions
+      Handler: watch_later.watch_later.handler
+      Events:
+        WatchLaterGet:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/watch-later
+            Method: GET
+        WatchLaterPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref LocalApi
+            Path: /api/v1/watch-later
+            Method: POST

@@ -1,7 +1,14 @@
 import os
 import boto3
 
-_resource = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "sa-east-1"))
+_region = os.environ.get("AWS_REGION", "sa-east-1")
+_endpoint_url = os.environ.get("DYNAMODB_ENDPOINT_URL")
+
+_resource = boto3.resource(
+    "dynamodb",
+    region_name=_region,
+    endpoint_url=_endpoint_url,
+)
 
 USERS_TABLE     = os.environ.get("USERS_TABLE",       "Users")
 EMAIL_TO_SUB    = os.environ.get("EMAIL_TO_SUB_TABLE", "EmailToSub")
