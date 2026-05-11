@@ -49,7 +49,7 @@ o identificador correto de um filme no sistema é `movieId`.
 
 ---
 
-## 5. `Users.preferences` — campos errados no Modelagem.md
+## 5. `Users.preferences` — campos errados no Modelagem.md ✅ Resolvido em #117
 
 **Problema:** O schema da tabela `Users` descreve `preferences` com
 `{language, theme, notifications}` (preferências de UI), mas o sistema
@@ -57,17 +57,19 @@ usa preferências de filmes.
 **Implementação:** `preferences` armazenado como
 `{genres, subscriptions, ageRating, humor}`.  
 **Ação:** atualizar o map `preferences` no schema `Users` de
-`docs/Banco-de-Dados/Modelagem.md` para refletir os campos corretos.
+`docs/Banco-de-Dados/Modelagem.md` para refletir os campos corretos.  
+**Resolução:** schema atualizado em `Modelagem.md` com os campos corretos. Todos opcionais — a linha é seedada por `post_confirm` como `preferences: {}` e populada incrementalmente por `POST /preferences`.
 
 ---
 
-## 6. `Users.passwordHash` — campo desnecessário
+## 6. `Users.passwordHash` — campo desnecessário ✅ Resolvido em #117
 
 **Problema:** O Cognito gerencia as senhas. O campo `passwordHash` no
 schema `Users` é redundante e não é escrito em nenhum endpoint.  
 **Implementação:** campo ignorado.  
 **Ação:** remover `passwordHash` do schema `Users` em
-`docs/Banco-de-Dados/Modelagem.md`.
+`docs/Banco-de-Dados/Modelagem.md`.  
+**Resolução:** `passwordHash` removido do schema `Users` em `Modelagem.md`. O campo `emailVerified` também foi removido pela mesma razão (Cognito é dono do estado de verificação; `post_confirm` só dispara após confirmação).
 
 ---
 

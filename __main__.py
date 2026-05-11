@@ -75,19 +75,7 @@ for table_name, table in dynamodb_tables.items():
         mode="ACCESSED_AND_THROTTLED_KEYS",
     )
 
-# --- 3. Amazon Cognito ---
-user_pool = aws.cognito.UserPool(
-    f"app-user-pool-{env}", name=f"app-users-{env}", auto_verified_attributes=["email"]
-)
-
-user_pool_client = aws.cognito.UserPoolClient(
-    f"app-user-pool-client-{env}",
-    user_pool_id=user_pool.id,
-    explicit_auth_flows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
-    generate_secret=False,
-)
-
-# --- 4. IAM Role para os Lambdas ---
+# --- 3. IAM Role para os Lambdas ---
 lambda_role = aws.iam.Role(
     f"lambda-role-{env}",
     assume_role_policy=json.dumps(
@@ -111,7 +99,7 @@ aws.iam.RolePolicyAttachment(
 )
 
 aws.iam.RolePolicy(
-    f"lambda-dynamodb-cognito-policy-{env}",
+    f"lambda-dynamodb-policy-{env}",
     role=lambda_role.name,
     policy=pulumi.Output.all(
         email_to_sub_table.arn,
@@ -131,17 +119,9 @@ aws.iam.RolePolicy(
                             "dynamodb:GetItem",
                             "dynamodb:Query",
                             "dynamodb:Scan",
+                            "dynamodb:UpdateItem",
                         ],
                         "Resource": arns,
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "cognito-idp:AdminInitiateAuth",
-                            "cognito-idp:SignUp",
-                            "cognito-idp:AdminConfirmSignUp",
-                        ],
-                        "Resource": "*",
                     },
                     {
                         "Effect": "Allow",
@@ -161,15 +141,7 @@ aws.iam.RolePolicy(
     ),
 )
 
-# --- 5. AWS Lambdas ---
-env_vars = {
-    "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
-    "USERS_TABLE": users_table.name,
-    "TOKENS_TABLE": tokens_table.name,
-    "HISTORICO_TABLE": historico_table.name,
-    "LOGS_TABLE": logs_table.name,
-}
-
+# --- 4. Lambda Layer compartilhada ---
 # Lambda Layers extract to /opt/, but Python only adds /opt/python/ to sys.path.
 # AssetArchive places files at explicit paths so `from shared.X import Y` works.
 shared_layer = aws.lambda_.LayerVersion(
@@ -184,6 +156,77 @@ shared_layer = aws.lambda_.LayerVersion(
     compatible_runtimes=["python3.13"],
     description="shared utilities (db, auth, response)",
 )
+
+# --- 5. Lambda post_confirm (Cognito PostConfirmation trigger) ---
+# Criado antes do User Pool porque o pool referencia o ARN dele em lambda_config.
+# Usa um env_vars enxuto (sem USER_POOL_ID/CLIENT_ID) — não valida JWTs.
+post_confirm_env_vars = {
+    "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
+    "USERS_TABLE": users_table.name,
+    "LOGS_TABLE": logs_table.name,
+}
+
+post_confirm_lambda = aws.lambda_.Function(
+    f"post_confirm-{env}",
+    runtime="python3.13",
+    role=lambda_role.arn,
+    handler="post_confirm.handler",
+    code=pulumi.FileArchive("./functions/post_confirm"),
+    environment=aws.lambda_.FunctionEnvironmentArgs(variables=post_confirm_env_vars),
+    layers=[shared_layer.arn],
+)
+
+aws.cloudwatch.LogGroup(
+    f"post_confirm-log-group-{env}",
+    name=pulumi.Output.concat("/aws/lambda/", post_confirm_lambda.name),
+    retention_in_days=log_retention_days,
+)
+
+# --- 6. Amazon Cognito ---
+user_pool = aws.cognito.UserPool(
+    f"app-user-pool-{env}",
+    name=f"app-users-{env}",
+    auto_verified_attributes=["email"],
+    schemas=[
+        aws.cognito.UserPoolSchemaArgs(
+            name="name",
+            attribute_data_type="String",
+            mutable=True,
+            required=False,
+            string_attribute_constraints=aws.cognito.UserPoolSchemaStringAttributeConstraintsArgs(
+                min_length="0",
+                max_length="2048",
+            ),
+        ),
+    ],
+    lambda_config=aws.cognito.UserPoolLambdaConfigArgs(
+        post_confirmation=post_confirm_lambda.arn,
+    ),
+)
+
+aws.lambda_.Permission(
+    f"cognito-invoke-post-confirm-{env}",
+    action="lambda:InvokeFunction",
+    function=post_confirm_lambda.name,
+    principal="cognito-idp.amazonaws.com",
+    source_arn=user_pool.arn,
+)
+
+user_pool_client = aws.cognito.UserPoolClient(
+    f"app-user-pool-client-{env}",
+    user_pool_id=user_pool.id,
+    explicit_auth_flows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
+    generate_secret=False,
+)
+
+# --- 7. AWS Lambdas (protegidos por JWT) ---
+env_vars = {
+    "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
+    "USERS_TABLE": users_table.name,
+    "TOKENS_TABLE": tokens_table.name,
+    "HISTORICO_TABLE": historico_table.name,
+    "LOGS_TABLE": logs_table.name,
+}
 
 
 def create_lambda(name, entry_point):

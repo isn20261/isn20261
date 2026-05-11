@@ -1,1 +1,2 @@
 boto3
+pyjwt[crypto]>=2.8,<3
