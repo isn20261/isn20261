@@ -9,6 +9,7 @@ config = pulumi.Config()
 env = config.require("environment")
 is_prod = env == "prod"
 domain_name = config.get("domainName") if is_prod else None
+log_retention_days = 7
 
 # --- 2. DynamoDB Tables ---
 email_to_sub_table = aws.dynamodb.Table(
@@ -58,6 +59,21 @@ logs_table = aws.dynamodb.Table(
         aws.dynamodb.TableAttributeArgs(name="timestamp", type="S"),
     ],
 )
+
+dynamodb_tables = {
+    "email-to-sub": email_to_sub_table,
+    "users": users_table,
+    "tokens": tokens_table,
+    "historico": historico_table,
+    "logs": logs_table,
+}
+
+for table_name, table in dynamodb_tables.items():
+    aws.dynamodb.ContributorInsights(
+        f"{table_name}-contributor-insights-{env}",
+        table_name=table.name,
+        mode="ACCESSED_AND_THROTTLED_KEYS",
+    )
 
 # --- 3. Amazon Cognito ---
 user_pool = aws.cognito.UserPool(
@@ -127,6 +143,18 @@ aws.iam.RolePolicy(
                         ],
                         "Resource": "*",
                     },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                            "logs:PutRetentionPolicy",
+                            "logs:DescribeLogGroups",
+                            "logs:DescribeLogStreams",
+                        ],
+                        "Resource": "*",
+                    },
                 ],
             }
         )
@@ -154,15 +182,23 @@ shared_layer = aws.lambda_.LayerVersion(
 
 
 def create_lambda(name, entry_point):
-    return aws.lambda_.Function(
+    function = aws.lambda_.Function(
         f"{name}-{env}",
         runtime="python3.13",
         role=lambda_role.arn,
         handler=entry_point,
         code=pulumi.FileArchive(f"./functions/{name}"),
         environment=aws.lambda_.FunctionEnvironmentArgs(variables=env_vars),
-        layers=[shared_layer.arn],
+        layers=[arn for arn in [shared_layer.arn] if arn is not None],
     )
+
+    aws.cloudwatch.LogGroup(
+        f"{name}-log-group-{env}",
+        name=pulumi.Output.concat("/aws/lambda/", function.name),
+        retention_in_days=log_retention_days,
+    )
+
+    return function
 
 
 history_lambda = create_lambda("history", "history.handler")
@@ -172,6 +208,12 @@ watch_later_lambda = create_lambda("watch_later", "watch_later.handler")
 
 # --- 6. API Gateway v2 (HTTP API) ---
 api = aws.apigatewayv2.Api(f"http-api-{env}", protocol_type="HTTP")
+
+api_access_log_group = aws.cloudwatch.LogGroup(
+    f"api-access-log-group-{env}",
+    name=f"/aws/apigateway/recommend-a-{env}",
+    retention_in_days=log_retention_days,
+)
 
 region = aws.get_region()
 issuer_url = pulumi.Output.concat(
@@ -233,7 +275,29 @@ create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=authoriz
 
 
 stage = aws.apigatewayv2.Stage(
-    f"api-stage-{env}", api_id=api.id, name="$default", auto_deploy=True
+    f"api-stage-{env}",
+    api_id=api.id,
+    name="$default",
+    auto_deploy=True,
+    access_log_settings=aws.apigatewayv2.StageAccessLogSettingsArgs(
+        destination_arn=api_access_log_group.arn,
+        format=json.dumps(
+            {
+                "requestId": "$context.requestId",
+                "ip": "$context.identity.sourceIp",
+                "requestTime": "$context.requestTime",
+                "httpMethod": "$context.httpMethod",
+                "routeKey": "$context.routeKey",
+                "status": "$context.status",
+                "protocol": "$context.protocol",
+                "responseLength": "$context.responseLength",
+                "integrationError": "$context.integrationErrorMessage",
+            }
+        ),
+    ),
+    default_route_settings=aws.apigatewayv2.StageDefaultRouteSettingsArgs(
+        detailed_metrics_enabled=True,
+    ),
 )
 
 # --- 7. Frontend: S3, Automação de Upload e CloudFront ---
