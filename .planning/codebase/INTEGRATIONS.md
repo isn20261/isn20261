@@ -41,7 +41,7 @@
 - **Amazon Route 53** — public DNS for the production custom domain.
   - Zone lookup: `aws.route53.get_zone(name=domain_name)` (`__main__.py:263`).
   - Records: ACM DNS validation (`__main__.py:265-272`) and an `A`-alias record pointing the apex domain to the CloudFront distribution (`__main__.py:438-451`).
-  - Default production domain: `recommend.movies` (`Pulumi.prod.yaml:4`).
+  - Default production domain: `cinedica.video` (`Pulumi.prod.yaml:4`).
 
 - **Amazon S3** — static asset hosting for the frontend bucket.
   - Bucket: `frontend-bucket-{env}` (`__main__.py:222`).
@@ -79,9 +79,11 @@
   - **Local development:** `compose.yaml` runs `amazon/dynamodb-local` on port `8000`; `functions/handler.py` (a separate SAM-local entry point, not deployed) connects via `DYNAMODB_ENDPOINT_URL` / `DYNAMODB_HOST`.
 
 **File Storage:**
+
 - Amazon S3 — `frontend-bucket-{env}` for static frontend assets only (`__main__.py:222`). No Lambda code currently writes to S3.
 
 **Caching:**
+
 - CloudFront edge cache — `S3-Cache-Policy-{env}` (`__main__.py:293-310`) caches static assets with default TTL `86400s` and max `31536000s`. API path pattern uses `API-Cache-Policy-{env}` with TTL `0` (effectively no cache).
 - In-process JWKS cache — `PyJWKClient(..., cache_jwk_set=True, lifespan=3600)` in `functions/shared/auth.py:16` caches Cognito public keys per Lambda container.
 - No Redis / ElastiCache / Memcached.
@@ -89,6 +91,7 @@
 ## Authentication & Identity
 
 **Auth Provider:**
+
 - Amazon Cognito — sole identity provider.
   - User registration: `functions/register/register.py` calls `admin_create_user` (with `email_verified=false`, `MessageAction=SUPPRESS`) followed by `admin_set_user_password(..., Permanent=True)`.
   - Login: `functions/login/login.py` uses `USER_PASSWORD_AUTH` flow via `initiate_auth` and returns `accessToken`, `idToken`, `refreshToken`.
@@ -101,27 +104,33 @@
 ## Monitoring & Observability
 
 **Error Tracking:**
+
 - None. No Sentry / Bugsnag / Rollbar integration. Lambdas swallow exceptions in places (e.g. `functions/shared/auth.py:36` catches `Exception` broadly and returns `None`).
 
 **Logs:**
+
 - Application audit logs: written to the DynamoDB `Logs_{env}` table by `functions/shared/db.py:36-42`. Every authenticated Lambda calls `write_log(sub, timestamp, action, metadata)` for actions like `LOGIN`, `REGISTER`, `RECOMMEND`, `PASSWORD_CHANGED`, `EMAIL_CHANGED`, `EMAIL_VERIFIED`, `WATCH_LATER_ADDED`, `PREFERENCES_UPDATED`, `CHANGE_EMAIL_REQUESTED`, `PASSWORD_RESET_REQUESTED`.
 - Lambda runtime logs: written to Amazon CloudWatch Logs implicitly through the `AWSLambdaBasicExecutionRole` (`__main__.py:91-95`). The README architecture diagram lists `CloudWatch` as the cross-cutting observability service (`README.md:201-247`).
 - No structured logger configured — code uses `print(...)` (`functions/handler.py:51`).
 
 **Metrics / Tracing:**
+
 - Not detected. AWS X-Ray is not enabled on Lambdas; no OpenTelemetry instrumentation in function code (the `opentelemetry-*` packages in `uv.lock` come transitively from Pulumi itself, not from the Lambda runtime).
 
 ## CI/CD & Deployment
 
 **Hosting:**
+
 - AWS only — region `sa-east-1` (`Pulumi.dev.yaml:2`, `Pulumi.prod.yaml:2`).
 - Frontend served from S3 via CloudFront, optionally with Route 53 alias and ACM cert in production.
 - Backend served from API Gateway v2 → Lambda.
 
 **CI Pipeline:**
+
 - Not detected. There is no `.github/workflows/`, no `.gitlab-ci.yml`, no `buildspec.yml`, no `Jenkinsfile`. Deployment is currently manual via `pulumi up` (with developer-supplied AWS / Pulumi credentials per `README.md:71-88`).
 
 **Deployment exports (`__main__.py:468-470`):**
+
 - `api_internal_url` — raw API Gateway endpoint.
 - `public_url` — CloudFront URL or custom domain in prod.
 - `cloudfront_id` — for cache-invalidation tooling.
@@ -129,28 +138,34 @@
 ## Environment Configuration
 
 **Required env vars (developer host):**
+
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` (`README.md:75-82`).
 - `PULUMI_ACCESS_TOKEN` (`README.md:84-88`).
 
 **Required Pulumi config (per stack):**
+
 - `aws:region` (set to `sa-east-1`).
 - `isn20261:environment` (`dev` or `prod`).
 - `isn20261:domainName` (prod only, optional).
 
 **Lambda runtime env vars (set automatically by Pulumi at deploy, `__main__.py:137-145`):**
+
 - `EMAIL_TO_SUB_TABLE`, `USERS_TABLE`, `TOKENS_TABLE`, `HISTORICO_TABLE`, `LOGS_TABLE`.
 - `USER_POOL_ID`, `CLIENT_ID`. **Mismatch:** code reads `COGNITO_USER_POOL_ID` / `COGNITO_CLIENT_ID` — surface in CONCERNS.md.
 - `AWS_REGION` is auto-injected by the Lambda runtime.
 
 **Lambda runtime env vars expected by code but NOT yet set by Pulumi:**
+
 - `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID` (see mismatch above).
 - `BASE_URL` — used to build verification / reset URLs.
 - `OMDB_API_KEY` — for the planned OMDB integration.
 
 **Local SAM env vars (for `functions/handler.py` only):**
+
 - `DYNAMODB_ENDPOINT_URL`, `DYNAMODB_HOST`, `DYNAMODB_PORT` (default `8000`), `DYNAMODB_TABLE` (default `isn20261`).
 
 **Secrets location:**
+
 - AWS credentials — developer environment / GitHub Codespaces secrets. Not committed.
 - Pulumi state and stack secrets — Pulumi Cloud (auth via `PULUMI_ACCESS_TOKEN`).
 - No `.env` files exist in the repo. `.gitignore` does not yet list `.env*`; if a developer adds one locally, it will not be ignored — surface in CONCERNS.md.
@@ -159,13 +174,15 @@
 ## Webhooks & Callbacks
 
 **Incoming:**
+
 - None currently wired. The only external traffic into Lambdas is API Gateway HTTP requests on the `/api/v1/*` paths.
 
 **Outgoing:**
+
 - None implemented. Outbound integrations exist only as TODOs:
   - Email delivery via Amazon SES — pending in `functions/register/register.py:103`, `functions/change_email/change_email.py:64`, `functions/lost_password/lost_password.py:7,54`. Currently the verification / reset URL is returned in the HTTP response body (dev-only convenience).
   - OMDB API calls — pending in `functions/recommend/recommend.py` (see `docs/inconsistencias.md:131-138`).
 
 ---
 
-*Integration audit: 2026-05-04*
+_Integration audit: 2026-05-04_
