@@ -4,3 +4,4 @@ venv/
 __pycache__/
 aws
 sam_installation/
+.claude/
