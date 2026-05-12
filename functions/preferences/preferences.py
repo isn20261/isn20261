@@ -8,7 +8,7 @@ Environment variables: shared db/auth vars
 import json
 from datetime import datetime, timezone
 
-from shared.auth import get_sub
+from shared.auth import get_sub, get_method
 from shared.db import get_user, users, write_log
 from shared.response import ok, bad_request, unauthorized
 
@@ -27,7 +27,7 @@ def handler(event, context):
     if not sub:
         return unauthorized()
 
-    method = (event.get("httpMethod") or "GET").upper()
+    method = get_method(event)
 
     if method == "GET":
         return _get(sub)

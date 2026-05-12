@@ -17,3 +17,13 @@ def get_sub(event: dict) -> str | None:
     claims = authorizer.get("jwt", {}).get("claims") or authorizer.get("claims") or {}
     sub = claims.get("sub")
     return sub if sub else None
+
+
+def get_method(event: dict) -> str:
+    """Return the uppercased HTTP method, agnostic to payload format.
+
+    HTTP API v2 (payload_format_version=2.0): event.requestContext.http.method
+    HTTP API v1 / REST API: event.httpMethod
+    """
+    http = (event.get("requestContext") or {}).get("http") or {}
+    return (http.get("method") or event.get("httpMethod") or "GET").upper()

@@ -1,4 +1,4 @@
-from shared.auth import get_sub
+from shared.auth import get_sub, get_method
 
 
 def _event_with_sub(sub):
@@ -54,3 +54,27 @@ def test_payload_format_v1_claims():
         }
     }
     assert get_sub(event) == "v1-style-sub"
+
+
+def test_get_method_v2_payload():
+    event = {"requestContext": {"http": {"method": "post"}}}
+    assert get_method(event) == "POST"
+
+
+def test_get_method_v1_payload():
+    event = {"httpMethod": "delete"}
+    assert get_method(event) == "DELETE"
+
+
+def test_get_method_v2_takes_priority():
+    event = {
+        "httpMethod": "GET",
+        "requestContext": {"http": {"method": "POST"}},
+    }
+    assert get_method(event) == "POST"
+
+
+def test_get_method_defaults_to_get():
+    assert get_method({}) == "GET"
+    assert get_method({"requestContext": {}}) == "GET"
+    assert get_method({"requestContext": {"http": {}}}) == "GET"
