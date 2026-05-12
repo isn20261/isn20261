@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Phase 5 (AUTH-08, AUTH-10, AUTH-12, issue #94) — global auth context.
+ * Global auth context — wraps lib/api/auth (Cognito-direct seam) in a React
+ * context so chrome, pages, and protected routes can read auth state without
+ * prop-drilling.
  *
- * Wraps the typed mock seam (lib/api/auth.ts) in a React context so chrome,
- * pages, and protected routes can read auth state without prop-drilling.
- * The seam stays the swap point for v2 Cognito integration (INTG-01).
- *
- * Rehydrates from localStorage on mount; if the persisted session is past
- * its ExpiresAt timestamp, clears it and renders the logged-out tree.
+ * On mount: asks the Cognito SDK for the current user and validates/refreshes
+ * the session. signUp returns confirmation info instead of a session — the
+ * caller routes to /confirm and the session arrives via signIn after the user
+ * enters their email code.
  */
 
 import {
@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/auth";
 
 type Credentials = { email: string; password: string };
+type SignUpResult = { email: string; needsConfirmation: boolean };
 
 type AuthContextValue = {
   session: Session | null;
@@ -35,7 +36,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   user: { email: string; sub: string } | null;
   signIn: (creds: Credentials) => Promise<void>;
-  signUp: (creds: Credentials) => Promise<void>;
+  signUp: (creds: Credentials) => Promise<SignUpResult>;
   signOut: () => void;
 };
 
@@ -50,18 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Rehydrate session from localStorage on mount. setState inside an effect
-    // is the documented pattern for syncing browser-only state into React —
-    // localStorage is unavailable during SSR.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    const persisted = getSession();
-    if (persisted && persisted.ExpiresAt > Date.now()) {
-      setSession(persisted);
-    } else if (persisted) {
-      seamSignOut();
-    }
-    setIsLoading(false);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    // Rehydrate session from Cognito on mount. The SDK validates / refreshes
+    // tokens against the User Pool, so this is async.
+    let cancelled = false;
+    getSession().then((persisted) => {
+      if (cancelled) return;
+      if (persisted) setSession(persisted);
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signIn = useCallback(async (creds: Credentials) => {
@@ -69,10 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(next);
   }, []);
 
-  const signUp = useCallback(async (creds: Credentials) => {
-    const next = await seamSignUp(creds);
-    setSession(next);
-  }, []);
+  const signUp = useCallback(
+    async (creds: Credentials): Promise<SignUpResult> => seamSignUp(creds),
+    [],
+  );
 
   const signOut = useCallback(() => {
     seamSignOut();

@@ -21,7 +21,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { UsernameExistsException } from "@/lib/api/auth";
+import { InvalidPasswordException, UsernameExistsException } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 const AUTH_PATHS = new Set(["/login", "/register", "/forgot"]);
@@ -71,15 +71,21 @@ function RegisterForm() {
     setFormError(null);
     setIsSubmitting(true);
     try {
-      await signUp({ email, password: pw1 });
-      router.push(safeReturnPath(searchParams.get("from")));
+      const result = await signUp({ email, password: pw1 });
+      const from = searchParams.get("from");
+      const fromQuery = from ? `&from=${encodeURIComponent(from)}` : "";
+      if (result.needsConfirmation) {
+        router.push(`/confirm?email=${encodeURIComponent(result.email)}${fromQuery}`);
+      } else {
+        router.push(safeReturnPath(from));
+      }
     } catch (err) {
-      // Collapse all unknown failures into the safe "An account with this email already exists."
-      // copy — never leak Cognito-internal messages (UI-SPEC §Interaction Contracts).
       if (err instanceof UsernameExistsException) {
         setFormError("An account with this email already exists.");
+      } else if (err instanceof InvalidPasswordException) {
+        setFormError(err.message || "Password does not meet the policy.");
       } else {
-        setFormError("An account with this email already exists.");
+        setFormError("Could not create your account. Try again.");
       }
     } finally {
       setIsSubmitting(false);
