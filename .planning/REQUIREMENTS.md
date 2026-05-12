@@ -92,16 +92,80 @@ Each `[CATEGORY]-N` requirement is atomic and testable. Categories map 1:1 to Gi
 - [ ] **WTCL-04**: Page uses only Tailwind theme variables
 - [ ] **WTCL-05**: Page responsive at ~375px / ~768px / 1440px
 
-## v2 Requirements
+## v2.0 Requirements — Backend Integration (ACTIVE)
 
-Deferred — covered by future GitHub issues outside this milestone.
+**Defined:** 2026-05-12
+**Umbrella issue:** #127
 
-### Backend Integration
+The v1 placeholders INTG-01..04 are now concretized into the categories below. Each `[CATEGORY]-NN` requirement is atomic and testable. Categories map 1:N to v2 phases (Phase 11 onward) and to sub-issues under umbrella #127.
 
-- **INTG-01**: Replace mock `lib/api/auth` with real Cognito SDK
-- **INTG-02**: Replace mock data sources with real Lambda / API Gateway calls
-- **INTG-03**: Real session refresh / token rotation
-- **INTG-04**: Error UX for real network/auth failures
+### Cognito Frontend Integration (Phase 11, issue #128 — in PR)
+
+Supersedes the v1 placeholder **INTG-01**.
+
+- [ ] **AUTH-COGN-01**: `lib/api/auth` uses `amazon-cognito-identity-js`; mock removed
+- [ ] **AUTH-COGN-02**: Sign-up creates a Cognito user and the email confirmation code flow works end-to-end
+- [ ] **AUTH-COGN-03**: Sign-in returns real Cognito tokens (IdToken + RefreshToken) persisted client-side
+- [ ] **AUTH-COGN-04**: `post_confirm` Lambda seeds DynamoDB on confirmation — wiring verified from the frontend sign-up → confirm → DynamoDB check
+- [ ] **AUTH-COGN-05**: Logout clears the Cognito session and frontend token storage; protected routes redirect to `/login`
+- [ ] **AUTH-COGN-06**: Auth context surfaces user identity from Cognito attributes; no mock fallback remains in the code path
+
+### Secure Lambda Fetch Wrapper (Phase 12)
+
+Supersedes the v1 placeholders **INTG-02 / INTG-03 / INTG-04**.
+
+- [ ] **FETCH-01**: `lib/api/client.ts` typed `fetch` wrapper auto-injects the Cognito IdToken on `Authorization`
+- [ ] **FETCH-02**: Error taxonomy: `NetworkError` / `UnauthorizedError` (401) / `ForbiddenError` (403) / `ValidationError` (4xx) / `ServerError` (5xx) — discriminated union
+- [ ] **FETCH-03**: Single-retry refresh-then-replay on 401 using the Cognito RefreshToken; second 401 forces logout
+- [ ] **FETCH-04**: Per-request timeout (default 10s) via `AbortController`; callers can pass their own signal
+- [ ] **FETCH-05**: One typed TS function per Lambda endpoint (`recommend`, `getPreferences`, `putPreferences`, `getHistory`, `getWatchLater`, `addWatchLater`, `removeWatchLater`) sharing a `Result<T, ApiError>` return contract
+- [ ] **FETCH-06**: Every `lib/api/*` call routes through the wrapper — no raw `fetch()` outside `client.ts`
+- [ ] **FETCH-07**: A reusable hook / utility surfaces error-class-aware UX (toast / inline message) on failure
+
+### Per-Screen Lambda Integration (Phases 13–16)
+
+#### Recommendation (Phase 13)
+
+- [ ] **INTG-RECO-01**: Recommendation screen calls real `/recommend` Lambda; mock removed
+- [ ] **INTG-RECO-02**: Recommendation screen renders loading / error / empty states via the fetch wrapper
+
+#### Preferences (Phase 14)
+
+- [ ] **INTG-PREF-01**: Preferences screen reads real `/preferences` Lambda (GET)
+- [ ] **INTG-PREF-02**: Preferences screen writes to real `/preferences` Lambda (PUT/POST)
+- [ ] **INTG-PREF-03**: Preferences screen renders loading / error / empty states; update strategy (optimistic vs conservative) documented in the plan
+
+#### History (Phase 15)
+
+- [ ] **INTG-HIST-01**: History screen reads real `/history` Lambda
+- [ ] **INTG-HIST-02**: History screen renders loading / error / empty states
+
+#### Watch Later (Phase 16)
+
+- [ ] **INTG-WTCL-01**: Watch-later screen reads real `/watch-later` Lambda
+- [ ] **INTG-WTCL-02**: Watch-later screen writes (add / remove) to real `/watch-later` Lambda
+- [ ] **INTG-WTCL-03**: Watch-later screen renders loading / error / empty states
+
+### Onboarding Guide (Phase 17)
+
+- [ ] **DOCS-01**: `ONBOARDING.md` documents AWS account creation + IAM user/role with required permissions (Cognito, Lambda, API Gateway, DynamoDB, IAM, CloudWatch, S3 if needed)
+- [ ] **DOCS-02**: `ONBOARDING.md` documents AWS CLI install + `aws configure` (access key + region)
+- [ ] **DOCS-03**: `ONBOARDING.md` documents Pulumi install + `pulumi login` (cloud or local backend) + per-stack config
+- [ ] **DOCS-04**: `ONBOARDING.md` documents `pulumi up` to provision the full stack, including expected outputs
+- [ ] **DOCS-05**: `ONBOARDING.md` documents `.env` for `frontend/web/` (UserPoolId, ClientId, API Gateway URL) — sourced from `pulumi stack output`
+- [ ] **DOCS-06**: `ONBOARDING.md` documents `pnpm install && pnpm dev` and a smoke-test checklist (sign-up → confirm → home → recommend → preferences → history → watch-later)
+- [ ] **DOCS-07**: A teammate who didn't write the guide cold-runs it on a fresh AWS account and the app works end-to-end — the run is logged and gaps are fixed
+
+### v2.0 Out of Scope
+
+| Item | Reason |
+|---|---|
+| Backend bugfixes in `functions/` or `__main__.py` beyond what blocks integration | Existing concerns addressed by separate issues (e.g. #117 closed, #120 closed, #122 closed, #123, #125) |
+| LocalStack support | Handled separately by a teammate |
+| OAuth / magic link / 2FA / password reset UI | Not in v2 scope — sign-up + confirm + login + logout only |
+| CI/CD pipeline | v2.1 |
+| Production hardening (rate-limit UI, account lockout UX) | v2.1 |
+| Native mobile | Web-first |
 
 ## Out of Scope
 
