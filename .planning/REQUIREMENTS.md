@@ -240,13 +240,46 @@ Populated by `gsd-roadmapper` on 2026-05-04. Each requirement maps to exactly on
 | WTCL-03 | Phase 10 (Watch Later) | #99 | Pending |
 | WTCL-04 | Phase 10 (Watch Later) | #99 | Pending |
 | WTCL-05 | Phase 10 (Watch Later) | #99 | Pending |
+| AUTH-COGN-01 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| AUTH-COGN-02 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| AUTH-COGN-03 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| AUTH-COGN-04 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| AUTH-COGN-05 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| AUTH-COGN-06 | Phase 11 (Cognito Frontend Integration) | #128 | Pending |
+| FETCH-01 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-02 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-03 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-04 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-05 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-06 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| FETCH-07 | Phase 12 (Secure Lambda Fetch Wrapper) | TBD (sub-issue of #127) | Pending |
+| INTG-RECO-01 | Phase 13 (Recommendation Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-RECO-02 | Phase 13 (Recommendation Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-PREF-01 | Phase 14 (Preferences Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-PREF-02 | Phase 14 (Preferences Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-PREF-03 | Phase 14 (Preferences Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-HIST-01 | Phase 15 (History Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-HIST-02 | Phase 15 (History Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-WTCL-01 | Phase 16 (Watch-Later Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-WTCL-02 | Phase 16 (Watch-Later Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| INTG-WTCL-03 | Phase 16 (Watch-Later Lambda Integration) | TBD (sub-issue of #127) | Pending |
+| DOCS-01 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-02 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-03 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-04 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-05 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-06 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
+| DOCS-07 | Phase 17 (Onboarding Guide + E2E Cold-Run) | TBD (sub-issue of #127) | Pending |
 
 **Coverage:**
 - v1 requirements: 56 total
-- Mapped to phases: 56 (confirmed by gsd-roadmapper, 2026-05-04)
+- v1 mapped to phases: 56 (confirmed by gsd-roadmapper, 2026-05-04)
+- v2.0 requirements: 30 total (AUTH-COGN-01..06, FETCH-01..07, INTG-RECO-01..02, INTG-PREF-01..03, INTG-HIST-01..02, INTG-WTCL-01..03, DOCS-01..07)
+- v2.0 mapped to phases: 30 (confirmed by gsd-roadmapper, 2026-05-12)
+- Total mapped: 86 / 86
 - Unmapped: 0
 - Duplicates across phases: 0
 
 ---
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 — Traceability table populated and confirmed by gsd-roadmapper*
+*Last updated: 2026-05-12 — v2.0 traceability rows appended (AUTH-COGN-01..06 → P11; FETCH-01..07 → P12; INTG-RECO-01..02 → P13; INTG-PREF-01..03 → P14; INTG-HIST-01..02 → P15; INTG-WTCL-01..03 → P16; DOCS-01..07 → P17) and confirmed by gsd-roadmapper*

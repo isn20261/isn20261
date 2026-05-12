@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-12T20:01:18.513Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,23 +18,23 @@ progress:
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-04)
-See: .planning/ROADMAP.md (created 2026-05-04)
+See: .planning/ROADMAP.md (v2.0 section added 2026-05-12)
 
-**Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 04 — auth-ui
+**Core value:** v2.0 — The same polished v1.0 UI consuming the real backend: Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from `ONBOARDING.md` and run the app against it.
+**Current focus:** Phase 11 — Cognito Frontend Integration (defining)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 11 (Cognito Frontend Integration) — defining
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-12 — Milestone v2.0 started
+Status: Roadmap created for v2.0 (Phases 11–17). Phase 11 is in-flight retroactively on `feature/issue-128-cognito-auth`; awaiting `/gsd:plan-phase 11` to capture the final shipped state.
+Last activity: 2026-05-12 — v2.0 ROADMAP.md section added; REQUIREMENTS.md traceability extended (30 v2.0 REQ-IDs mapped, 100% coverage)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed (v1.0): 8
 - Average duration: ~10 min
 - Total execution time: ~1.4 hours
 
@@ -64,6 +64,10 @@ Recent decisions affecting current work:
 - Project init: 1 GSD phase = 1 GitHub sub-issue = 1 feature branch off `frontend` = 1 PR.
 - Project init: Skip Research agent (Lean workflow); stack is fixed by issue #88.
 - Project init: Defer `_design-reference/` deletion until just before final `frontend → main` PR.
+- v2.0 init (2026-05-12): Phase numbering continues from v1.0 — v2.0 starts at Phase 11.
+- v2.0 init (2026-05-12): v2 branches off `main` (v1 already merged), not off `frontend`.
+- v2.0 init (2026-05-12): Pattern B / Cognito-direct architecture per umbrella issue #127 — frontend → Cognito directly via `amazon-cognito-identity-js`; `post_confirm` Lambda trigger seeds DynamoDB; authenticated requests carry IdToken to API Gateway v2 JWT authorizer.
+- v2.0 init (2026-05-12): Backend (`functions/`, `__main__.py`, Pulumi configs) remains read-only this milestone; only narrow fixes strictly required to unblock integration are in scope, and they must be surfaced before being done.
 
 ### Decisions (Plan 01-01)
 
@@ -120,28 +124,31 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Phase 11 plan: capture the final state shipped on `feature/issue-128-cognito-auth` (retroactive plan).
+- Phase 12: open a sub-issue under #127 for the fetch wrapper before `/gsd:plan-phase 12`.
+- Phase 17: schedule a teammate cold-run on a fresh AWS account before claiming the phase complete.
 
 ### Blockers/Concerns
 
-- Issue #88 explicitly blocks Phases 4–10 until Phases 1–3 (issues #90/#91/#92) are merged into `frontend`. Phase ordering enforces this.
-- Backend has known issues tracked in `.planning/codebase/CONCERNS.md` (env-var name mismatch, missing PyJWT dep, ~8/11 lambdas not wired). Out of scope this milestone — flagged so the mock-vs-real boundary is explicit when v2 (INTG-01..04) starts.
+- Phase 12 cannot start until Phase 11's Cognito tokens are durable client-side (the wrapper auto-injects the IdToken and refresh-replays via the RefreshToken). Sequential order enforced by the v2.0 dependency block.
+- Phases 13–16 each depend on the Phase 12 fetch wrapper landing. Any per-screen integration starting before P12 will reintroduce raw `fetch()` calls and break FETCH-06.
+- Pre-existing backend concerns remain in `.planning/codebase/CONCERNS.md` (env-var name mismatch, missing PyJWT dep, ~8 of 11 lambdas not wired). Most are addressed by separate non-roadmap issues (#117 closed, #120 closed, #122 closed, #123, #125). If an integration phase trips on an unwired Lambda, surface a narrow read-only-backend exception in plan-phase rather than silently editing `functions/`.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Backend integration | INTG-01 Real Cognito SDK | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-02 Real Lambda / API Gateway calls | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-03 Real session refresh / token rotation | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-04 Error UX for real network/auth failures | v2 | 2026-05-04 (project init) |
+| Backend integration | INTG-01 Real Cognito SDK | Concretized as AUTH-COGN-01..06 (Phase 11) | 2026-05-04 (project init) → re-scoped 2026-05-12 |
+| Backend integration | INTG-02 Real Lambda / API Gateway calls | Concretized as FETCH-01..07 (P12) + INTG-RECO/PREF/HIST/WTCL (P13–P16) | 2026-05-04 → re-scoped 2026-05-12 |
+| Backend integration | INTG-03 Real session refresh / token rotation | Concretized as FETCH-03 (Phase 12) | 2026-05-04 → re-scoped 2026-05-12 |
+| Backend integration | INTG-04 Error UX for real network/auth failures | Concretized as FETCH-02 + FETCH-07 (Phase 12) | 2026-05-04 → re-scoped 2026-05-12 |
+| CI/CD | Pipeline | v2.1 | 2026-05-12 |
+| Production hardening | Rate-limit UI, account lockout UX | v2.1 | 2026-05-12 |
+| LocalStack | Local AWS emulation | Handled separately by a teammate | 2026-05-12 |
 
 ## Session Continuity
 
-Last session: 2026-05-06T06:00:00Z
-Stopped at: Phase 04 (auth-ui) COMPLETE — Plan 04-05 verification gate approved (automated + manual all PASS).
-  Deliverables shipped this phase: lib/api/auth.ts, components/Field.tsx, components/AccountMenu.tsx,
-  app/(auth)/login/page.tsx, app/(auth)/register/page.tsx, app/(auth)/forgot/page.tsx,
-  Sidebar/Navbar wired with AccountMenu.
-Next step: `/gsd:transition` to Phase 5 (Auth Context + Protected Routes, issue #94)
-Resume file: .planning/ROADMAP.md §"Phase 5: Auth Context + Protected Routes"
+Last session: 2026-05-12T20:01:18Z
+Stopped at: v2.0 ROADMAP.md section authored. Phases 11–17 defined with goals, success criteria, requirement mappings, and sequential dependency block. REQUIREMENTS.md traceability extended with 30 v2.0 REQ-IDs (100% coverage).
+Next step: `/gsd:plan-phase 11` to capture the retroactive plan for the in-flight Cognito frontend integration on `feature/issue-128-cognito-auth`.
+Resume file: .planning/ROADMAP.md §"Phase 11: Cognito Frontend Integration"
