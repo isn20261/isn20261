@@ -1,51 +1,56 @@
-from unittest.mock import MagicMock
-
-import jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
-
 from shared.auth import get_sub
 
 
-def _make_rs256_token(
-    sub="test-sub",
-    issuer="https://cognito-idp.sa-east-1.amazonaws.com/test-pool-id",
-    audience="test-client-id",
-):
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    token = jwt.encode(
-        {"sub": sub, "iss": issuer, "aud": audience},
-        private_key,
-        algorithm="RS256",
-    )
-    return token, private_key
+def _event_with_sub(sub):
+    return {
+        "requestContext": {
+            "authorizer": {
+                "jwt": {
+                    "claims": {"sub": sub, "email": "u@example.com"}
+                }
+            }
+        }
+    }
 
 
-def test_valid_bearer_token(monkeypatch):
-    token, private_key = _make_rs256_token()
-    mock_key = MagicMock()
-    mock_key.key = private_key.public_key()
-    mock_client = MagicMock()
-    mock_client.get_signing_key_from_jwt.return_value = mock_key
-    monkeypatch.setattr("shared.auth._jwks_client", mock_client)
-
-    event = {"headers": {"Authorization": f"Bearer {token}"}}
-    assert get_sub(event) == "test-sub"
+def test_returns_sub_from_claims():
+    assert get_sub(_event_with_sub("abc-123")) == "abc-123"
 
 
-def test_missing_authorization_header():
-    assert get_sub({"headers": {}}) is None
+def test_missing_request_context():
     assert get_sub({}) is None
 
 
-def test_non_bearer_authorization():
-    event = {"headers": {"Authorization": "Basic xyz"}}
+def test_missing_authorizer():
+    assert get_sub({"requestContext": {}}) is None
+
+
+def test_missing_jwt():
+    assert get_sub({"requestContext": {"authorizer": {}}}) is None
+
+
+def test_missing_claims():
+    assert get_sub({"requestContext": {"authorizer": {"jwt": {}}}}) is None
+
+
+def test_missing_sub_claim():
+    event = {"requestContext": {"authorizer": {"jwt": {"claims": {"email": "u@e.com"}}}}}
     assert get_sub(event) is None
 
 
-def test_malformed_token(monkeypatch):
-    mock_client = MagicMock()
-    mock_client.get_signing_key_from_jwt.side_effect = Exception("JWKS fetch failed")
-    monkeypatch.setattr("shared.auth._jwks_client", mock_client)
+def test_empty_sub_returns_none():
+    assert get_sub(_event_with_sub("")) is None
 
-    event = {"headers": {"Authorization": "Bearer garbage-token"}}
-    assert get_sub(event) is None
+
+def test_null_request_context():
+    assert get_sub({"requestContext": None}) is None
+
+
+def test_payload_format_v1_claims():
+    # HTTP API v1 / REST API payload: claims directly on authorizer (no jwt nesting)
+    event = {
+        "requestContext": {
+            "authorizer": {"claims": {"sub": "v1-style-sub"}}
+        }
+    }
+    assert get_sub(event) == "v1-style-sub"

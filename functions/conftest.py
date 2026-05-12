@@ -24,8 +24,6 @@ def pytest_ignore_collect(collection_path, config):
 
 
 # --- Env vars set before any shared module import ---
-os.environ["COGNITO_USER_POOL_ID"] = "test-pool-id"
-os.environ["COGNITO_CLIENT_ID"] = "test-client-id"
 os.environ["USERS_TABLE"] = "Users_test"
 os.environ["EMAIL_TO_SUB_TABLE"] = "EmailToSub_test"
 os.environ["TOKENS_TABLE"] = "Tokens_test"

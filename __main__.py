@@ -168,16 +168,21 @@ env_vars = {
     "TOKENS_TABLE": tokens_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
-    "USER_POOL_ID": user_pool.id,
-    "CLIENT_ID": user_pool_client.id,
 }
 
+# Lambda Layers extract to /opt/, but Python only adds /opt/python/ to sys.path.
+# AssetArchive places files at explicit paths so `from shared.X import Y` works.
 shared_layer = aws.lambda_.LayerVersion(
     "shared",
     layer_name="shared",
-    code=pulumi.FileArchive("./functions/shared"),
+    code=pulumi.AssetArchive({
+        "python/shared/__init__.py": pulumi.FileAsset("./functions/shared/__init__.py"),
+        "python/shared/auth.py":     pulumi.FileAsset("./functions/shared/auth.py"),
+        "python/shared/db.py":       pulumi.FileAsset("./functions/shared/db.py"),
+        "python/shared/response.py": pulumi.FileAsset("./functions/shared/response.py"),
+    }),
     compatible_runtimes=["python3.13"],
-    description="My shared utility functions",
+    description="shared utilities (db, auth, response)",
 )
 
 
@@ -243,6 +248,7 @@ def create_route(path, method, lambda_func, auth_id=None):
         integration_type="AWS_PROXY",
         integration_method="POST",  # ATENÇÃO: a integração com Lambda proxy no AWS é sempre POST, não mude isso.
         integration_uri=lambda_func.invoke_arn,
+        payload_format_version="2.0",  # default is 1.0; v2.0 puts JWT claims at event.requestContext.authorizer.jwt.claims
     )
 
     aws.lambda_.Permission(
