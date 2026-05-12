@@ -10,7 +10,7 @@ env = config.require("environment")
 is_prod = env == "prod"
 domain_name = config.get("domainName") if is_prod else None
 log_retention_days = 7
-api_default_route_throttling_rate_limit = config.get_float(
+api_default_route_throttling_rate_limit = config.get_int(
     "apiDefaultRouteThrottlingRateLimit"
 )
 if api_default_route_throttling_rate_limit is None:
