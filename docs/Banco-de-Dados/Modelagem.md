@@ -66,22 +66,26 @@ Registro principal do usuário. Utiliza `map` para simular um documento NoSQL co
 
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
-| `sub` | `string` | ✅ | UUID do Cognito |
+| `sub` | `string` | ✅ | UUID do Cognito (Partition Key) |
 | `email` | `string` | ✅ | E-mail do usuário |
-| `passwordHash` | `string` | ✅ | Hash bcrypt da senha |
-| `emailVerified` | `boolean` | ✅ | Se o e-mail foi verificado |
-| `preferences` | `object (map)` | ✅ | Preferências do usuário — ver detalhes abaixo |
+| `name` | `string` | ❌ | Nome do usuário — gravado por `post_confirm` se o Cognito enviar o atributo |
+| `preferences` | `object (map)` | ✅ | Preferências de recomendação do usuário — ver detalhes abaixo |
 | `watchLater` | `array (list)` | ✅ | Lista de filmes para ver depois — ver detalhes abaixo |
-| `createdAt` | `string` | ✅ | ISO 8601 |
-| `updatedAt` | `string` | ✅ | ISO 8601 |
+| `createdAt` | `string` | ✅ | ISO 8601 — gravado por `post_confirm` no momento da confirmação do cadastro |
+| `updatedAt` | `string` | ❌ | ISO 8601 — gravado por `POST /preferences` no momento da atualização |
+
+> **Nota:** `passwordHash` e `emailVerified` **não** existem nesta tabela. O Cognito é a fonte de verdade para credenciais e estado de verificação de e-mail — a linha em `Users` só é criada pelo trigger `post_confirm` (`PostConfirmation_ConfirmSignUp`), que dispara após a verificação.
 
 ### Map: `preferences`
 
+Todos os campos são opcionais — a linha é seedada por `post_confirm` com `preferences: {}` e cada campo é populado individualmente por `POST /preferences`.
+
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
-| `language` | `string` | ✅ | Código de idioma (ex: `pt-BR`, `en-US`) |
-| `theme` | `"light"` \| `"dark"` | ✅ | Tema da interface |
-| `notifications` | `boolean` | ✅ | Se notificações estão ativadas |
+| `genres` | `array<string>` | ❌ | Gêneros preferidos (ex: `["action", "sci-fi"]`) |
+| `subscriptions` | `array<string>` | ❌ | Serviços de streaming assinados (ex: `["Netflix", "HBO Max"]`) |
+| `ageRating` | `string` | ❌ | Classificação indicativa máxima (ex: `"PG-13"`, `"R"`) |
+| `humor` | `string` | ❌ | Tipo de humor preferido (ex: `"dark"`, `"light"`) |
 
 ### List: `watchLater`
 
@@ -102,12 +106,9 @@ Cada item da lista é um objeto com os campos:
   "required": [
     "sub",
     "email",
-    "passwordHash",
-    "emailVerified",
     "preferences",
     "watchLater",
-    "createdAt",
-    "updatedAt"
+    "createdAt"
   ],
   "additionalProperties": false,
   "properties": {
@@ -120,32 +121,32 @@ Cada item da lista é um objeto com os campos:
       "format": "email",
       "description": "E-mail do usuário."
     },
-    "passwordHash": {
+    "name": {
       "type": "string",
-      "description": "Hash bcrypt da senha do usuário."
-    },
-    "emailVerified": {
-      "type": "boolean",
-      "description": "Indica se o e-mail foi verificado."
+      "description": "Nome do usuário. Opcional — gravado por post_confirm se o Cognito enviar o atributo."
     },
     "preferences": {
       "type": "object",
-      "description": "MAP — Preferências do usuário.",
-      "required": ["language", "theme", "notifications"],
+      "description": "MAP — Preferências de recomendação. Todos os campos são opcionais; a linha é seedada como {} e POST /preferences popula cada campo individualmente.",
       "additionalProperties": false,
       "properties": {
-        "language": {
-          "type": "string",
-          "description": "Código de idioma BCP 47. Ex: 'pt-BR', 'en-US'."
+        "genres": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Gêneros preferidos."
         },
-        "theme": {
-          "type": "string",
-          "enum": ["light", "dark"],
-          "description": "Tema da interface."
+        "subscriptions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Serviços de streaming assinados."
         },
-        "notifications": {
-          "type": "boolean",
-          "description": "Se notificações push estão ativadas."
+        "ageRating": {
+          "type": "string",
+          "description": "Classificação indicativa máxima (ex: 'PG-13', 'R')."
+        },
+        "humor": {
+          "type": "string",
+          "description": "Tipo de humor preferido (ex: 'dark', 'light')."
         }
       }
     },
@@ -161,6 +162,10 @@ Cada item da lista é um objeto com os campos:
             "type": "string",
             "description": "ID do filme."
           },
+          "title": {
+            "type": "string",
+            "description": "Título do filme (cache de OMDB/catálogo no momento da adição)."
+          },
           "addedAt": {
             "type": "string",
             "format": "date-time",
@@ -172,12 +177,12 @@ Cada item da lista é um objeto com os campos:
     "createdAt": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 — data de criação do registro."
+      "description": "ISO 8601 — data de criação do registro (gravado por post_confirm)."
     },
     "updatedAt": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 — data da última atualização."
+      "description": "ISO 8601 — data da última atualização (gravado por POST /preferences). Opcional — só existe após primeira atualização."
     }
   }
 }
