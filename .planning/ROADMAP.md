@@ -279,7 +279,7 @@ Seven sequential phases that replace every `lib/api/*` mock with the real Cognit
 ### Phases
 
 - [ ] **Phase 11: Cognito Frontend Integration** — Replace the `lib/api/auth` mock with `amazon-cognito-identity-js`; sign-up → email confirm → sign-in → logout round-trip against real Cognito + `post_confirm` Lambda → DynamoDB (issue #128, retroactive — already in PR)
-- [ ] **Phase 12: Secure Lambda Fetch Wrapper** — Typed `lib/api/client.ts` that auto-injects the Cognito IdToken, exposes a discriminated `ApiError` taxonomy, refreshes-and-replays once on 401, applies per-request timeouts, and surfaces error-class-aware UX (TBD — open as sub-issue of #127)
+- [x] **Phase 12: Secure Lambda Fetch Wrapper** — Typed `lib/api/client.ts` that auto-injects the Cognito IdToken, exposes a discriminated `ApiError` taxonomy, refreshes-and-replays once on 401, applies per-request timeouts, and surfaces error-class-aware UX (TBD — open as sub-issue of #127) (completed 2026-05-12)
 - [ ] **Phase 13: Recommendation Lambda Integration** — Recommendation screen calls the real `/recommend` Lambda through the wrapper with loading / error / empty states (TBD — open as sub-issue of #127)
 - [ ] **Phase 14: Preferences Lambda Integration** — Preferences screen reads + writes the real `/preferences` Lambda (GET + PUT/POST) with loading / error / empty states and a documented update strategy (TBD — open as sub-issue of #127)
 - [ ] **Phase 15: History Lambda Integration** — History screen reads the real `/history` Lambda with loading / error / empty states (TBD — open as sub-issue of #127)
@@ -321,10 +321,10 @@ Seven sequential phases that replace every `lib/api/*` mock with the real Cognit
   5. A reusable hook/utility consumes the `ApiError` discriminated union and renders error-class-appropriate UX (toast for `NetworkError`/`ServerError`, inline form message for `ValidationError`, forced redirect for `UnauthorizedError` after the retry budget is spent) — exercisable from at least one screen in this phase.
 **Plans**: 4 plans
 Plans:
-- [ ] 12-01-PLAN.md — Sonner install + Toaster mount in app/layout + .env.example documentation (foundation; partial FETCH-06, FETCH-07)
-- [ ] 12-02-PLAN.md — `lib/api/client.ts` wrapper (types, env init, getSession-per-request, IdToken injection, AbortController timeout, 5-kind ApiError classifier, sanitization) + `setOnUnauthorized(signOut)` registration in AuthProvider (FETCH-01, FETCH-02, FETCH-03 pre-emptive, FETCH-04, FETCH-06 introduces wrapper)
-- [ ] 12-03-PLAN.md — `useApiErrorUx` hook + `recommend.real.ts` demonstrator typed function (FETCH-05 partial, FETCH-07)
-- [ ] 12-04-PLAN.md — End-of-phase verification: grep gates (FETCH-06 enforcement, threat-model checks T-12-01..06), manual auth-flow walkthrough, summary report
+- [x] 12-01-PLAN.md — Sonner install + Toaster mount in app/layout + .env.example documentation (foundation; partial FETCH-06, FETCH-07)
+- [x] 12-02-PLAN.md — `lib/api/client.ts` wrapper (types, env init, getSession-per-request, IdToken injection, AbortController timeout, 5-kind ApiError classifier, sanitization) + `setOnUnauthorized(signOut)` registration in AuthProvider (FETCH-01, FETCH-02, FETCH-03 pre-emptive, FETCH-04, FETCH-06 introduces wrapper)
+- [x] 12-03-PLAN.md — `useApiErrorUx` hook + `recommend.real.ts` demonstrator typed function (FETCH-05 partial, FETCH-07)
+- [x] 12-04-PLAN.md — End-of-phase verification: grep gates (FETCH-06 enforcement, threat-model checks T-12-01..06), manual auth-flow walkthrough, summary report
 
 **Notes / risks:**
 - Refresh-then-replay must NOT race: if a second 401 arrives mid-refresh, the second caller should reuse the in-flight refresh promise, not start a new one. Plan-phase should call this out.
@@ -439,7 +439,7 @@ Phases 13–16 are sequenced (not concurrent) because branches stack and PRs lan
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Cognito Frontend Integration | 0/TBD | Defining | - |
-| 12. Secure Lambda Fetch Wrapper | 0/4 | Planned | - |
+| 12. Secure Lambda Fetch Wrapper | 4/4 | Complete   | 2026-05-12 |
 | 13. Recommendation Lambda Integration | 0/TBD | Not started | - |
 | 14. Preferences Lambda Integration | 0/TBD | Not started | - |
 | 15. History Lambda Integration | 0/TBD | Not started | - |
