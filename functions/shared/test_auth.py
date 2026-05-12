@@ -56,6 +56,28 @@ def test_payload_format_v1_claims():
     assert get_sub(event) == "v1-style-sub"
 
 
+def test_disable_auth_allows_root_sub(monkeypatch):
+    monkeypatch.setenv("DISABLE_AUTH", "1")
+    assert get_sub({"sub": "dev-sub"}) == "dev-sub"
+
+
+def test_disable_auth_allows_header_sub(monkeypatch):
+    monkeypatch.setenv("DISABLE_AUTH", "true")
+    assert get_sub({"headers": {"x-dev-sub": "dev-sub"}}) == "dev-sub"
+
+
+def test_disable_auth_allows_querystring_sub(monkeypatch):
+    monkeypatch.setenv("DISABLE_AUTH", "yes")
+    assert (
+        get_sub({"queryStringParameters": {"sub": "dev-sub"}}) == "dev-sub"
+    )
+
+
+def test_disable_auth_without_sub_returns_none(monkeypatch):
+    monkeypatch.setenv("DISABLE_AUTH", "1")
+    assert get_sub({"headers": {}, "queryStringParameters": {}}) is None
+
+
 def test_get_method_v2_payload():
     event = {"requestContext": {"http": {"method": "post"}}}
     assert get_method(event) == "POST"

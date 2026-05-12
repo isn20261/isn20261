@@ -245,6 +245,9 @@ env_vars = {
     "LOGS_TABLE": logs_table.name,
 }
 
+if not is_prod:
+    env_vars["DISABLE_AUTH"] = "1"
+
 
 def create_lambda(name, entry_point):
     function = aws.lambda_.Function(
@@ -332,12 +335,14 @@ def create_route(path, method, lambda_func, auth_id=None):
 
 
 # Rotas com o prefixo /api/v1/
-create_route("/api/v1/history", "GET", history_lambda, auth_id=authorizer.id)
-create_route("/api/v1/preferences", "GET", preferences_lambda, auth_id=authorizer.id)
-create_route("/api/v1/preferences", "POST", preferences_lambda, auth_id=authorizer.id)
-create_route("/api/v1/recommend", "GET", recommend_lambda, auth_id=authorizer.id)
-create_route("/api/v1/watch-later", "GET", watch_later_lambda, auth_id=authorizer.id)
-create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=authorizer.id)
+auth = authorizer.id if is_prod else None
+
+create_route("/api/v1/history", "GET", history_lambda, auth_id=auth)
+create_route("/api/v1/preferences", "GET", preferences_lambda, auth_id=auth)
+create_route("/api/v1/preferences", "POST", preferences_lambda, auth_id=auth)
+create_route("/api/v1/recommend", "GET", recommend_lambda, auth_id=auth)
+create_route("/api/v1/watch-later", "GET", watch_later_lambda, auth_id=auth)
+create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=auth)
 
 
 stage = aws.apigatewayv2.Stage(
