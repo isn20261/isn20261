@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (v2.0 section added 2026-05-12)
 
 **Core value:** v2.0 — The same polished v1.0 UI consuming the real backend: Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from `ONBOARDING.md` and run the app against it.
-**Current focus:** Phase 11 — Cognito Frontend Integration (defining)
+**Current focus:** Phase 12 — Secure Lambda Fetch Wrapper (executing on `feature/issue-131-fetch-wrapper`)
 
 ## Current Position
 
-Phase: 11 (Cognito Frontend Integration) — defining
-Plan: —
-Status: Roadmap created for v2.0 (Phases 11–17). Phase 11 is in-flight retroactively on `feature/issue-128-cognito-auth`; awaiting `/gsd:plan-phase 11` to capture the final shipped state.
-Last activity: 2026-05-12 — v2.0 ROADMAP.md section added; REQUIREMENTS.md traceability extended (30 v2.0 REQ-IDs mapped, 100% coverage)
+Phase: 12 (Secure Lambda Fetch Wrapper) — executing
+Plan: 12-01..12-04 planned; about to run `/gsd-execute-phase 12`
+Status: Phase 11 merged via PR #130. Phase 12 fully planned (CONTEXT, PATTERNS, 4 PLANs committed). GitHub sub-issue #131 opened under #127. Branch `feature/issue-131-fetch-wrapper` created off `backend-integration`.
+Last activity: 2026-05-12 — Phase 12 context + patterns + 4 plans committed; issue #131 opened; ready to execute
 
 ## Performance Metrics
 
