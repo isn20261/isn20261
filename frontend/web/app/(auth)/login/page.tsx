@@ -19,7 +19,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { NotAuthorizedException } from "@/lib/api/auth";
+import { NotAuthorizedException, UserNotConfirmedException } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 const AUTH_PATHS = new Set(["/login", "/register", "/forgot"]);
@@ -48,11 +48,12 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const justConfirmed = searchParams.get("confirmed") === "1";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,8 +72,12 @@ function LoginForm() {
       await signIn({ email, password });
       router.push(safeReturnPath(searchParams.get("from")));
     } catch (err) {
-      // Collapse all unknown failures into the safe "Incorrect email or password."
-      // copy — never leak Cognito-internal messages (UI-SPEC §Interaction Contracts).
+      if (err instanceof UserNotConfirmedException) {
+        const from = searchParams.get("from");
+        const fromQuery = from ? `&from=${encodeURIComponent(from)}` : "";
+        router.push(`/confirm?email=${encodeURIComponent(email)}${fromQuery}`);
+        return;
+      }
       if (err instanceof NotAuthorizedException) {
         setFormError("Incorrect email or password.");
       } else {
@@ -124,6 +129,16 @@ function LoginForm() {
             Forgot password?
           </Link>
         </div>
+
+        {justConfirmed && !formError && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-accent text-12 font-medium text-center"
+          >
+            Your account is confirmed. Sign in to continue.
+          </div>
+        )}
 
         {formError && (
           <div

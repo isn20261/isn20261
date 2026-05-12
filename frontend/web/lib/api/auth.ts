@@ -1,24 +1,31 @@
 /**
- * Phase 4 (AUTH-04, AUTH-05, issue #93) — typed mock auth seam.
+ * Cognito-direct auth seam (Pattern B).
  *
- * Cognito-shaped surface that the real Cognito SDK will replace in v2 (INTG-01..04).
- * Persists registered users in `recommend-a.users` localStorage key (CONTEXT D-02);
- * persists the active session in `recommend-a.session` (CONTEXT D-04).
- * Throws Cognito-shaped error names: UsernameExistsException, NotAuthorizedException.
+ * Talks to the Cognito User Pool from the browser using amazon-cognito-identity-js.
+ * The SDK persists tokens in localStorage on its own keys
+ * (`CognitoIdentityServiceProvider.<clientId>.*`), so rehydrate is a matter of
+ * asking the pool for `getCurrentUser()` + `getSession()`.
  *
- * Module is import-safe (no top-level localStorage access — every read/write happens
- * inside an exported function). Tests may override MOCK_LATENCY_MS to [0, 0] (D-03).
+ * Public surface kept stable for the rest of the app:
+ *   - signUp / signIn / signOut / getSession
+ *   - confirmSignUp / resendConfirmationCode (new — real Cognito needs email verification)
+ *   - Session type
+ *   - UsernameExistsException / NotAuthorizedException / UserNotConfirmedException /
+ *     CodeMismatchException / InvalidPasswordException — typed error names so call
+ *     sites can branch without scraping message strings.
  *
- * Plain-text password storage in `recommend-a.users` is acceptable for this mock
- * (D-02): the real Cognito SDK in v2 will hold passwords server-side. This module
- * is the swap point — INTG-01 replaces these four exported functions one-for-one.
+ * getSession is now async because Cognito validates / refreshes tokens against the
+ * User Pool — that has always been an HTTP round-trip in disguise.
  */
 
-export const MOCK_LATENCY_MS = [400, 700] as const;
-export const SESSION_KEY = "recommend-a.session" as const;
-export const USERS_KEY = "recommend-a.users" as const;
-
-const ONE_HOUR_MS = 3_600_000;
+import {
+  AuthenticationDetails,
+  CognitoUser,
+  CognitoUserAttribute,
+  CognitoUserPool,
+  type CognitoUserSession,
+  type ISignUpResult,
+} from "amazon-cognito-identity-js";
 
 export type Session = {
   AccessToken: string;
@@ -30,135 +37,185 @@ export type Session = {
 
 type Credentials = { email: string; password: string };
 
-type UsersMap = Record<string, { password: string; sub: string }>;
-
 export class UsernameExistsException extends Error {
   override name = "UsernameExistsException" as const;
 }
-
 export class NotAuthorizedException extends Error {
   override name = "NotAuthorizedException" as const;
 }
-
-function delay(): Promise<void> {
-  const [min, max] = MOCK_LATENCY_MS;
-  if (max <= 0) return Promise.resolve();
-  const ms = Math.floor(min + Math.random() * (max - min));
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export class UserNotConfirmedException extends Error {
+  override name = "UserNotConfirmedException" as const;
+}
+export class CodeMismatchException extends Error {
+  override name = "CodeMismatchException" as const;
+}
+export class InvalidPasswordException extends Error {
+  override name = "InvalidPasswordException" as const;
 }
 
-function readUsers(): UsersMap {
-  if (typeof window === "undefined") return {};
-  const raw = window.localStorage.getItem(USERS_KEY);
-  if (!raw) return {};
+let cachedPool: CognitoUserPool | null = null;
+function getPool(): CognitoUserPool {
+  if (cachedPool) return cachedPool;
+  const UserPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
+  const ClientId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID;
+  if (!UserPoolId || !ClientId) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_COGNITO_USER_POOL_ID or NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID. Copy .env.example to .env.local.",
+    );
+  }
+  cachedPool = new CognitoUserPool({ UserPoolId, ClientId });
+  return cachedPool;
+}
+
+function translateError(err: unknown): Error {
+  const e = err as { name?: string; code?: string; message?: string };
+  const name = e?.name ?? e?.code ?? "";
+  const msg = e?.message ?? "Authentication failed.";
+  switch (name) {
+    case "UsernameExistsException":
+      return new UsernameExistsException(msg);
+    case "NotAuthorizedException":
+      return new NotAuthorizedException(msg);
+    case "UserNotConfirmedException":
+      return new UserNotConfirmedException(msg);
+    case "CodeMismatchException":
+    case "ExpiredCodeException":
+      return new CodeMismatchException(msg);
+    case "InvalidPasswordException":
+    case "InvalidParameterException":
+      return new InvalidPasswordException(msg);
+    default:
+      return err instanceof Error ? err : new Error(msg);
+  }
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  // ID/Access tokens are base64url-encoded JWTs; we only need the payload (claims).
+  // API Gateway already cryptographically validates this token before any Lambda
+  // sees it, so client-side we just read fields out of it.
+  const [, payload] = token.split(".");
+  if (!payload) return {};
+  const padded = payload.replace(/-/g, "+").replace(/_/g, "/");
   try {
-    const parsed = JSON.parse(raw);
-    // Defensive: reject non-object shapes (prototype-pollution / corruption guard).
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    return parsed as UsersMap;
+    return JSON.parse(atob(padded));
   } catch {
     return {};
   }
 }
 
-function writeUsers(users: UsersMap): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function issueSession(email: string, sub: string): Session {
+function toSession(cognitoSession: CognitoUserSession): Session {
+  const idToken = cognitoSession.getIdToken().getJwtToken();
+  const accessToken = cognitoSession.getAccessToken().getJwtToken();
+  const refreshToken = cognitoSession.getRefreshToken().getToken();
+  const claims = decodeJwtPayload(idToken);
+  const expSeconds = typeof claims.exp === "number" ? claims.exp : 0;
   return {
-    AccessToken: crypto.randomUUID(),
-    IdToken: crypto.randomUUID(),
-    RefreshToken: crypto.randomUUID(),
-    ExpiresAt: Date.now() + ONE_HOUR_MS,
-    user: { email, sub },
+    AccessToken: accessToken,
+    IdToken: idToken,
+    RefreshToken: refreshToken,
+    ExpiresAt: expSeconds * 1000,
+    user: {
+      email: typeof claims.email === "string" ? claims.email : "",
+      sub: typeof claims.sub === "string" ? claims.sub : "",
+    },
   };
 }
 
-function writeSession(session: Session): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-export async function signUp({ email, password }: Credentials): Promise<Session> {
-  await delay();
-  const users = readUsers();
-  if (Object.prototype.hasOwnProperty.call(users, email)) {
-    throw new UsernameExistsException(
-      "An account with the given email already exists.",
+export function signUp({
+  email,
+  password,
+}: Credentials): Promise<{ email: string; needsConfirmation: boolean }> {
+  const pool = getPool();
+  const attrs = [new CognitoUserAttribute({ Name: "email", Value: email })];
+  return new Promise((resolve, reject) => {
+    pool.signUp(
+      email,
+      password,
+      attrs,
+      [],
+      (err: Error | undefined, result: ISignUpResult | undefined) => {
+        if (err || !result) {
+          reject(translateError(err));
+          return;
+        }
+        resolve({ email, needsConfirmation: !result.userConfirmed });
+      },
     );
-  }
-  const sub = crypto.randomUUID();
-  users[email] = { password, sub };
-  writeUsers(users);
-  const session = issueSession(email, sub);
-  writeSession(session);
-  return session;
+  });
 }
 
-export async function signIn({ email, password }: Credentials): Promise<Session> {
-  await delay();
-  const users = readUsers();
-  // Same error for unknown email AND wrong password — avoids user enumeration (D-02).
-  const record = Object.prototype.hasOwnProperty.call(users, email)
-    ? users[email]
-    : undefined;
-  if (!record || record.password !== password) {
-    throw new NotAuthorizedException("Incorrect email or password.");
-  }
-  const session = issueSession(email, record.sub);
-  writeSession(session);
-  return session;
+export function confirmSignUp(email: string, code: string): Promise<void> {
+  const user = new CognitoUser({ Username: email, Pool: getPool() });
+  return new Promise((resolve, reject) => {
+    user.confirmRegistration(code, false, (err) => {
+      if (err) {
+        reject(translateError(err));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+export function resendConfirmationCode(email: string): Promise<void> {
+  const user = new CognitoUser({ Username: email, Pool: getPool() });
+  return new Promise((resolve, reject) => {
+    user.resendConfirmationCode((err) => {
+      if (err) {
+        reject(translateError(err));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+export function signIn({ email, password }: Credentials): Promise<Session> {
+  const user = new CognitoUser({ Username: email, Pool: getPool() });
+  // The User Pool Client is created with ALLOW_USER_PASSWORD_AUTH only
+  // (see __main__.py: explicit_auth_flows). The SDK defaults to USER_SRP_AUTH,
+  // which the pool refuses with "USER_SRP_AUTH is not enabled for the client."
+  user.setAuthenticationFlowType("USER_PASSWORD_AUTH");
+  const auth = new AuthenticationDetails({ Username: email, Password: password });
+  return new Promise((resolve, reject) => {
+    user.authenticateUser(auth, {
+      onSuccess: (cognitoSession) => resolve(toSession(cognitoSession)),
+      onFailure: (err) => reject(translateError(err)),
+    });
+  });
 }
 
 export function signOut(): void {
   if (typeof window === "undefined") return;
-  // Removes session ONLY — recommend-a.users persists so a demo user can sign back in (D-04).
-  window.localStorage.removeItem(SESSION_KEY);
+  const user = getPool().getCurrentUser();
+  user?.signOut();
 }
 
-export function getSession(): Session | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return null;
-    }
-    return parsed as Session;
-  } catch {
-    return null;
-  }
+export function getSession(): Promise<Session | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  const user = getPool().getCurrentUser();
+  if (!user) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    user.getSession((err: Error | null, cognitoSession: CognitoUserSession | null) => {
+      if (err || !cognitoSession || !cognitoSession.isValid()) {
+        resolve(null);
+        return;
+      }
+      resolve(toSession(cognitoSession));
+    });
+  });
 }
 
 /**
- * AUTH-13 test hook (Phase 5) — backdates the persisted session's
- * ExpiresAt by 1s so the next AuthContext rehydrate detects expiry.
- * No-op when there's no session. Real Cognito (v2) replaces this with
- * refresh-token rotation; the rehydrate path doesn't change.
+ * Dev-only: signs the current user out so a reload exercises the logged-out
+ * rehydrate path. Real Cognito refreshes the IdToken automatically up to the
+ * refresh-token window, so backdating a timestamp the way the mock did would
+ * not force expiry — clearing the user is the closest equivalent test hook.
  */
 export function forceExpire(): void {
-  if (typeof window === "undefined") return;
-  const raw = window.localStorage.getItem(SESSION_KEY);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      parsed.ExpiresAt = Date.now() - 1000;
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
-    }
-  } catch {
-    /* ignore */
-  }
+  signOut();
 }
 
-// Dev-only: expose forceExpire on window so manual smoke can run
-//   window.__authTest.forceExpire()
-// in devtools. Stripped from production bundles by NODE_ENV check.
 if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
   (window as unknown as { __authTest?: { forceExpire: typeof forceExpire } }).__authTest = {
     forceExpire,
