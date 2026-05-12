@@ -57,33 +57,34 @@ def _post(event: dict, sub: str):
     if all(v is None for v in [genres, subscriptions, age_rating, humor]):
         return bad_request("At least one preference field is required")
 
+    user = get_user(sub) or {}
+    existing_prefs = user.get("preferences")
+    prefs: dict = existing_prefs.copy() if isinstance(existing_prefs, dict) else {}
+
     now_iso = datetime.now(timezone.utc).isoformat()
-    updates: list[str] = ["updatedAt = :updatedAt"]
-    values: dict       = {":updatedAt": now_iso}
+    values: dict = {":updatedAt": now_iso}
 
     if genres is not None:
         if not isinstance(genres, list):
             return bad_request("genres must be an array")
-        updates.append("preferences.genres = :genres")
-        values[":genres"] = genres
+        prefs["genres"] = genres
 
     if subscriptions is not None:
         if not isinstance(subscriptions, list):
             return bad_request("subscriptions must be an array")
-        updates.append("preferences.subscriptions = :subs")
-        values[":subs"] = subscriptions
+        prefs["subscriptions"] = subscriptions
 
     if age_rating is not None:
-        updates.append("preferences.ageRating = :ar")
-        values[":ar"] = str(age_rating)
+        prefs["ageRating"] = str(age_rating)
 
     if humor is not None:
-        updates.append("preferences.humor = :humor")
-        values[":humor"] = str(humor)
+        prefs["humor"] = str(humor)
+
+    values[":prefs"] = prefs
 
     users().update_item(
         Key={"sub": sub},
-        UpdateExpression="SET " + ", ".join(updates),
+        UpdateExpression="SET updatedAt = :updatedAt, preferences = :prefs",
         ExpressionAttributeValues=values,
     )
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {

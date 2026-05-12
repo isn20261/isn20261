@@ -57,6 +57,18 @@ def test_recommend_authenticated_user_not_found(monkeypatch):
 
 
 @mock_aws
+def test_recommend_disable_auth_allows_user_not_found_and_saves_history(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setenv("DISABLE_AUTH", "1")
+    monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "nonexistent")
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+
+    items = historico().query(KeyConditionExpression=Key("sub").eq("nonexistent"))["Items"]
+    assert len(items) == 1
+
+
+@mock_aws
 def test_recommend_saves_to_historico(monkeypatch):
     setup_dynamodb_tables()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-3")

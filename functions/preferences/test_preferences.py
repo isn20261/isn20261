@@ -144,3 +144,20 @@ def test_post_invalid_json(monkeypatch):
     event = {"httpMethod": "POST", "body": "not-json"}
     resp = handler(event, None)
     assert resp["statusCode"] == 400
+
+
+@mock_aws
+def test_post_creates_user_if_absent(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setattr("preferences.preferences.get_sub", lambda event: "new-user")
+
+    event = {
+        "httpMethod": "POST",
+        "body": json.dumps({"genres": ["sci-fi"], "age-rating": "16"}),
+    }
+    resp = handler(event, None)
+    assert resp["statusCode"] == 200
+
+    user = users().get_item(Key={"sub": "new-user"})["Item"]
+    assert user["preferences"]["genres"] == ["sci-fi"]
+    assert user["preferences"]["ageRating"] == "16"
