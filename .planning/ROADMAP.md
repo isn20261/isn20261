@@ -319,7 +319,12 @@ Seven sequential phases that replace every `lib/api/*` mock with the real Cognit
   3. Forcing a 401 (e.g. via an expired IdToken in devtools) results in exactly one silent refresh-then-replay using the RefreshToken; if the replay also returns 401 the wrapper triggers logout and routes to `/login` — verifiable in the Network panel as `original 401 → token refresh call → replayed request 200`, or `original 401 → refresh → replayed 401 → logout`.
   4. A request that exceeds the wrapper's per-request timeout (default 10s, overridable via caller signal) aborts and surfaces a `NetworkError` to the caller — verifiable by pointing one endpoint at a delay endpoint or via `setTimeout` in a test harness.
   5. A reusable hook/utility consumes the `ApiError` discriminated union and renders error-class-appropriate UX (toast for `NetworkError`/`ServerError`, inline form message for `ValidationError`, forced redirect for `UnauthorizedError` after the retry budget is spent) — exercisable from at least one screen in this phase.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 12-01-PLAN.md — Sonner install + Toaster mount in app/layout + .env.example documentation (foundation; partial FETCH-06, FETCH-07)
+- [ ] 12-02-PLAN.md — `lib/api/client.ts` wrapper (types, env init, getSession-per-request, IdToken injection, AbortController timeout, 5-kind ApiError classifier, sanitization) + `setOnUnauthorized(signOut)` registration in AuthProvider (FETCH-01, FETCH-02, FETCH-03 pre-emptive, FETCH-04, FETCH-06 introduces wrapper)
+- [ ] 12-03-PLAN.md — `useApiErrorUx` hook + `recommend.real.ts` demonstrator typed function (FETCH-05 partial, FETCH-07)
+- [ ] 12-04-PLAN.md — End-of-phase verification: grep gates (FETCH-06 enforcement, threat-model checks T-12-01..06), manual auth-flow walkthrough, summary report
 
 **Notes / risks:**
 - Refresh-then-replay must NOT race: if a second 401 arrives mid-refresh, the second caller should reuse the in-flight refresh promise, not start a new one. Plan-phase should call this out.
@@ -434,7 +439,7 @@ Phases 13–16 are sequenced (not concurrent) because branches stack and PRs lan
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Cognito Frontend Integration | 0/TBD | Defining | - |
-| 12. Secure Lambda Fetch Wrapper | 0/TBD | Not started | - |
+| 12. Secure Lambda Fetch Wrapper | 0/4 | Planned | - |
 | 13. Recommendation Lambda Integration | 0/TBD | Not started | - |
 | 14. Preferences Lambda Integration | 0/TBD | Not started | - |
 | 15. History Lambda Integration | 0/TBD | Not started | - |
