@@ -175,12 +175,18 @@ env_vars = {
 shared_layer = aws.lambda_.LayerVersion(
     "shared",
     layer_name="shared",
-    code=pulumi.AssetArchive({
-        "python/shared/__init__.py": pulumi.FileAsset("./functions/shared/__init__.py"),
-        "python/shared/auth.py":     pulumi.FileAsset("./functions/shared/auth.py"),
-        "python/shared/db.py":       pulumi.FileAsset("./functions/shared/db.py"),
-        "python/shared/response.py": pulumi.FileAsset("./functions/shared/response.py"),
-    }),
+    code=pulumi.AssetArchive(
+        {
+            "python/shared/__init__.py": pulumi.FileAsset(
+                "./functions/shared/__init__.py"
+            ),
+            "python/shared/auth.py": pulumi.FileAsset("./functions/shared/auth.py"),
+            "python/shared/db.py": pulumi.FileAsset("./functions/shared/db.py"),
+            "python/shared/response.py": pulumi.FileAsset(
+                "./functions/shared/response.py"
+            ),
+        }
+    ),
     compatible_runtimes=["python3.13"],
     description="shared utilities (db, auth, response)",
 )
@@ -303,6 +309,8 @@ stage = aws.apigatewayv2.Stage(
     ),
     default_route_settings=aws.apigatewayv2.StageDefaultRouteSettingsArgs(
         detailed_metrics_enabled=True,
+        throttling_rate_limit=1000,
+        throttling_burst_limit=500,
     ),
 )
 
