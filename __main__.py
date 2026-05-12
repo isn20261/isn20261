@@ -206,6 +206,7 @@ def create_route(path, method, lambda_func, auth_id=None):
         integration_type="AWS_PROXY",
         integration_method="POST",  # ATENÇÃO: a integração com Lambda proxy no AWS é sempre POST, não mude isso.
         integration_uri=lambda_func.invoke_arn,
+        payload_format_version="2.0",  # default is 1.0; v2.0 puts JWT claims at event.requestContext.authorizer.jwt.claims
     )
 
     aws.lambda_.Permission(

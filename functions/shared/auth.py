@@ -11,12 +11,9 @@ in-Lambda signature verification — those would be redundant work.
 
 
 def get_sub(event: dict) -> str | None:
-    claims = (
-        (event.get("requestContext") or {})
-        .get("authorizer", {})
-        .get("jwt", {})
-        .get("claims")
-        or {}
-    )
+    authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
+    # HTTP API v2 payload (`payload_format_version=2.0`): claims under "jwt"
+    # HTTP API v1 / REST API payload: claims directly on the authorizer
+    claims = authorizer.get("jwt", {}).get("claims") or authorizer.get("claims") or {}
     sub = claims.get("sub")
     return sub if sub else None

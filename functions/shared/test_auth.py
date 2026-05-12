@@ -44,3 +44,13 @@ def test_empty_sub_returns_none():
 
 def test_null_request_context():
     assert get_sub({"requestContext": None}) is None
+
+
+def test_payload_format_v1_claims():
+    # HTTP API v1 / REST API payload: claims directly on authorizer (no jwt nesting)
+    event = {
+        "requestContext": {
+            "authorizer": {"claims": {"sub": "v1-style-sub"}}
+        }
+    }
+    assert get_sub(event) == "v1-style-sub"
