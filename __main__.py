@@ -253,6 +253,7 @@ def create_lambda(name, entry_point):
         code=pulumi.FileArchive(f"./functions/{name}"),
         environment=aws.lambda_.FunctionEnvironmentArgs(variables=env_vars),
         layers=[arn for arn in [shared_layer.arn] if arn is not None],
+        timeout=30,
     )
 
     aws.cloudwatch.LogGroup(
