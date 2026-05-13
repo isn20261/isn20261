@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const fontDisplay = Manrope({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`${fontDisplay.variable} ${fontBody.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

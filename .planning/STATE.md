@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backend Integration
-status: "Roadmap created for v2.0 (Phases 11–17). Phase 11 is in-flight retroactively on `feature/issue-128-cognito-auth`; awaiting `/gsd:plan-phase 11` to capture the final shipped state."
-stopped_at: Phase 12 context gathered
-last_updated: "2026-05-12T20:54:39.986Z"
-last_activity: 2026-05-12 — v2.0 ROADMAP.md section added; REQUIREMENTS.md traceability extended (30 v2.0 REQ-IDs mapped, 100% coverage)
+status: "Phase 12 (Secure Lambda Fetch Wrapper) complete on feature/issue-131-fetch-wrapper. Live-AWS smoke (Scenarios A–E in 12-04) deferred until user is back at home AWS environment; FETCH-03 runtime evidence is the outstanding piece. Phase 13 unblocked."
+stopped_at: Phase 12 complete (live-AWS smoke deferred)
+last_updated: "2026-05-12T22:44:14.120Z"
+last_activity: 2026-05-12 — Phase 12 complete (4/4 plans, automated gates green, live-AWS smoke deferred)
 progress:
-  total_phases: 7
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 17
+  completed_phases: 5
+  total_plans: 28
+  completed_plans: 21
+  percent: 29
 ---
 
 # Project State
@@ -21,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (v2.0 section added 2026-05-12)
 
 **Core value:** v2.0 — The same polished v1.0 UI consuming the real backend: Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from `ONBOARDING.md` and run the app against it.
-**Current focus:** Phase 11 — Cognito Frontend Integration (defining)
+**Current focus:** Phase 12 — Secure Lambda Fetch Wrapper (COMPLETE; live-AWS smoke deferred). Next: open PR `feature/issue-131-fetch-wrapper` → `backend-integration`, then plan Phase 13 (Recommendation Lambda Integration).
 
 ## Current Position
 
-Phase: 11 (Cognito Frontend Integration) — defining
-Plan: —
-Status: Roadmap created for v2.0 (Phases 11–17). Phase 11 is in-flight retroactively on `feature/issue-128-cognito-auth`; awaiting `/gsd:plan-phase 11` to capture the final shipped state.
-Last activity: 2026-05-12 — v2.0 ROADMAP.md section added; REQUIREMENTS.md traceability extended (30 v2.0 REQ-IDs mapped, 100% coverage)
+Phase: 12 (Secure Lambda Fetch Wrapper) — COMPLETE (4/4 plans, 2026-05-12)
+Plan: 4 of 4 (12-04 verification gate)
+Status: Phase 12 closure SUMMARY written; automated Block A–F gates all green; manual smoke Scenarios A–E SKIPPED-AWS-DEFERRED with run-when-home checklist in 12-04-SUMMARY.md
+Last activity: 2026-05-12 — Phase 12 plans 12-01 → 12-04 executed sequentially on feature/issue-131-fetch-wrapper
 
 ## Performance Metrics
 

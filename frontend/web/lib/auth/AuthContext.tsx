@@ -26,6 +26,7 @@ import {
   signOut as seamSignOut,
   type Session,
 } from "@/lib/api/auth";
+import { setOnUnauthorized } from "@/lib/api/client";
 
 type Credentials = { email: string; password: string };
 type SignUpResult = { email: string; needsConfirmation: boolean };
@@ -78,6 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     seamSignOut();
     setSession(null);
   }, []);
+
+  useEffect(() => {
+    // Register the wrapper's unauthorized callback. Invoked by lib/api/client when
+    // getSession() returns null mid-request OR an in-flight request returns 401.
+    // signOut clears the Cognito session; RequireAuth (mounted on protected routes)
+    // observes the isAuthenticated flip and redirects to /login.
+    setOnUnauthorized(signOut);
+  }, [signOut]);
 
   const isAuthenticated = isLive(session);
   const user = isAuthenticated && session ? session.user : null;
