@@ -1,3 +1,4 @@
 config:
   aws:region: sa-east-1
   isn20261:environment: dev
+  isn20261:disableAuth: true

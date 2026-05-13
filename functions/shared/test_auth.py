@@ -56,6 +56,13 @@ def test_payload_format_v1_claims():
     assert get_sub(event) == "v1-style-sub"
 
 
+def test_without_disable_auth_does_not_accept_dev_sub_sources(monkeypatch):
+    monkeypatch.delenv("DISABLE_AUTH", raising=False)
+    assert get_sub({"sub": "dev-sub"}) is None
+    assert get_sub({"headers": {"x-dev-sub": "dev-sub"}}) is None
+    assert get_sub({"queryStringParameters": {"sub": "dev-sub"}}) is None
+
+
 def test_disable_auth_allows_root_sub(monkeypatch):
     monkeypatch.setenv("DISABLE_AUTH", "1")
     assert get_sub({"sub": "dev-sub"}) == "dev-sub"

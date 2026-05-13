@@ -39,13 +39,6 @@ users_table = aws.dynamodb.Table(
     attributes=[aws.dynamodb.TableAttributeArgs(name="sub", type="S")],
 )
 
-tokens_table = aws.dynamodb.Table(
-    f"tokens-table-{env}",
-    name=f"Tokens_{env}",
-    billing_mode="PAY_PER_REQUEST",
-    hash_key="token",
-    attributes=[aws.dynamodb.TableAttributeArgs(name="token", type="S")],
-)
 
 historico_table = aws.dynamodb.Table(
     f"historico-table-{env}",
@@ -74,7 +67,6 @@ logs_table = aws.dynamodb.Table(
 dynamodb_tables = {
     "email-to-sub": email_to_sub_table,
     "users": users_table,
-    "tokens": tokens_table,
     "historico": historico_table,
     "logs": logs_table,
 }
@@ -115,7 +107,6 @@ aws.iam.RolePolicy(
     policy=pulumi.Output.all(
         email_to_sub_table.arn,
         users_table.arn,
-        tokens_table.arn,
         historico_table.arn,
         logs_table.arn,
     ).apply(
@@ -240,12 +231,16 @@ user_pool_client = aws.cognito.UserPoolClient(
 env_vars = {
     "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
     "USERS_TABLE": users_table.name,
-    "TOKENS_TABLE": tokens_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
 }
 
-if not is_prod:
+# Explicit opt-in for dev auth bypass.
+# Default is secure-by-default (disabled) for all stacks.
+disable_auth = config.get_bool("disableAuth")
+if disable_auth:
+    if is_prod:
+        raise Exception("Config 'disableAuth' must not be enabled in production")
     env_vars["DISABLE_AUTH"] = "1"
 
 
