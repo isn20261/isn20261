@@ -6,6 +6,7 @@ for `age-rating`. Mapping is applied on read and write.
 Environment variables: shared db/auth vars
 """
 import json
+from botocore.exceptions import ClientError
 from datetime import datetime, timezone
 
 from shared.auth import get_sub, get_method
@@ -57,36 +58,84 @@ def _post(event: dict, sub: str):
     if all(v is None for v in [genres, subscriptions, age_rating, humor]):
         return bad_request("At least one preference field is required")
 
-    user = get_user(sub) or {}
-    existing_prefs = user.get("preferences")
-    prefs: dict = existing_prefs.copy() if isinstance(existing_prefs, dict) else {}
-
     now_iso = datetime.now(timezone.utc).isoformat()
     values: dict = {":updatedAt": now_iso}
+
+    update_parts = ["updatedAt = :updatedAt"]
 
     if genres is not None:
         if not isinstance(genres, list):
             return bad_request("genres must be an array")
-        prefs["genres"] = genres
+        values[":genres"] = genres
+        update_parts.append("preferences.genres = :genres")
 
     if subscriptions is not None:
         if not isinstance(subscriptions, list):
             return bad_request("subscriptions must be an array")
-        prefs["subscriptions"] = subscriptions
+        values[":subscriptions"] = subscriptions
+        update_parts.append("preferences.subscriptions = :subscriptions")
 
     if age_rating is not None:
-        prefs["ageRating"] = str(age_rating)
+        values[":ageRating"] = str(age_rating)
+        update_parts.append("preferences.ageRating = :ageRating")
 
     if humor is not None:
-        prefs["humor"] = str(humor)
+        values[":humor"] = str(humor)
+        update_parts.append("preferences.humor = :humor")
 
-    values[":prefs"] = prefs
+    update_expr = "SET " + ", ".join(update_parts)
 
-    users().update_item(
-        Key={"sub": sub},
-        UpdateExpression="SET updatedAt = :updatedAt, preferences = :prefs",
-        ExpressionAttributeValues=values,
-    )
+    prefs_map = {}
+    if genres is not None:
+        prefs_map["genres"] = genres
+    if subscriptions is not None:
+        prefs_map["subscriptions"] = subscriptions
+    if age_rating is not None:
+        prefs_map["ageRating"] = str(age_rating)
+    if humor is not None:
+        prefs_map["humor"] = str(humor)
+
+    # Try conditional update first (only if item exists). If it doesn't exist,
+    # try conditional put to create it. If create races, retry the update.
+    max_retries = 3
+    success = False
+    for attempt in range(max_retries):
+        try:
+            users().update_item(
+                Key={"sub": sub},
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=values,
+                ConditionExpression="attribute_exists(#sub)",
+                ExpressionAttributeNames={"#sub": "sub"},
+            )
+            success = True
+            break
+        except ClientError as exc:
+            err = exc.response.get("Error", {})
+            code = err.get("Code")
+            # If item does not exist, try to create it atomically
+            if code == "ConditionalCheckFailedException":
+                try:
+                    users().put_item(
+                        Item={"sub": sub, "preferences": prefs_map, "updatedAt": now_iso},
+                        ConditionExpression="attribute_not_exists(#sub)",
+                        ExpressionAttributeNames={"#sub": "sub"},
+                    )
+                    success = True
+                    break
+                except ClientError as exc2:
+                    err2 = exc2.response.get("Error", {})
+                    code2 = err2.get("Code")
+                    # Another writer created the item; retry the update
+                    if code2 == "ConditionalCheckFailedException":
+                        continue
+                    raise
+            else:
+                raise
+
+    if not success:
+        raise RuntimeError("Failed to write preferences after retries")
+
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {
         k: v for k, v in body.items()
         if k in ("genres", "subscriptions", "age-rating", "humor") and v is not None
