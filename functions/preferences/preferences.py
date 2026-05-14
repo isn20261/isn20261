@@ -62,44 +62,40 @@ def _post(event: dict, sub: str):
     values: dict = {":updatedAt": now_iso}
 
     update_parts = ["updatedAt = :updatedAt"]
+    prefs_map: dict = {}
 
     if genres is not None:
         if not isinstance(genres, list):
             return bad_request("genres must be an array")
         values[":genres"] = genres
         update_parts.append("preferences.genres = :genres")
+        prefs_map["genres"] = genres
 
     if subscriptions is not None:
         if not isinstance(subscriptions, list):
             return bad_request("subscriptions must be an array")
         values[":subscriptions"] = subscriptions
         update_parts.append("preferences.subscriptions = :subscriptions")
+        prefs_map["subscriptions"] = subscriptions
 
     if age_rating is not None:
         values[":ageRating"] = str(age_rating)
         update_parts.append("preferences.ageRating = :ageRating")
+        prefs_map["ageRating"] = str(age_rating)
 
     if humor is not None:
         values[":humor"] = str(humor)
         update_parts.append("preferences.humor = :humor")
+        prefs_map["humor"] = str(humor)
 
     update_expr = "SET " + ", ".join(update_parts)
-
-    prefs_map = {}
-    if genres is not None:
-        prefs_map["genres"] = genres
-    if subscriptions is not None:
-        prefs_map["subscriptions"] = subscriptions
-    if age_rating is not None:
-        prefs_map["ageRating"] = str(age_rating)
-    if humor is not None:
-        prefs_map["humor"] = str(humor)
 
     # Try conditional update first (only if item exists). If it doesn't exist,
     # try conditional put to create it. If create races, retry the update.
     max_retries = 3
     success = False
-    for attempt in range(max_retries):
+    last_exc: Exception | None = None
+    for attempt in range(1, max_retries + 1):
         try:
             users().update_item(
                 Key={"sub": sub},
@@ -111,6 +107,7 @@ def _post(event: dict, sub: str):
             success = True
             break
         except ClientError as exc:
+            last_exc = exc
             err = exc.response.get("Error", {})
             code = err.get("Code")
             # If item does not exist, try to create it atomically
@@ -124,6 +121,7 @@ def _post(event: dict, sub: str):
                     success = True
                     break
                 except ClientError as exc2:
+                    last_exc = exc2
                     err2 = exc2.response.get("Error", {})
                     code2 = err2.get("Code")
                     # Another writer created the item; retry the update
@@ -134,7 +132,7 @@ def _post(event: dict, sub: str):
                 raise
 
     if not success:
-        raise RuntimeError("Failed to write preferences after retries")
+        raise RuntimeError(f"Failed to write preferences for sub={sub} after {max_retries} attempts") from last_exc
 
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {
         k: v for k, v in body.items()
