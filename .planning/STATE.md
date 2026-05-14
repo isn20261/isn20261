@@ -128,6 +128,7 @@ Recent decisions affecting current work:
 - Phase 11 plan: capture the final state shipped on `feature/issue-128-cognito-auth` (retroactive plan).
 - Phase 12: open a sub-issue under #127 for the fetch wrapper before `/gsd:plan-phase 12`.
 - Phase 17: schedule a teammate cold-run on a fresh AWS account before claiming the phase complete.
+- Phase 17: **delete `frontend/web/app/(app)/(protected)/smoke/`** before the final `backend-integration → main` PR. It's the throwaway Phase 12 fetch-wrapper smoke harness (commit 6bfb57f). Kept through P13–P16 because it's a useful manual harness for the real-Lambda integrations; the "REVERT BEFORE PR" note on the commit was scoped to the (now-superseded) Phase 12 PR-back-into-frontend gate.
 
 ### Blockers/Concerns
 
