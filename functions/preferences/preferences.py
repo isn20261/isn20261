@@ -14,6 +14,8 @@ from shared.db import get_user, users, write_log
 from shared.response import ok, bad_request, unauthorized
 
 
+MAX_PREFERENCE_UPDATE_RETRIES = 3
+
 def _db_to_api(prefs: dict) -> dict:
     return {
         "genres":        prefs.get("genres") or [],
@@ -92,10 +94,9 @@ def _post(event: dict, sub: str):
 
     # Try conditional update first (only if item exists). If it doesn't exist,
     # try conditional put to create it. If create races, retry the update.
-    max_retries = 3
     success = False
-    last_exc: Exception | None = None
-    for attempt in range(1, max_retries + 1):
+    last_exception: Exception | None = None
+    for _ in range(MAX_PREFERENCE_UPDATE_RETRIES):
         try:
             users().update_item(
                 Key={"sub": sub},
@@ -107,7 +108,7 @@ def _post(event: dict, sub: str):
             success = True
             break
         except ClientError as exc:
-            last_exc = exc
+            last_exception = exc
             err = exc.response.get("Error", {})
             code = err.get("Code")
             # If item does not exist, try to create it atomically
@@ -120,19 +121,19 @@ def _post(event: dict, sub: str):
                     )
                     success = True
                     break
-                except ClientError as exc2:
-                    last_exc = exc2
-                    err2 = exc2.response.get("Error", {})
-                    code2 = err2.get("Code")
+                except ClientError as put_error:
+                    last_exception = put_error
+                    put_error_details = put_error.response.get("Error", {})
+                    put_error_code = put_error_details.get("Code")
                     # Another writer created the item; retry the update
-                    if code2 == "ConditionalCheckFailedException":
+                    if put_error_code == "ConditionalCheckFailedException":
                         continue
                     raise
             else:
                 raise
 
     if not success:
-        raise RuntimeError(f"Failed to write preferences for sub={sub} after {max_retries} attempts") from last_exc
+        raise RuntimeError(f"Failed to write preferences for sub={sub} after {MAX_PREFERENCE_UPDATE_RETRIES} attempts") from last_exception
 
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {
         k: v for k, v in body.items()
