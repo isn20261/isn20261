@@ -66,6 +66,19 @@ export const MOODS = [
   { id: "nostalgic", label: "Nostalgic", icon: "◌" },
 ] as const;
 
+export const GENRES = [
+  { id: "drama", label: "Drama" },
+  { id: "mystery", label: "Mystery" },
+  { id: "romance", label: "Romance" },
+  { id: "sci-fi", label: "Sci-Fi" },
+  { id: "action", label: "Action" },
+  { id: "comedy", label: "Comedy" },
+  { id: "adventure", label: "Adventure" },
+  { id: "crime", label: "Crime" },
+  { id: "horror", label: "Horror" },
+  { id: "thriller", label: "Thriller" },
+] as const;
+
 export const RATINGS = ["G", "PG", "PG-13", "R", "NC-17"] as const;
 export type Rating = (typeof RATINGS)[number];
 
