@@ -217,7 +217,7 @@ if ses_domain_identity:
     ).apply(lambda args: f"arn:aws:ses:{args[0]}:{args[1]}:identity/{args[2]}")
 else:
     ses_identity_arn = pulumi.Output.concat(
-        "arn:aws:ses:", region_obj.region, ":123456789012:identity/", ses_from_email
+        "arn:aws:ses:", region_obj.region, ":", account_id, ":identity/", ses_from_email
     )
 
 cognito_ses_policy = aws.iam.Policy(
@@ -323,8 +323,19 @@ if is_prod and domain_name and zone:
         records=["v=spf1 include:amazonses.com ~all"],
     )
 
-email_sending_account = "DEVELOPER"
 from_email_address_formatted = f"{ses_from_name} <{ses_from_email}>"
+
+if is_prod:
+    user_pool_email_configuration = aws.cognito.UserPoolEmailConfigurationArgs(
+        email_sending_account="DEVELOPER",
+        source_arn=ses_identity_arn,
+        from_email_address=from_email_address_formatted,
+        reply_to_email_address=ses_reply_to_email,
+    )
+else:
+    user_pool_email_configuration = aws.cognito.UserPoolEmailConfigurationArgs(
+        email_sending_account="COGNITO_DEFAULT",
+    )
 
 # --- 6. Amazon Cognito ---
 
@@ -347,12 +358,7 @@ user_pool = aws.cognito.UserPool(
     lambda_config=aws.cognito.UserPoolLambdaConfigArgs(
         post_confirmation=post_confirm_lambda.arn,
     ),
-    email_configuration=aws.cognito.UserPoolEmailConfigurationArgs(
-        email_sending_account=email_sending_account,
-        source_arn=ses_identity_arn,
-        from_email_address=from_email_address_formatted,
-        reply_to_email_address=ses_reply_to_email,
-    ),
+    email_configuration=user_pool_email_configuration,
     verification_message_template=aws.cognito.UserPoolVerificationMessageTemplateArgs(
         default_email_option="CONFIRM_WITH_CODE",
         email_subject="Confirme seu cadastro",
