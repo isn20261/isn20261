@@ -344,8 +344,8 @@ Plans:
   4. A response with no recommendation (empty or null payload) renders the screen's empty state per the Phase 7 design — not a crash and not a loading spinner.
 **Plans**: 4 plans
 Plans:
-- [ ] 13-01-type-narrowing-and-adapter-PLAN.md — Narrow recommend.real.ts to a Phase-13-specific `RecommendationResponse` / `RecommendedMovie` type; introduce kebab→camel adapter at the lib boundary; getRecommendationReal() returns `Result<RecommendedMovie | null, ApiError>` (INTG-RECO-01)
-- [ ] 13-02-screen-swap-and-states-PLAN.md — Swap `/recommendation` page from mock-backed `getRecommendation()`/`getSimilar()` to `getRecommendationReal()`; wire useApiErrorUx; render loading/ready/empty/error branches; hide Similar Films rail; conditionally omit Phase-7-only fields (INTG-RECO-01, INTG-RECO-02)
+- [x] 13-01-type-narrowing-and-adapter-PLAN.md — Narrow recommend.real.ts to a Phase-13-specific `RecommendationResponse` / `RecommendedMovie` type; introduce kebab→camel adapter at the lib boundary; getRecommendationReal() returns `Result<RecommendedMovie | null, ApiError>` (INTG-RECO-01)
+- [x] 13-02-screen-swap-and-states-PLAN.md — Swap `/recommendation` page from mock-backed `getRecommendation()`/`getSimilar()` to `getRecommendationReal()`; wire useApiErrorUx; render loading/ready/empty/error branches; hide Similar Films rail; conditionally omit Phase-7-only fields (INTG-RECO-01, INTG-RECO-02)
 - [ ] 13-03-mock-deletion-PLAN.md — Delete MOVIES dataset + getRecommendation + getSimilar + PICK_LATENCY_MS from lib/api/recommend.ts; keep Movie/Service types, RATINGS/STREAMING_SERVICES/MOODS constants, posterUrl/backdropUrl helpers; rewrite module header (zero "mock" references) (INTG-RECO-02)
 - [ ] 13-04-verification-PLAN.md — End-of-phase verification gate: automated grep gates (Block A), build/lint/tsc (Block B), code-inspection (Block C), manual live-AWS smoke 6 scenarios (Block D), closure summary (Block E)
 
@@ -448,7 +448,7 @@ Phases 13–16 are sequenced (not concurrent) because branches stack and PRs lan
 |-------|----------------|--------|-----------|
 | 11. Cognito Frontend Integration | 0/TBD | Defining | - |
 | 12. Secure Lambda Fetch Wrapper | 4/4 | Complete   | 2026-05-12 |
-| 13. Recommendation Lambda Integration | 0/4 | Defining | - |
+| 13. Recommendation Lambda Integration | 2/4 | In Progress|  |
 | 14. Preferences Lambda Integration | 0/TBD | Not started | - |
 | 15. History Lambda Integration | 0/TBD | Not started | - |
 | 16. Watch-Later Lambda Integration | 0/TBD | Not started | - |
