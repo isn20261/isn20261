@@ -281,7 +281,7 @@ Seven sequential phases that replace every `lib/api/*` mock with the real Cognit
 - [ ] **Phase 11: Cognito Frontend Integration** — Replace the `lib/api/auth` mock with `amazon-cognito-identity-js`; sign-up → email confirm → sign-in → logout round-trip against real Cognito + `post_confirm` Lambda → DynamoDB (issue #128, retroactive — already in PR)
 - [x] **Phase 12: Secure Lambda Fetch Wrapper** — Typed `lib/api/client.ts` that auto-injects the Cognito IdToken, exposes a discriminated `ApiError` taxonomy, refreshes-and-replays once on 401, applies per-request timeouts, and surfaces error-class-aware UX (TBD — open as sub-issue of #127) (completed 2026-05-12)
 - [ ] **Phase 13: Recommendation Lambda Integration** — Recommendation screen calls the real `/recommend` Lambda through the wrapper with loading / error / empty states (TBD — open as sub-issue of #127)
-- [ ] **Phase 14: Preferences Lambda Integration** — Preferences screen reads + writes the real `/preferences` Lambda (GET + PUT/POST) with loading / error / empty states and a documented update strategy (TBD — open as sub-issue of #127)
+- [x] **Phase 14: Preferences Lambda Integration** — Preferences screen reads + writes the real `/preferences` Lambda (GET + POST; PUT was an issue-title mistake — POST only) with loading / error / empty states and a documented per-toggle optimistic update strategy (issue #133, completed 2026-05-14 — live-AWS smoke deferred)
 - [ ] **Phase 15: History Lambda Integration** — History screen reads the real `/history` Lambda with loading / error / empty states (TBD — open as sub-issue of #127)
 - [ ] **Phase 16: Watch-Later Lambda Integration** — Watch-later screen reads + writes (add / remove) the real `/watch-later` Lambda with loading / error / empty states (TBD — open as sub-issue of #127)
 - [ ] **Phase 17: Onboarding Guide + E2E Cold-Run** — `ONBOARDING.md` covers AWS account + IAM → AWS CLI → Pulumi install + config → `pulumi up` → `.env` from `pulumi stack output` → `pnpm install && pnpm dev` → end-to-end smoke test; validated by a teammate cold-running it on a fresh AWS account (TBD — open as sub-issue of #127)
@@ -448,8 +448,8 @@ Phases 13–16 are sequenced (not concurrent) because branches stack and PRs lan
 |-------|----------------|--------|-----------|
 | 11. Cognito Frontend Integration | 0/TBD | Defining | - |
 | 12. Secure Lambda Fetch Wrapper | 4/4 | Complete   | 2026-05-12 |
-| 13. Recommendation Lambda Integration | 2/4 | In Progress|  |
-| 14. Preferences Lambda Integration | 0/TBD | Not started | - |
+| 13. Recommendation Lambda Integration | 4/4 | Complete | 2026-05-15 |
+| 14. Preferences Lambda Integration | 3/3 | Complete (smoke deferred) | 2026-05-14 |
 | 15. History Lambda Integration | 0/TBD | Not started | - |
 | 16. Watch-Later Lambda Integration | 0/TBD | Not started | - |
 | 17. Onboarding Guide + E2E Cold-Run | 0/TBD | Not started | - |
