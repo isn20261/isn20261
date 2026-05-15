@@ -342,11 +342,19 @@ Plans:
   2. `git grep -n 'mock' frontend/web/lib/api/recommend*` and `git grep -nE 'lib/api/recommend' frontend/web/app frontend/web/components` show all imports route through the wrapper-backed function only; no fallback mock dataset remains in the recommendation code path.
   3. Cutting the network (devtools offline) renders the wrapper's error-class-aware error UX on the recommendation screen — not a blank page or unhandled exception.
   4. A response with no recommendation (empty or null payload) renders the screen's empty state per the Phase 7 design — not a crash and not a loading spinner.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 13-01-type-narrowing-and-adapter-PLAN.md — Narrow recommend.real.ts to a Phase-13-specific `RecommendationResponse` / `RecommendedMovie` type; introduce kebab→camel adapter at the lib boundary; getRecommendationReal() returns `Result<RecommendedMovie | null, ApiError>` (INTG-RECO-01)
+- [ ] 13-02-screen-swap-and-states-PLAN.md — Swap `/recommendation` page from mock-backed `getRecommendation()`/`getSimilar()` to `getRecommendationReal()`; wire useApiErrorUx; render loading/ready/empty/error branches; hide Similar Films rail; conditionally omit Phase-7-only fields (INTG-RECO-01, INTG-RECO-02)
+- [ ] 13-03-mock-deletion-PLAN.md — Delete MOVIES dataset + getRecommendation + getSimilar + PICK_LATENCY_MS from lib/api/recommend.ts; keep Movie/Service types, RATINGS/STREAMING_SERVICES/MOODS constants, posterUrl/backdropUrl helpers; rewrite module header (zero "mock" references) (INTG-RECO-02)
+- [ ] 13-04-verification-PLAN.md — End-of-phase verification gate: automated grep gates (Block A), build/lint/tsc (Block B), code-inspection (Block C), manual live-AWS smoke 6 scenarios (Block D), closure summary (Block E)
 
 **Notes / risks:**
-- The implemented `recommend` Lambda response shape may diverge from `Modelagem.md`; Phase 7 mocked the implementation-side shape, so the swap should be a one-provider replacement — verify field-by-field in the plan.
-- If `recommend` Lambda is in the "~8 of 11 not wired" set per `CONCERNS.md`, surface that early in plan-phase; it may force a narrow read-only backend exception (flagged, not silent).
+- The live `/api/v1/recommend` Lambda shape (verified 2026-05-14 against `dev-test-combined`) returns ONLY `title` / `genre` / `streaming-services` — 10 Phase-7 fields (year, runtime, rating, match, director, cast, synopsis, mood, posterSeed, backdropSeed) are NOT returned. Phase 13 chose Option C — graceful degradation now, backend enrichment deferred to issue #70 (OMDb + Streaming Availability API).
+- The kebab-case wire key `streaming-services` is converted to camelCase `streamingServices` at the adapter boundary inside `recommend.real.ts` — that file is the SOLE place in `frontend/web/` that touches the kebab form.
+- The Similar Films rail is hidden this phase (no `/similar` endpoint exists). JSX comment marker preserves the layout slot for re-introduction.
+- Backend remains read-only — no edits to `functions/recommend/recommend.py` or `__main__.py` in this phase chain (CORS was already added separately in commit 8f06653).
+- `/smoke` page (Phase 12 manual harness) stays through Phase 16; Phase 17 owns its deletion.
 
 #### Phase 14: Preferences Lambda Integration
 **Goal**: The preferences screen reads from and writes to the real `/preferences` Lambda through the Phase 12 wrapper, with explicit loading, error and empty states and a documented update strategy (optimistic vs conservative).
@@ -440,7 +448,7 @@ Phases 13–16 are sequenced (not concurrent) because branches stack and PRs lan
 |-------|----------------|--------|-----------|
 | 11. Cognito Frontend Integration | 0/TBD | Defining | - |
 | 12. Secure Lambda Fetch Wrapper | 4/4 | Complete   | 2026-05-12 |
-| 13. Recommendation Lambda Integration | 0/TBD | Not started | - |
+| 13. Recommendation Lambda Integration | 0/4 | Defining | - |
 | 14. Preferences Lambda Integration | 0/TBD | Not started | - |
 | 15. History Lambda Integration | 0/TBD | Not started | - |
 | 16. Watch-Later Lambda Integration | 0/TBD | Not started | - |
