@@ -5,11 +5,14 @@ import os
 import mimetypes
 
 # --- 1. Configurações do Ambiente (12-Factor) ---
+
 config = pulumi.Config()
 env = config.require("environment")
 is_prod = env == "prod"
 domain_name = config.get("domainName") if is_prod else None
+
 log_retention_days = 7
+
 api_default_route_throttling_rate_limit = config.get_int(
     "apiDefaultRouteThrottlingRateLimit"
 )
@@ -22,7 +25,12 @@ api_default_route_throttling_burst_limit = config.get_int(
 if api_default_route_throttling_burst_limit is None:
     api_default_route_throttling_burst_limit = 500
 
+ses_from_email = config.require("sesFromEmail") if is_prod else config.get("sesFromEmail")
+ses_from_name = config.get("sesFromName") or "App"
+ses_reply_to_email = config.get("sesReplyToEmail") or ses_from_email
+
 # --- 2. DynamoDB Tables ---
+
 email_to_sub_table = aws.dynamodb.Table(
     f"email-to-sub-table-{env}",
     name=f"EmailToSub_{env}",
@@ -38,7 +46,6 @@ users_table = aws.dynamodb.Table(
     hash_key="sub",
     attributes=[aws.dynamodb.TableAttributeArgs(name="sub", type="S")],
 )
-
 
 historico_table = aws.dynamodb.Table(
     f"historico-table-{env}",
@@ -79,6 +86,7 @@ for table_name, table in dynamodb_tables.items():
     )
 
 # --- 3. IAM Role para os Lambdas ---
+
 lambda_role = aws.iam.Role(
     f"lambda-role-{env}",
     assume_role_policy=json.dumps(
@@ -144,8 +152,7 @@ aws.iam.RolePolicy(
 )
 
 # --- 4. Lambda Layer compartilhada ---
-# Lambda Layers extract to /opt/, but Python only adds /opt/python/ to sys.path.
-# AssetArchive places files at explicit paths so `from shared.X import Y` works.
+
 shared_layer = aws.lambda_.LayerVersion(
     "shared",
     layer_name="shared",
@@ -166,8 +173,7 @@ shared_layer = aws.lambda_.LayerVersion(
 )
 
 # --- 5. Lambda post_confirm (Cognito PostConfirmation trigger) ---
-# Criado antes do User Pool porque o pool referencia o ARN dele em lambda_config.
-# Usa um env_vars enxuto (sem USER_POOL_ID/CLIENT_ID) — não valida JWTs.
+
 post_confirm_env_vars = {
     "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
     "USERS_TABLE": users_table.name,
@@ -190,7 +196,138 @@ aws.cloudwatch.LogGroup(
     retention_in_days=log_retention_days,
 )
 
+# --- 5a. SES Domain Identity ---
+
+ses_domain_identity = None
+if is_prod and domain_name:
+    ses_domain_identity = aws.ses.DomainIdentity(
+        f"ses-domain-{env}",
+        domain=domain_name,
+    )
+
+# --- 5b. SES IAM Configuration ---
+
+region_obj = aws.get_region()
+account_id = aws.get_caller_identity().account_id
+
+ses_identity_arn = None
+if ses_domain_identity:
+    ses_identity_arn = pulumi.Output.all(
+        region_obj.region, account_id, ses_domain_identity.domain
+    ).apply(lambda args: f"arn:aws:ses:{args[0]}:{args[1]}:identity/{args[2]}")
+else:
+    ses_identity_arn = pulumi.Output.concat(
+        "arn:aws:ses:", region_obj.region, ":123456789012:identity/", ses_from_email
+    )
+
+cognito_ses_policy = aws.iam.Policy(
+    f"cognito-ses-policy-{env}",
+    name=f"CognitoSESPolicy-{env}",
+    description="Permite que o Cognito envie e-mails via SES",
+    policy=ses_identity_arn.apply(
+        lambda arn: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ses:SendEmail",
+                            "ses:SendRawEmail",
+                        ],
+                        # Restringe ao remetente verificado; evita uso
+                        # acidental de outras identidades SES da conta.
+                        "Resource": arn,
+                    }
+                ],
+            }
+        )
+    ),
+)
+
+cognito_ses_role = aws.iam.Role(
+    f"cognito-ses-role-{env}",
+    name=f"CognitoSESRole-{env}",
+    description="Role usada pelo Cognito para enviar e-mails via SES",
+    assume_role_policy=json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "cognito-idp.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    ),
+)
+
+aws.iam.RolePolicyAttachment(
+    f"cognito-ses-role-attachment-{env}",
+    role=cognito_ses_role.name,
+    policy_arn=cognito_ses_policy.arn,
+)
+
+# --- 5a. Route53 Zone (necessária para SES DNS records) ---
+
+zone = None
+if is_prod and domain_name:
+    zone = aws.route53.get_zone(name=domain_name)
+
+# --- 5b. SES Domain Configuration (registros DNS) ---
+
+ses_dkim = None
+if is_prod and domain_name and zone:
+    # Verificação de domínio (TXT record)
+    aws.route53.Record(
+        f"ses-verification-record-{env}",
+        zone_id=zone.zone_id,
+        name=pulumi.Output.concat("_amazonses.", domain_name),
+        type="TXT",
+        ttl=300,
+        records=[ses_domain_identity.verification_token],
+    )
+
+    # Aguarda a criação do domain identity
+    aws.ses.DomainIdentityVerification(
+        f"ses-domain-verification-{env}",
+        domain=ses_domain_identity.id,
+        opts=pulumi.ResourceOptions(depends_on=[ses_domain_identity]),
+    )
+
+    # DKIM records
+    ses_dkim = aws.ses.DomainDkim(
+        f"ses-dkim-{env}",
+        domain=ses_domain_identity.domain,
+    )
+
+    for i in range(3):
+        token = ses_dkim.dkim_tokens[i]
+        aws.route53.Record(
+            f"ses-dkim-record-{i}-{env}",
+            zone_id=zone.zone_id,
+            name=pulumi.Output.concat(token, f"._domainkey.{domain_name}"),
+            type="CNAME",
+            ttl=300,
+            records=[pulumi.Output.concat(token, ".dkim.amazonses.com")],
+        )
+
+    # SPF record
+    aws.route53.Record(
+        f"ses-spf-record-{env}",
+        zone_id=zone.zone_id,
+        name=domain_name,
+        type="TXT",
+        ttl=300,
+        records=["v=spf1 include:amazonses.com ~all"],
+    )
+
+email_sending_account = "DEVELOPER"
+from_email_address_formatted = f"{ses_from_name} <{ses_from_email}>"
+
 # --- 6. Amazon Cognito ---
+
 user_pool = aws.cognito.UserPool(
     f"app-user-pool-{env}",
     name=f"app-users-{env}",
@@ -210,6 +347,32 @@ user_pool = aws.cognito.UserPool(
     lambda_config=aws.cognito.UserPoolLambdaConfigArgs(
         post_confirmation=post_confirm_lambda.arn,
     ),
+    email_configuration=aws.cognito.UserPoolEmailConfigurationArgs(
+        email_sending_account=email_sending_account,
+        source_arn=ses_identity_arn,
+        from_email_address=from_email_address_formatted,
+        reply_to_email_address=ses_reply_to_email,
+    ),
+    verification_message_template=aws.cognito.UserPoolVerificationMessageTemplateArgs(
+        default_email_option="CONFIRM_WITH_CODE",
+        email_subject="Confirme seu cadastro",
+        email_message=(
+            "Olá! Seu código de confirmação é: <strong>{####}</strong>. "
+            "Ele expira em 24 horas. Não compartilhe este código com ninguém."
+        ),
+    ),
+    account_recovery_setting=aws.cognito.UserPoolAccountRecoverySettingArgs(
+        recovery_mechanisms=[
+            aws.cognito.UserPoolAccountRecoverySettingRecoveryMechanismArgs(
+                name="verified_email",
+                priority=1,
+            ),
+            aws.cognito.UserPoolAccountRecoverySettingRecoveryMechanismArgs(
+                name="verified_phone_number",
+                priority=2,
+            ),
+        ]
+    ),
 )
 
 aws.lambda_.Permission(
@@ -228,15 +391,15 @@ user_pool_client = aws.cognito.UserPoolClient(
 )
 
 # --- 7. AWS Lambdas (protegidos por JWT) ---
+
 env_vars = {
     "EMAIL_TO_SUB_TABLE": email_to_sub_table.name,
     "USERS_TABLE": users_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
+    "DISABLE_AUTH": "0",
 }
 
-# Explicit opt-in for dev auth bypass.
-# Default is secure-by-default (disabled) for all stacks.
 disable_auth = config.get_bool("disableAuth")
 if disable_auth:
     if is_prod:
@@ -271,6 +434,7 @@ recommend_lambda = create_lambda("recommend", "recommend.handler")
 watch_later_lambda = create_lambda("watch_later", "watch_later.handler")
 
 # --- 6. API Gateway v2 (HTTP API) ---
+
 api = aws.apigatewayv2.Api(f"http-api-{env}", protocol_type="HTTP")
 
 api_access_log_group = aws.cloudwatch.LogGroup(
@@ -280,6 +444,7 @@ api_access_log_group = aws.cloudwatch.LogGroup(
 )
 
 region = aws.get_region()
+
 issuer_url = pulumi.Output.concat(
     "https://cognito-idp.", region.region, ".amazonaws.com/", user_pool.id
 )
@@ -297,17 +462,15 @@ authorizer = aws.apigatewayv2.Authorizer(
 
 
 def create_route(path, method, lambda_func, auth_id=None):
-    # Remove as barras para criar nomes seguros no Pulumi
     safe_path = path.replace("/", "")
 
-    # Adicionamos o 'method' no nome do recurso para evitar conflitos no Pulumi
     integration = aws.apigatewayv2.Integration(
         f"integration-{method}-{safe_path}-{env}",
         api_id=api.id,
         integration_type="AWS_PROXY",
-        integration_method="POST",  # ATENÇÃO: a integração com Lambda proxy no AWS é sempre POST, não mude isso.
+        integration_method="POST",
         integration_uri=lambda_func.invoke_arn,
-        payload_format_version="2.0",  # default is 1.0; v2.0 puts JWT claims at event.requestContext.authorizer.jwt.claims
+        payload_format_version="2.0",
     )
 
     aws.lambda_.Permission(
@@ -320,9 +483,10 @@ def create_route(path, method, lambda_func, auth_id=None):
 
     route_args = {
         "api_id": api.id,
-        "route_key": f"{method} {path}",  # Define se a rota responderá a GET ou POST
+        "route_key": f"{method} {path}",
         "target": pulumi.Output.concat("integrations/", integration.id),
     }
+
     if auth_id:
         route_args["authorization_type"] = "JWT"
         route_args["authorizer_id"] = auth_id
@@ -330,7 +494,6 @@ def create_route(path, method, lambda_func, auth_id=None):
     aws.apigatewayv2.Route(f"route-{method}-{safe_path}-{env}", **route_args)
 
 
-# Rotas com o prefixo /api/v1/
 auth = authorizer.id if is_prod else None
 
 create_route("/api/v1/history", "GET", history_lambda, auth_id=auth)
@@ -339,7 +502,6 @@ create_route("/api/v1/preferences", "POST", preferences_lambda, auth_id=auth)
 create_route("/api/v1/recommend", "GET", recommend_lambda, auth_id=auth)
 create_route("/api/v1/watch-later", "GET", watch_later_lambda, auth_id=auth)
 create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=auth)
-
 
 stage = aws.apigatewayv2.Stage(
     f"api-stage-{env}",
@@ -370,21 +532,19 @@ stage = aws.apigatewayv2.Stage(
 )
 
 # --- 7. Frontend: S3, Automação de Upload e CloudFront ---
+
 bucket = aws.s3.Bucket(f"frontend-bucket-{env}")
 
-frontend_dir = "www"
+frontend_dir = "frontend"
 for root, dirs, files in os.walk(frontend_dir, followlinks=True):
     for file in files:
         file_path = os.path.join(root, file)
         relative_path = os.path.relpath(file_path, frontend_dir)
         content_type, _ = mimetypes.guess_type(file_path)
-
         aws.s3.BucketObject(
             f"static-file-{relative_path}-{env}",
             bucket=bucket.id,
-            key=relative_path.replace(
-                "\\", "/"
-            ),  # Garante compatibilidade caso execute no Windows
+            key=relative_path.replace("\\", "/"),
             source=pulumi.FileAsset(file_path),
             content_type=content_type or "application/octet-stream",
         )
@@ -397,7 +557,6 @@ oac = aws.cloudfront.OriginAccessControl(
     signing_protocol="sigv4",
 )
 
-# Configuração condicional de domínio e certificado (Route53)
 aliases = []
 viewer_cert = aws.cloudfront.DistributionViewerCertificateArgs(
     cloudfront_default_certificate=True
@@ -405,18 +564,20 @@ viewer_cert = aws.cloudfront.DistributionViewerCertificateArgs(
 
 if is_prod and domain_name:
     provider_us_east_1 = aws.Provider("us-east-1", region="us-east-1")
+
     cert = aws.acm.Certificate(
         "cert",
         domain_name=domain_name,
         validation_method="DNS",
         opts=pulumi.ResourceOptions(provider=provider_us_east_1),
     )
-    zone = aws.route53.get_zone(name=domain_name)
+
+    zone_cloudfront = aws.route53.get_zone(name=domain_name)
 
     validation_record = aws.route53.Record(
         "cert-validation",
         name=cert.domain_validation_options[0].resource_record_name,
-        zone_id=zone.zone_id,
+        zone_id=zone_cloudfront.zone_id,
         type=cert.domain_validation_options[0].resource_record_type,
         records=[cert.domain_validation_options[0].resource_record_value],
         ttl=60,
@@ -428,6 +589,7 @@ if is_prod and domain_name:
         validation_record_fqdns=[validation_record.fqdn],
         opts=pulumi.ResourceOptions(provider=provider_us_east_1),
     )
+
     aliases = [domain_name]
     viewer_cert = aws.cloudfront.DistributionViewerCertificateArgs(
         acm_certificate_arn=cert_validation.certificate_arn,
@@ -438,9 +600,9 @@ if is_prod and domain_name:
 api_hostname = api.api_endpoint.apply(
     lambda endpoint: endpoint.replace("https://", "").split("/")[0]
 )
+
 # --- 1. Políticas Customizadas do CloudFront ---
 
-# Política de Cache para o Frontend (Permite cache longo do S3)
 s3_cache_policy = aws.cloudfront.CachePolicy(
     f"s3-cache-{env}",
     name=f"S3-Cache-Policy-{env}",
@@ -460,7 +622,6 @@ s3_cache_policy = aws.cloudfront.CachePolicy(
     ),
 )
 
-# Política de Cache para a API (Desabilita o cache totalmente, vital para POST)
 api_cache_policy = aws.cloudfront.CachePolicy(
     f"api-cache-{env}",
     name=f"API-Cache-Policy-{env}",
@@ -480,7 +641,6 @@ api_cache_policy = aws.cloudfront.CachePolicy(
     ),
 )
 
-# Política de Request para a API (Envia Authorization e Query Strings, mas bloqueia o Host)
 api_origin_request_policy = aws.cloudfront.OriginRequestPolicy(
     f"api-req-policy-{env}",
     name=f"API-Origin-Request-Policy-{env}",
@@ -495,7 +655,7 @@ api_origin_request_policy = aws.cloudfront.OriginRequestPolicy(
                 "Origin",
                 "Referer",
                 "Accept",
-            ]  # 'Host' omitido intencionalmente
+            ]
         ),
     ),
     query_strings_config=aws.cloudfront.OriginRequestPolicyQueryStringsConfigArgs(
@@ -529,15 +689,13 @@ distribution = aws.cloudfront.Distribution(
             ),
         ),
     ],
-    # --- Frontend (S3) via Política Customizada ---
     default_cache_behavior=aws.cloudfront.DistributionDefaultCacheBehaviorArgs(
         target_origin_id="S3-frontend",
         viewer_protocol_policy="redirect-to-https",
         allowed_methods=["GET", "HEAD"],
         cached_methods=["GET", "HEAD"],
-        cache_policy_id=s3_cache_policy.id,  # Referência direta à policy que acabamos de criar
+        cache_policy_id=s3_cache_policy.id,
     ),
-    # --- Backend (API Gateway) via Políticas Customizadas ---
     ordered_cache_behaviors=[
         aws.cloudfront.DistributionOrderedCacheBehaviorArgs(
             path_pattern="/api/v1/*",
@@ -553,8 +711,8 @@ distribution = aws.cloudfront.Distribution(
                 "DELETE",
             ],
             cached_methods=["GET", "HEAD"],
-            cache_policy_id=api_cache_policy.id,  # Referência à policy sem cache
-            origin_request_policy_id=api_origin_request_policy.id,  # Referência à policy de requisição
+            cache_policy_id=api_cache_policy.id,
+            origin_request_policy_id=api_origin_request_policy.id,
         )
     ],
     viewer_certificate=viewer_cert,
@@ -589,7 +747,7 @@ bucket_policy = aws.s3.BucketPolicy(
 if is_prod and domain_name:
     aws.route53.Record(
         "frontend-alias",
-        zone_id=zone.zone_id,
+        zone_id=zone_cloudfront.zone_id,
         name=domain_name,
         type="A",
         aliases=[
@@ -604,7 +762,6 @@ if is_prod and domain_name:
 # --- 8. Outputs ---
 
 
-# Função para formatar a URL final dependendo do ambiente
 def format_url(args):
     dist_domain, prod_mode, custom_domain = args
     if prod_mode and custom_domain:
@@ -612,7 +769,6 @@ def format_url(args):
     return f"https://{dist_domain}"
 
 
-# Usamos Output.all para aguardar todos os valores serem resolvidos
 final_public_url = pulumi.Output.all(
     distribution.domain_name, is_prod, domain_name
 ).apply(format_url)
@@ -620,3 +776,23 @@ final_public_url = pulumi.Output.all(
 pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
+
+# ---------------------------------------------------------------------------
+# NOVO — Outputs relacionados ao SES
+# ---------------------------------------------------------------------------
+if is_prod and domain_name:
+    pulumi.export("ses_domain", ses_domain_identity.domain)
+    pulumi.export("ses_identity_arn", ses_identity_arn)
+    pulumi.export(
+        "ses_verification_note",
+        (
+            "Domínio SES verificado para " + domain_name + ". "
+            "Registros DNS (SPF, DKIM) foram adicionados ao Route53."
+        ),
+    )
+else:
+    pulumi.export("ses_from_email", ses_from_email)
+    pulumi.export(
+        "ses_note",
+        "Em desenvolvimento, use o modo DEVELOPER para testar SES com endereços pré-verificados.",
+    )

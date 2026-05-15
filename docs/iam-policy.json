@@ -36,25 +36,21 @@
       "Action": [
         "cloudfront:CreateDistribution",
         "cloudfront:Get*",
+        "cloudfront:List*",
         "cloudfront:GetDistributionConfig",
         "cloudfront:UpdateDistribution",
         "cloudfront:DeleteDistribution",
-        "cloudfront:ListDistributions",
         "cloudfront:CreateOriginAccessControl",
         "cloudfront:UpdateOriginAccessControl",
         "cloudfront:DeleteOriginAccessControl",
-        "cloudfront:ListOriginAccessControls",
         "cloudfront:CreateCachePolicy",
         "cloudfront:UpdateCachePolicy",
         "cloudfront:DeleteCachePolicy",
-        "cloudfront:ListCachePolicies",
         "cloudfront:CreateOriginRequestPolicy",
         "cloudfront:UpdateOriginRequestPolicy",
         "cloudfront:DeleteOriginRequestPolicy",
-        "cloudfront:ListOriginRequestPolicies",
         "cloudfront:TagResource",
-        "cloudfront:UntagResource",
-        "cloudfront:ListTagsForResource"
+        "cloudfront:UntagResource"
       ],
       "Resource": "*"
     },
@@ -104,7 +100,6 @@
       ],
       "Resource": "arn:aws:cognito-idp:sa-east-1:*:userpool/*"
     },
-
     {
       "Sid": "DynamoDBTableManagement",
       "Effect": "Allow",
@@ -122,7 +117,9 @@
         "dynamodb:UpdateContributorInsights",
         "dynamodb:DescribeContributorInsights"
       ],
-      "Resource": ["arn:aws:dynamodb:sa-east-1:*:table/*"]
+      "Resource": [
+        "arn:aws:dynamodb:sa-east-1:*:table/*"
+      ]
     },
     {
       "Sid": "IAMPassRole",
@@ -132,6 +129,27 @@
       "Condition": {
         "StringEquals": {
           "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "IAMPassRoleForCognitoSES",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/CognitoSESRole-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "cognito-idp.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/email.cognito-idp.amazonaws.com/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "email.cognito-idp.amazonaws.com"
         }
       }
     },
@@ -155,6 +173,42 @@
         "iam:CreateServiceLinkedRole"
       ],
       "Resource": "arn:aws:iam::*:role/lambda-role-*"
+    },
+    {
+      "Sid": "IAMCognitoSESRoleManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:UpdateRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:DeleteRolePolicy",
+        "iam:ListInstanceProfilesForRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/CognitoSESRole-*"
+    },
+    {
+      "Sid": "IAMPoliciesManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:GetPolicy",
+        "iam:getPolicyVersion",
+        "iam:ListPolicies",
+        "iam:ListPolicyVersions",
+        "iam:ListPolicyTags",
+        "iam:TagPolicy",
+        "iam:UntagPolicy"
+      ],
+      "Resource": "arn:aws:iam::*:policy/CognitoSESPolicy-*"
     },
     {
       "Effect": "Allow",
@@ -219,8 +273,28 @@
     {
       "Sid": "S3ObjectManagement",
       "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
       "Resource": "arn:aws:s3:::*"
+    },
+    {
+      "Sid": "SESIdentityManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ses:Get*",
+        "ses:VerifyDomainIdentity",
+        "ses:DeleteIdentity",
+        "ses:ListIdentities",
+        "ses:VerifyDomainDkim",
+        "ses:ListVerifiedEmailAddresses",
+        "ses:DescribeConfigurationSet",
+        "ses:ListConfigurationSets",
+        "ses:ListCustomVerificationEmailTemplates"
+      ],
+      "Resource": "*"
     }
   ]
 }
