@@ -126,8 +126,8 @@ Supersedes the v1 placeholders **INTG-02 / INTG-03 / INTG-04**.
 
 #### Recommendation (Phase 13)
 
-- [ ] **INTG-RECO-01**: Recommendation screen calls real `/recommend` Lambda; mock removed
-- [ ] **INTG-RECO-02**: Recommendation screen renders loading / error / empty states via the fetch wrapper
+- [x] **INTG-RECO-01**: Recommendation screen calls real `/recommend` Lambda; mock removed
+- [x] **INTG-RECO-02**: Recommendation screen renders loading / error / empty states via the fetch wrapper
 
 #### Preferences (Phase 14)
 
