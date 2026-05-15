@@ -12,7 +12,7 @@
 Phase 14 ships the **first read+write screen** integrated against the real backend. The preferences screen (currently a Phase 8 local-state mock) becomes the canonical exercise of the Phase 12 fetch wrapper for both GET and POST paths. It is also the phase that **locks the update-strategy convention** that Phase 16 (watch-later, also read+write) mirrors.
 
 **In scope this phase:**
-- New `frontend/web/lib/api/preferences.ts` with typed `getPreferences()` + `putPreferences()` consuming the Phase 12 wrapper. Returns `Promise<Result<T, ApiError>>`.
+- New `frontend/web/lib/api/preferences.ts` with typed `getPreferences()` + `savePreferences()` consuming the Phase 12 wrapper. Returns `Promise<Result<T, ApiError>>`.
 - Real `GET /api/v1/preferences` on screen mount; renders the response from the Lambda.
 - Real `POST /api/v1/preferences` on save (per the locked update strategy — see §"Open for planner").
 - Loading state on first render; error UX via `useApiErrorUx`; empty-state for brand-new accounts that have never POSTed preferences.
@@ -48,7 +48,7 @@ export async function getPreferences(): Promise<Result<Preferences, ApiError>> {
   return apiGet<Preferences>("/api/v1/preferences");
 }
 
-export async function putPreferences(
+export async function savePreferences(
   patch: Partial<Preferences>,
 ): Promise<Result<null, ApiError>> {
   return apiPost<null>("/api/v1/preferences", patch);
@@ -63,9 +63,9 @@ export async function putPreferences(
 
 **Implication for the React component:** access via `prefs["age-rating"]`, not `prefs.ageRating`. ESLint may flag this; if so, disable the rule narrowly with a comment.
 
-### Network method — POST (not PUT)
+### Network method — POST only
 
-**Locked:** The Lambda is wired as `POST /api/v1/preferences` (`__main__.py:340-341`), not PUT. Issue title says "GET + PUT" but issue body says "PUT ou POST, conforme contrato do Lambda". The contract is POST.
+**Locked:** The only write verb on this endpoint is `POST /api/v1/preferences` (`__main__.py:340-341`). The user clarified 2026-05-14 that the issue title's mention of "PUT" was a mistake — the backend contract is POST and no PUT route exists or will exist this milestone. The TypeScript function is named `savePreferences()` (semantic, not HTTP-shaped) to avoid future confusion.
 
 ### Naming alignment — UI variable names match the wire format
 
@@ -105,7 +105,7 @@ POST errors use the same hook so the UX policy is consistent. Validation errors 
 ## Resolved decisions (locked 2026-05-14 by user)
 
 ### 1. Update strategy → **Option A — per-toggle optimistic** (locked)
-Each chip click fires `putPreferences()` immediately. On `!ok`, the chip rolls back and `useApiErrorUx` toasts the error. Copy "Changes save automatically" stays. Dedup by an in-flight `Set<FieldKey>` (or `Map<FieldKey, AbortController>` if we want to cancel-on-supersede) — planner chooses the concrete implementation but the contract is "latest user action wins, earlier in-flight is dropped".
+Each chip click fires `savePreferences()` immediately. On `!ok`, the chip rolls back and `useApiErrorUx` toasts the error. Copy "Changes save automatically" stays. Dedup by an in-flight `Set<FieldKey>` (or `Map<FieldKey, AbortController>` if we want to cancel-on-supersede) — planner chooses the concrete implementation but the contract is "latest user action wins, earlier in-flight is dropped".
 
 **Mirrors to Phase 16 (watch-later):** add/remove ops are optimistic-per-action with rollback on failure.
 
@@ -128,7 +128,7 @@ Phase 8's current copy says "Changes save automatically" — implies optimistic-
 
 | Option | UX | Implementation | Failure mode |
 |---|---|---|---|
-| **A. Per-toggle optimistic** | Each chip click fires POST immediately; on error the chip's visual state rolls back and a toast fires. | `onClick` → `setState(next)` → `putPreferences({ field: next })`; on `!ok` → `setState(prev)` + `toast`. | Chatty (1 request per toggle); two rapid toggles can race. Mitigation: keep an in-flight request map per field; drop in-flight on supersede. |
+| **A. Per-toggle optimistic** | Each chip click fires POST immediately; on error the chip's visual state rolls back and a toast fires. | `onClick` → `setState(next)` → `savePreferences({ field: next })`; on `!ok` → `setState(prev)` + `toast`. | Chatty (1 request per toggle); two rapid toggles can race. Mitigation: keep an in-flight request map per field; drop in-flight on supersede. |
 | **B. Debounced optimistic** | UI updates immediately; debounce 500ms, then POST the latest full state. | `useEffect` watches state; debounce-then-POST. Rollback is tricky if multiple fields changed in the debounce window — usually fine, error message just nudges user to retry. | Bounded chattiness; rollback semantics are fuzzy (which field caused the 400?). |
 | **C. Conservative (Save button)** | Add explicit "Save" + "Discard" footer to the page; chips toggle local state only until clicked. Save disabled while in-flight. | Local state until "Save"; clear post-save success state. | Simplest; clearest error attribution; **but** breaks the "Changes save automatically" copy and the design-reference doesn't show a save button. |
 
@@ -226,7 +226,7 @@ Need a quick check during plan-phase: open `frontend/_design-reference/` for any
 <assumptions>
 ## Assumptions to Verify in Planning
 
-- **`/api/v1/preferences` POST returns 200 + empty body on success.** From `functions/preferences/preferences.py:93` — `return ok()`. Check `shared/response.py:ok()` returns `{ statusCode: 200, body: "" }` (or similar). If body is `{}` or `{ok: true}`, narrow the return type in `putPreferences()`.
+- **`/api/v1/preferences` POST returns 200 + empty body on success.** From `functions/preferences/preferences.py:93` — `return ok()`. Check `shared/response.py:ok()` returns `{ statusCode: 200, body: "" }` (or similar). If body is `{}` or `{ok: true}`, narrow the return type in `savePreferences()`.
 - **The Lambda's `_db_to_api` returns the SAME shape whether the user has preferences or not.** Yes per test `test_get_returns_empty_prefs_for_new_user`.
 - **POST 401 with missing user row.** The handler returns 401 if `get_user(sub)` returns None on GET, but POST does an `UpdateExpression` directly via `users().update_item()` — what happens if the user row is missing? Worth a one-off Moto test review during the plan. If POST creates the row implicitly (DynamoDB's UpdateExpression with `SET` creates the item if not exists), great. If it fails silently, surface as a backend concern.
 - **`shared/response.py:ok()` does NOT set `Content-Type: application/json` for empty bodies.** The wrapper's `response.text()` → `JSON.parse(text)` path returns `null as T` for empty strings. Fine for `Result<null, ApiError>`.

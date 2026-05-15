@@ -54,7 +54,7 @@ export async function getPreferences(): Promise<Result<Preferences, ApiError>> {
   return apiGet<Preferences>("/api/v1/preferences");
 }
 
-export async function putPreferences(
+export async function savePreferences(
   patch: Partial<Preferences>,
 ): Promise<Result<null, ApiError>> {
   return apiPost<null>("/api/v1/preferences", patch);
@@ -150,7 +150,7 @@ async function commit<K extends keyof Preferences>(
   // Dedup: skip if a request for this field is already mid-flight
   if (inFlight.current.has(field)) return;
   inFlight.current.add(field);
-  const res = await putPreferences({ [field]: next } as Partial<Preferences>);
+  const res = await savePreferences({ [field]: next } as Partial<Preferences>);
   inFlight.current.delete(field);
   if (!res.ok) {
     setPrefs(prevSnapshot); // rollback
