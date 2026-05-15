@@ -255,7 +255,28 @@ recommend_lambda = create_lambda("recommend", "recommend.handler")
 watch_later_lambda = create_lambda("watch_later", "watch_later.handler")
 
 # --- 6. API Gateway v2 (HTTP API) ---
-api = aws.apigatewayv2.Api(f"http-api-{env}", protocol_type="HTTP")
+# CORS: in prod the frontend is served same-origin via CloudFront (/api/v1/* path
+# behavior at __main__.py:521), so preflight never fires. In dev the frontend
+# runs at http://localhost:3000 and hits the API Gateway origin directly, which
+# *does* trigger preflight because the wrapper sends `Authorization: Bearer …`
+# (non-simple header). Without this config, OPTIONS /api/v1/* returns 404 and
+# every authenticated call from localhost fails. Origins are stack-gated so dev
+# keys can't be used from prod and vice versa.
+cors_allowed_origins = (
+    [f"https://{domain_name}"] if is_prod and domain_name else ["http://localhost:3000"]
+)
+
+api = aws.apigatewayv2.Api(
+    f"http-api-{env}",
+    protocol_type="HTTP",
+    cors_configuration=aws.apigatewayv2.ApiCorsConfigurationArgs(
+        allow_origins=cors_allowed_origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        allow_credentials=False,  # Bearer tokens, not cookies
+        max_age=300,
+    ),
+)
 
 api_access_log_group = aws.cloudwatch.LogGroup(
     f"api-access-log-group-{env}",
