@@ -63,6 +63,7 @@ export default function SmokePage() {
   }
 
   function fireSynthetic(kind: ApiError["kind"]) {
+    // eslint-disable-next-line react-hooks/purity -- event-handler, not render-time; harness is scheduled for deletion in Phase 17 (STATE.md "Pending Todos")
     const stamp = Date.now();
     switch (kind) {
       case "network":
