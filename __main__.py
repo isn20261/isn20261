@@ -25,7 +25,7 @@ api_default_route_throttling_burst_limit = config.get_int(
 if api_default_route_throttling_burst_limit is None:
     api_default_route_throttling_burst_limit = 500
 
-ses_from_email = config.require("sesFromEmail")
+ses_from_email = config.require("sesFromEmail") if is_prod else config.get("sesFromEmail")
 ses_from_name = config.get("sesFromName") or "App"
 ses_reply_to_email = config.get("sesReplyToEmail") or ses_from_email
 
