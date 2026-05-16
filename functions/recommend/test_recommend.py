@@ -7,6 +7,19 @@ from conftest import setup_dynamodb_tables
 from shared.db import users, historico, logs
 from recommend import handler
 
+_OMDB_MOCK_MOVIE = {
+    "movieId": "tt9999999",
+    "title": "Test Movie",
+    "year": 2020,
+    "rated": "PG",
+    "genre": "comedy",
+    "director": "Test Director",
+    "runtime": 120,
+    "poster": "https://example.com/poster.jpg",
+    "imdbRating": 7.5,
+    "streaming-services": [],
+}
+
 
 @mock_aws
 def test_recommend_anonymous(monkeypatch):
@@ -16,8 +29,15 @@ def test_recommend_anonymous(monkeypatch):
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert "title" in body
+    assert "year" in body
+    assert "rated" in body
     assert "genre" in body
-    assert "streaming-services" in body
+    assert "director" in body
+    assert "runtime" in body
+    assert "poster" in body
+    assert "imdbRating" in body
+    assert body["streaming-services"] == []
+    assert "movieId" not in body
 
 
 @mock_aws
@@ -46,6 +66,7 @@ def test_recommend_authenticated_no_prefs(monkeypatch):
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert "title" in body
+    assert "year" in body
 
 
 @mock_aws
@@ -104,3 +125,72 @@ def test_recommend_writes_audit_log(monkeypatch):
 
     log_items = logs().query(KeyConditionExpression=Key("sub").eq("user-4"))["Items"]
     assert any(item["action"] == "RECOMMEND" for item in log_items)
+
+
+# --- OMDB integration tests ---
+
+
+@mock_aws
+def test_recommend_omdb_fetch_success(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setattr("recommend.recommend.OMDB_API_KEY", "test-key")
+    monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-omdb")
+    monkeypatch.setattr(
+        "recommend.recommend._omdb_random_movie",
+        lambda: _OMDB_MOCK_MOVIE,
+    )
+    users().put_item(Item={"sub": "user-omdb", "email": "omdb@test.com"})
+
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["title"] == "Test Movie"
+    assert body["year"] == 2020
+    assert body["rated"] == "PG"
+    assert body["genre"] == "comedy"
+    assert body["director"] == "Test Director"
+    assert body["runtime"] == 120
+    assert body["poster"] == "https://example.com/poster.jpg"
+    assert body["imdbRating"] == 7.5
+    assert body["streaming-services"] == []
+    assert "movieId" not in body
+
+
+@mock_aws
+def test_recommend_omdb_exhausted_retries_falls_back(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setattr("recommend.recommend.OMDB_API_KEY", "test-key")
+    monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-fallback")
+    monkeypatch.setattr(
+        "recommend.recommend._omdb_random_movie",
+        lambda: None,
+    )
+    users().put_item(Item={"sub": "user-fallback", "email": "fallback@test.com"})
+
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert "title" in body
+    assert "year" in body
+    assert "rated" in body
+    assert "genre" in body
+    assert "director" in body
+    assert "runtime" in body
+    assert body["streaming-services"] == []
+
+
+@mock_aws
+def test_recommend_omdb_anonymous(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setattr("recommend.recommend.OMDB_API_KEY", "test-key")
+    monkeypatch.setattr("recommend.recommend.get_sub", lambda event: None)
+    monkeypatch.setattr(
+        "recommend.recommend._omdb_random_movie",
+        lambda: _OMDB_MOCK_MOVIE,
+    )
+
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["title"] == "Test Movie"
+    assert body["genre"] == "comedy"

@@ -404,6 +404,7 @@ env_vars = {
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
     "DISABLE_AUTH": "0",
+    "OMDB_API_KEY": config.get("omdbApiKey") or "",
 }
 
 disable_auth = config.get_bool("disableAuth")
