@@ -368,6 +368,12 @@ stage = aws.apigatewayv2.Stage(
     ),
     default_route_settings=aws.apigatewayv2.StageDefaultRouteSettingsArgs(
         detailed_metrics_enabled=True,
+        # API Gateway v2 HTTP APIs default to throttle limits of 0 (not unlimited)
+        # which returns 429 on every request. PR #126 (issue #125) set sensible
+        # defaults — porting here since backend-integration branched before that
+        # merge.
+        throttling_rate_limit=1000,
+        throttling_burst_limit=500,
     ),
 )
 
