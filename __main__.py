@@ -151,6 +151,7 @@ shared_layer = aws.lambda_.LayerVersion(
         "python/shared/__init__.py": pulumi.FileAsset("./functions/shared/__init__.py"),
         "python/shared/auth.py":     pulumi.FileAsset("./functions/shared/auth.py"),
         "python/shared/db.py":       pulumi.FileAsset("./functions/shared/db.py"),
+        "python/shared/movies.py":   pulumi.FileAsset("./functions/shared/movies.py"),
         "python/shared/response.py": pulumi.FileAsset("./functions/shared/response.py"),
     }),
     compatible_runtimes=["python3.13"],
