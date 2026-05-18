@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backend Integration
-status: verifying
-stopped_at: Phase 12 context gathered
-last_updated: "2026-05-15T01:06:00.237Z"
-last_activity: 2026-05-15
+status: "Phase 13 (Recommendation, #132) merged into backend-integration on 2026-05-15. Phase 14 (Preferences Lambda Integration) complete on feature/issue-133-preferences-integration; Block A static gates all green; live-AWS smoke deferred (mirror of Phase 12). Phase 15 (History) next."
+stopped_at: Phase 14 complete (live-AWS smoke deferred); Phase 15 next
+last_updated: "2026-05-15T00:00:00.000Z"
+last_activity: 2026-05-15 — Phase 13 merged + Phase 14 closure on its own branch
 progress:
-  total_phases: 7
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 6
-  percent: 75
+  total_phases: 17
+  completed_phases: 7
+  total_plans: 31
+  completed_plans: 28
+  percent: 41
 ---
 
 # Project State
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 See: .planning/ROADMAP.md (v2.0 section added 2026-05-12)
 
 **Core value:** v2.0 — The same polished v1.0 UI consuming the real backend: Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from `ONBOARDING.md` and run the app against it.
-**Current focus:** Phase 12 — Secure Lambda Fetch Wrapper (COMPLETE; live-AWS smoke deferred). Next: open PR `feature/issue-131-fetch-wrapper` → `backend-integration`, then plan Phase 13 (Recommendation Lambda Integration).
+**Current focus:** Phase 14 — Preferences Lambda Integration (COMPLETE; live-AWS smoke deferred). Next: open PR `feature/issue-133-preferences-integration` → `backend-integration`, then run Phase 15 (History) GSD cycle. Phase 13 (#132 Recommendation) is being handled on a parallel teammate branch.
 
 ## Current Position
 
-Phase: 12 (Secure Lambda Fetch Wrapper) — COMPLETE (4/4 plans, 2026-05-12)
-Plan: 4 of 4 (12-04 verification gate)
-Status: Phase complete — ready for verification
-Last activity: 2026-05-15
+Phase: 14 (Preferences Lambda Integration) — COMPLETE (3/3 plans, 2026-05-14) on top of Phase 13 (merged 2026-05-15)
+Plan: 3 of 3 (14-03 verification gate + transition)
+Status: Phase 14 closure SUMMARY written; automated Block A gates all green (tsc/lint/build/mock-grep/fetch-grep/DSGN-06); Block B layout-only pass; Block C live-AWS smoke SKIPPED-AWS-DEFERRED with run-when-home checklist in 14-03-SUMMARY.md
+Last activity: 2026-05-15 — rebased Phase 14 branch onto post-Phase-13 backend-integration
 
 ## Performance Metrics
 
@@ -127,12 +127,26 @@ Recent decisions affecting current work:
 - Terms checkbox is the ONLY raw <input> allowed in /register (UI-SPEC hook #5 explicitly permits checkbox raw inputs); email/password/confirm all go through <Field>
 - text-accent on bottom-card link is the Phase 4 supplement entry #8 to the accent reserved-for list (the other 7 entries inherited from Phase 3 + Plan 04-01/02)
 
+### Decisions (Phase 14 — 14-01 / 14-02 / 14-03)
+
+- D-01 Update strategy: **per-toggle optimistic with replay queue** (user-locked 2026-05-14). Each chip click fires savePreferences immediately; in-flight per-field dedup via useRef<Set>; concurrent supersedes queued in useRef<Map> and replayed after the in-flight POST resolves. On failure: rollback to snapshot + useApiErrorUx toast. **Phase 16 (watch-later) MUST mirror this** unless its plan justifies divergence (ROADMAP §Phase 16 Notes).
+- D-02 `humor` shape: **single-select UI**. The wire's `humor: string | null` is matched faithfully by the chip toggle returning `string | null`. The Phase 8 multi-select mood UX was a wire-divergence and is corrected here.
+- D-03 New `<SectionCard title="Favorite genres">` added above Streaming services. Chips driven by `GENRES` const newly exported from `lib/api/recommend.ts`.
+- D-04 The TypeScript write function is named `savePreferences()` (semantic verb, not HTTP-shaped). The endpoint is POST-only — no PUT route exists or will exist this milestone (`__main__.py:340-341`). The original issue title's mention of "PUT" was a user-clarified mistake (2026-05-14).
+- D-05 Kebab-case `"age-rating"` is the wire key — accessed via `prefs["age-rating"]`. No client-side renaming to camelCase. The TS type carries the literal bracket key.
+- D-06 Lambda `if X is not None` quirk: literal `null` in POST is silently dropped by `_post()`. Workaround at the page-level `commit()` function: translate `null → ""` for single-string fields (`humor`, `age-rating`) right before the wire write. UI treats both `null` and `""` as "no selection". Backend cleanup deferred to v2.1.
+- D-07 ChipsSkeleton component is the first skeleton primitive in the repo. Phase 16 may reuse; Phase 15 (history) likely needs a different row-style skeleton.
+- D-08 Pre-existing smoke harness lint fix: 1-line `eslint-disable-next-line react-hooks/purity` on `Date.now()` in `app/(app)/(protected)/smoke/page.tsx:66`. Minimum-scope patch to keep full lint gate green; harness is scheduled for Phase 17 deletion anyway.
+
 ### Pending Todos
 
 - Phase 11 plan: capture the final state shipped on `feature/issue-128-cognito-auth` (retroactive plan).
-- Phase 12: open a sub-issue under #127 for the fetch wrapper before `/gsd:plan-phase 12`.
+- Phase 15: open `/gsd:discuss-phase 15` to start the history integration GSD cycle. Pattern is largely the Phase 14 lib seam shape minus the write path.
+- Phase 16: open `/gsd:discuss-phase 16` for watch-later. Mirror Phase 14's per-toggle optimistic + replay-queue + rollback strategy.
 - Phase 17: schedule a teammate cold-run on a fresh AWS account before claiming the phase complete.
-- Phase 17: **delete `frontend/web/app/(app)/(protected)/smoke/`** before the final `backend-integration → main` PR. It's the throwaway Phase 12 fetch-wrapper smoke harness (commit 6bfb57f). Kept through P13–P16 because it's a useful manual harness for the real-Lambda integrations; the "REVERT BEFORE PR" note on the commit was scoped to the (now-superseded) Phase 12 PR-back-into-frontend gate.
+- Phase 17: **delete `frontend/web/app/(app)/(protected)/smoke/`** before the final `backend-integration → main` PR. It's the throwaway Phase 12 fetch-wrapper smoke harness (commit 6bfb57f). Kept through P13–P16 because it's a useful manual harness for the real-Lambda integrations; the "REVERT BEFORE PR" note on the commit was scoped to the (now-superseded) Phase 12 PR-back-into-frontend gate. Phase 14 added a 1-line eslint-disable to keep lint green; deletion will remove it.
+- v2.1 backend cleanup: `functions/preferences/preferences.py:_post` should differentiate `null` (clear field) from missing (skip field). Phase 14 currently sends `""` to clear single-string fields — works, but is a wart.
+- Pre-existing review: `frontend/web/components/MovieCard.tsx:50` and `frontend/web/components/ui/sonner.tsx:43` both use `style={...}` — verify these are dynamic non-design-system properties (allowed) vs design-system values (forbidden per DSGN-06). Not blocking Phase 14 PR.
 
 ### Blockers/Concerns
 
@@ -151,10 +165,13 @@ Recent decisions affecting current work:
 | CI/CD | Pipeline | v2.1 | 2026-05-12 |
 | Production hardening | Rate-limit UI, account lockout UX | v2.1 | 2026-05-12 |
 | LocalStack | Local AWS emulation | Handled separately by a teammate | 2026-05-12 |
+| Phase 14 smoke | Live-AWS GET+POST round-trip vs DynamoDB | run-when-home (checklist in 14-03-SUMMARY.md) | 2026-05-14 |
+| Backend cleanup | `_post()` null-vs-missing differentiation in functions/preferences/preferences.py | v2.1 follow-up (workaround: send "" for clear) | 2026-05-14 |
+| Style audit | MovieCard.tsx:50 + ui/sonner.tsx:43 inline style props review | Non-blocking — verify dynamic-only vs design-system | 2026-05-14 |
 
 ## Session Continuity
 
-Last session: 2026-05-15T01:04:29.844Z
-Stopped at: Phase 12 context gathered
-Next step: `/gsd:plan-phase 11` to capture the retroactive plan for the in-flight Cognito frontend integration on `feature/issue-128-cognito-auth`.
-Resume file: None
+Last session: 2026-05-15T00:00:00.000Z
+Stopped at: Phase 14 complete (live-AWS smoke deferred); PR #153 open against post-Phase-13 backend-integration
+Next step: Phase 15 (History) and Phase 16 (Watch-Later) PRs rebase onto post-Phase-13 backend-integration in parallel; then Phase 17 (Onboarding Guide) once all three merge.
+Resume file: .planning/phases/14-preferences-integration/14-03-SUMMARY.md
