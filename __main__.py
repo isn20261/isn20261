@@ -151,6 +151,7 @@ shared_layer = aws.lambda_.LayerVersion(
         "python/shared/__init__.py": pulumi.FileAsset("./functions/shared/__init__.py"),
         "python/shared/auth.py":     pulumi.FileAsset("./functions/shared/auth.py"),
         "python/shared/db.py":       pulumi.FileAsset("./functions/shared/db.py"),
+        "python/shared/movies.py":   pulumi.FileAsset("./functions/shared/movies.py"),
         "python/shared/response.py": pulumi.FileAsset("./functions/shared/response.py"),
     }),
     compatible_runtimes=["python3.13"],
@@ -367,6 +368,12 @@ stage = aws.apigatewayv2.Stage(
     ),
     default_route_settings=aws.apigatewayv2.StageDefaultRouteSettingsArgs(
         detailed_metrics_enabled=True,
+        # API Gateway v2 HTTP APIs default to throttle limits of 0 (not unlimited)
+        # which returns 429 on every request. PR #126 (issue #125) set sensible
+        # defaults — porting here since backend-integration branched before that
+        # merge.
+        throttling_rate_limit=1000,
+        throttling_burst_limit=500,
     ),
 )
 
