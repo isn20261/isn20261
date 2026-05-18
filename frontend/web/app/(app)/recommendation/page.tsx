@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * Phase 13 (INTG-RECO-01/02, issue #132) — live recommendation result screen.
+ * Phase 13 (INTG-RECO-01/02, issue #132) + Phase 16 (INTG-WTCL-02, issue #135).
  *
- * Client Component: fetches a real movie recommendation from the live
- * `/api/v1/recommend` Lambda via the Phase 12 typed wrapper
+ * Phase 13: fetches a real movie recommendation from `/api/v1/recommend`
  * (`getRecommendationReal()` → `Result<RecommendedMovie | null, ApiError>`),
- * branches on Result + null payload, and renders four discriminated states
- * (loading / ready / empty / error). Error UX is delegated to the shared
- * `useApiErrorUx` hook (toast.error for network/server/forbidden; no-op for
- * unauthorized — the wrapper auto-signs out via setOnUnauthorized).
+ * 4-state machine (loading / ready / empty / error), `useApiErrorUx` for
+ * toast UX, kebab→camel adapter inside `recommend.real.ts`. Phase 13 fields
+ * the live Lambda doesn't return — year / runtime / rating / match /
+ * director / cast / synopsis / mood — render conditionally.
  *
- * Phase 7 fields the live Lambda does NOT return — `year`, `runtime`, `rating`,
- * `match`, `director`, `cast`, `synopsis`, `mood` — render conditionally; if
- * absent the wrapping element is omitted (no em-dash placeholders). The
- * `streaming-services` kebab key is converted to camelCase `streamingServices`
- * inside `recommend.real.ts`; this file only sees the camelCase shape.
- * Backend enrichment (year, rating, runtime, director, cast, synopsis, etc.)
- * is tracked as issue #70 (OMDb + Streaming Availability API integration).
+ * Phase 16 (this rebase): rewire the Save button to consume the real
+ * `/watch-later` Lambda via async `addWatchLater(movieId)`. The Lambda
+ * has no PUT/DELETE (verified 2026-05-14) so the toggle becomes ADD-ONLY
+ * — once clicked it stays in "Saved" state with no un-save. The previous
+ * `isInWatchLater(localId)` membership pre-check is dropped because the
+ * GET response strips movieIds (docs/inconsistencias.md §4). `localId =
+ * live:${title}` is preserved as the per-recommendation save handle since
+ * the live Lambda has no id.
  *
  * Layout: full-bleed backdrop region with two-axis legibility gradient + content
  * column padded to clear the rail. Responsive at 3 breakpoints — backdrop
@@ -36,20 +36,16 @@
  *   - rating chip: text-11 px-1.5 py-0.5      : compact pill primitive
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, Play, RefreshCw } from "lucide-react";
 import { ServiceBadge } from "@/components/ServiceBadge";
 import {
   getRecommendationReal,
   type RecommendedMovie,
 } from "@/lib/api/recommend.real";
+import { addWatchLater } from "@/lib/api/watch-later";
 import { useApiErrorUx } from "@/lib/api/useApiErrorUx";
 import type { ApiError } from "@/lib/api/client";
-import {
-  addToWatchLater,
-  isInWatchLater,
-  removeFromWatchLater,
-} from "@/lib/api/watch-later";
 
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
@@ -60,15 +56,18 @@ export default function RecommendationPage() {
   );
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<ApiError | null>(null);
+  const inFlight = useRef(false);
 
-  // Wires error-class-aware UX (toast for network/server/forbidden, no-op
-  // for unauthorized/validation). Hook is a no-op while error is null.
+  // Wires error-class-aware UX for both the recommendation fetch and the
+  // watch-later save call (toast for network/server/forbidden, no-op for
+  // unauthorized/validation). Hooks no-op while their error is null.
   useApiErrorUx(error);
+  useApiErrorUx(saveError);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Inline mount fetch — uses the same branching that handleAnother does.
       setStatus("loading");
       setError(null);
       const res = await getRecommendationReal();
@@ -83,10 +82,11 @@ export default function RecommendationPage() {
         setStatus("empty");
         return;
       }
-      // non-tokenized: live recommendation has no id; derive a stable per-title local id until Phase 16 wires the real /watch-later Lambda.
-      const localId = `live:${res.data.title}`;
       setMovie(res.data);
-      setSaved(isInWatchLater(localId));
+      // Phase 16: wire response from /watch-later does not include movieIds,
+      // so a membership pre-check is not possible. Default to unsaved per
+      // recommendation; user can still save (add-only this milestone).
+      setSaved(false);
       setStatus("ready");
     })();
     return () => {
@@ -108,23 +108,24 @@ export default function RecommendationPage() {
       setStatus("empty");
       return;
     }
-    // non-tokenized: live recommendation has no id; derive a stable per-title local id until Phase 16 wires the real /watch-later Lambda.
-    const localId = `live:${res.data.title}`;
     setMovie(res.data);
-    setSaved(isInWatchLater(localId));
+    setSaved(false);
     setStatus("ready");
   }
 
-  function handleToggleSave() {
-    if (movie === null) return;
-    // non-tokenized: live recommendation has no id; derive a stable per-title local id until Phase 16 wires the real /watch-later Lambda.
+  async function handleSave() {
+    if (movie === null || saved || inFlight.current) return;
+    inFlight.current = true;
+    setSaved(true); // optimistic
+    // non-tokenized: live recommendation has no id; derive a stable per-title
+    // local id. Phase 16 watch-later Lambda accepts arbitrary movieId strings.
     const localId = `live:${movie.title}`;
-    if (saved) {
-      removeFromWatchLater(localId);
-    } else {
-      addToWatchLater(localId);
+    const res = await addWatchLater(localId);
+    inFlight.current = false;
+    if (!res.ok) {
+      setSaved(false); // rollback
+      setSaveError(res.error);
     }
-    setSaved(!saved);
   }
 
   // ---------------------------------------------------------------------------
@@ -285,9 +286,10 @@ export default function RecommendationPage() {
             )}
             <button
               type="button"
-              onClick={handleToggleSave}
+              onClick={handleSave}
+              disabled={saved}
               aria-pressed={saved}
-              className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-surface-2 border border-border hover:border-border-strong text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+              className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-surface-2 border border-border hover:border-border-strong text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-70 disabled:cursor-default disabled:hover:border-border"
             >
               {saved ? (
                 <BookmarkCheck size={16} aria-hidden />
