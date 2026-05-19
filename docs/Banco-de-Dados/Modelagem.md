@@ -16,6 +16,7 @@
 - [Users](#users)
 - [Tokens](#tokens)
 - [Historico](#historico)
+- [Movies](#movies)
 - [Logs](#logs)
 
 ---
@@ -243,7 +244,7 @@ Tokens temporários para verificação de e-mail e reset de senha.
 
 ## Historico
 
-Histórico de filmes assistidos por usuário. Cada entrada é identificada pelo par `sub` + `timestamp`.
+Histórico de filmes recomendados por usuário. Cada entrada é identificada pelo par `sub` + `timestamp`.
 
 | Chave | Tipo | Papel |
 |-------|------|-------|
@@ -256,7 +257,9 @@ Histórico de filmes assistidos por usuário. Cada entrada é identificada pelo 
 |-------|------|-------------|-----------|
 | `sub` | `string` | ✅ | UUID do Cognito |
 | `timestamp` | `string` | ✅ | ISO 8601 — Sort Key |
-| `movieTitle` | `string` | ✅ | Título do filme assistido |
+| `movieTitle` | `string` | ✅ | Título do filme recomendado |
+| `movieId` | `string` | ❌ | IMDB ID do filme — referência ao catálogo Movies |
+| `genre` | `string` | ❌ | Gênero — denormalizado no momento da recomendação |
 
 ### JSON Schema
 
@@ -275,11 +278,127 @@ Histórico de filmes assistidos por usuário. Cada entrada é identificada pelo 
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "Sort Key. ISO 8601 — momento em que o filme foi assistido."
+      "description": "Sort Key. ISO 8601 — momento em que o filme foi recomendado."
     },
     "movieTitle": {
       "type": "string",
-      "description": "Título do filme assistido."
+      "description": "Título do filme recomendado."
+    },
+    "movieId": {
+      "type": "string",
+      "description": "IMDB ID do filme. Referência ao catálogo Movies para enriquecimento futuro."
+    },
+    "genre": {
+      "type": "string",
+      "description": "Gênero do filme. Denormalizado no momento da recomendação."
+    }
+  }
+}
+```
+
+---
+
+## Movies
+
+Catálogo canônico de filmes. Fonte única de metadados, usada por `/recommend`, `/history` e `/watch-later`. Substitui o `_MOCK_CATALOGUE` que antes era duplicado em `recommend/recommend.py` e `watch_later/watch_later.py`.
+
+| Chave | Tipo | Papel |
+|-------|------|-------|
+| `movieId` | `string` | Partition Key |
+
+### Atributos
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `movieId` | `string` | ✅ | IMDB ID (ex: `"tt0133093"`) — Partition Key |
+| `title` | `string` | ✅ | Título do filme |
+| `year` | `integer` | ✅ | Ano de lançamento |
+| `genre` | `string` | ✅ | Gênero principal (ex: `"action"`, `"sci-fi"`, `"crime"`) |
+| `director` | `string` | ❌ | Diretor(es) |
+| `rated` | `string` | ❌ | Classificação indicativa (ex: `"PG-13"`, `"R"`, `"PG"`) |
+| `runtime` | `integer` | ❌ | Duração em minutos |
+| `poster` | `string` | ❌ | URL do poster (formato URI) |
+| `imdbRating` | `number` | ❌ | Nota IMDB (0.0–10.0) |
+| `streamingServices` | `array<object>` | ❌ | Plataformas de streaming onde o filme está disponível |
+
+### List: `streamingServices`
+
+Cada item é um objeto com os campos:
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `name` | `string` | ✅ | Nome da plataforma (ex: `"Netflix"`, `"Amazon Prime"`) |
+| `image` | `string` | ❌ | URL do ícone/logo da plataforma |
+| `url` | `string` | ❌ | URL para assistir na plataforma |
+
+### JSON Schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "Movie",
+  "type": "object",
+  "required": ["movieId", "title", "year", "genre"],
+  "additionalProperties": false,
+  "properties": {
+    "movieId": {
+      "type": "string",
+      "description": "Partition Key. IMDB ID do filme."
+    },
+    "title": {
+      "type": "string",
+      "description": "Título do filme."
+    },
+    "year": {
+      "type": "integer",
+      "description": "Ano de lançamento."
+    },
+    "genre": {
+      "type": "string",
+      "description": "Gênero principal."
+    },
+    "director": {
+      "type": "string",
+      "description": "Diretor(es)."
+    },
+    "rated": {
+      "type": "string",
+      "description": "Classificação indicativa (ex: PG-13, R, PG)."
+    },
+    "runtime": {
+      "type": "integer",
+      "description": "Duração em minutos."
+    },
+    "poster": {
+      "type": "string",
+      "description": "URL do poster."
+    },
+    "imdbRating": {
+      "type": "number",
+      "description": "Nota IMDB (0.0 a 10.0)."
+    },
+    "streamingServices": {
+      "type": "array",
+      "description": "Plataformas de streaming onde o filme está disponível.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome da plataforma."
+          },
+          "image": {
+            "type": "string",
+            "description": "URL do ícone/logo da plataforma."
+          },
+          "url": {
+            "type": "string",
+            "description": "URL para assistir na plataforma."
+          }
+        }
+      }
     }
   }
 }
