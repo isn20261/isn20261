@@ -58,6 +58,12 @@ export default function RecommendationPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<ApiError | null>(null);
   const inFlight = useRef(false);
+  // React 18 Strict Mode runs effects setup→cleanup→setup in dev. The
+  // `cancelled` flag below only suppresses state updates from the first run;
+  // it does NOT cancel the in-flight network call, so /recommend would fire
+  // twice and the Lambda would record both in history. This ref persists
+  // across the simulated remount and short-circuits the second invocation.
+  const initialFetchFired = useRef(false);
 
   // Wires error-class-aware UX for both the recommendation fetch and the
   // watch-later save call (toast for network/server/forbidden, no-op for
@@ -66,6 +72,8 @@ export default function RecommendationPage() {
   useApiErrorUx(saveError);
 
   useEffect(() => {
+    if (initialFetchFired.current) return;
+    initialFetchFired.current = true;
     let cancelled = false;
     void (async () => {
       setStatus("loading");
