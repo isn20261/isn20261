@@ -6,12 +6,15 @@ for `age-rating`. Mapping is applied on read and write.
 Environment variables: shared db/auth vars
 """
 import json
+from botocore.exceptions import ClientError
 from datetime import datetime, timezone
 
 from shared.auth import get_sub, get_method
 from shared.db import get_user, users, write_log
 from shared.response import ok, bad_request, unauthorized
 
+
+MAX_PREFERENCE_UPDATE_RETRIES = 3
 
 def _db_to_api(prefs: dict) -> dict:
     return {
@@ -58,34 +61,80 @@ def _post(event: dict, sub: str):
         return bad_request("At least one preference field is required")
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    updates: list[str] = ["updatedAt = :updatedAt"]
-    values: dict       = {":updatedAt": now_iso}
+    values: dict = {":updatedAt": now_iso}
+
+    update_parts = ["updatedAt = :updatedAt"]
+    prefs_map: dict = {}
 
     if genres is not None:
         if not isinstance(genres, list):
             return bad_request("genres must be an array")
-        updates.append("preferences.genres = :genres")
         values[":genres"] = genres
+        update_parts.append("preferences.genres = :genres")
+        prefs_map["genres"] = genres
 
     if subscriptions is not None:
         if not isinstance(subscriptions, list):
             return bad_request("subscriptions must be an array")
-        updates.append("preferences.subscriptions = :subs")
-        values[":subs"] = subscriptions
+        values[":subscriptions"] = subscriptions
+        update_parts.append("preferences.subscriptions = :subscriptions")
+        prefs_map["subscriptions"] = subscriptions
 
     if age_rating is not None:
-        updates.append("preferences.ageRating = :ar")
-        values[":ar"] = str(age_rating)
+        values[":ageRating"] = str(age_rating)
+        update_parts.append("preferences.ageRating = :ageRating")
+        prefs_map["ageRating"] = str(age_rating)
 
     if humor is not None:
-        updates.append("preferences.humor = :humor")
         values[":humor"] = str(humor)
+        update_parts.append("preferences.humor = :humor")
+        prefs_map["humor"] = str(humor)
 
-    users().update_item(
-        Key={"sub": sub},
-        UpdateExpression="SET " + ", ".join(updates),
-        ExpressionAttributeValues=values,
-    )
+    update_expr = "SET " + ", ".join(update_parts)
+
+    # Try conditional update first (only if item exists). If it doesn't exist,
+    # try conditional put to create it. If create races, retry the update.
+    success = False
+    last_exception: Exception | None = None
+    for _ in range(MAX_PREFERENCE_UPDATE_RETRIES):
+        try:
+            users().update_item(
+                Key={"sub": sub},
+                UpdateExpression=update_expr,
+                ExpressionAttributeValues=values,
+                ConditionExpression="attribute_exists(#sub)",
+                ExpressionAttributeNames={"#sub": "sub"},
+            )
+            success = True
+            break
+        except ClientError as exc:
+            last_exception = exc
+            err = exc.response.get("Error", {})
+            code = err.get("Code")
+            # If item does not exist, try to create it atomically
+            if code == "ConditionalCheckFailedException":
+                try:
+                    users().put_item(
+                        Item={"sub": sub, "preferences": prefs_map, "updatedAt": now_iso},
+                        ConditionExpression="attribute_not_exists(#sub)",
+                        ExpressionAttributeNames={"#sub": "sub"},
+                    )
+                    success = True
+                    break
+                except ClientError as put_error:
+                    last_exception = put_error
+                    put_error_details = put_error.response.get("Error", {})
+                    put_error_code = put_error_details.get("Code")
+                    # Another writer created the item; retry the update
+                    if put_error_code == "ConditionalCheckFailedException":
+                        continue
+                    raise
+            else:
+                raise
+
+    if not success:
+        raise RuntimeError(f"Failed to write preferences for sub={sub} after {MAX_PREFERENCE_UPDATE_RETRIES} attempts") from last_exception
+
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {
         k: v for k, v in body.items()
         if k in ("genres", "subscriptions", "age-rating", "humor") and v is not None
