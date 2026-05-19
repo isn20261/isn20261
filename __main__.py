@@ -269,6 +269,7 @@ aws.iam.RolePolicyAttachment(
     policy_arn=cognito_ses_policy.arn,
 )
 
+
 # --- 5a. Route53 Zone (necessária para SES DNS records) ---
 
 zone = None
