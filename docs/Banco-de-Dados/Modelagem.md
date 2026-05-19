@@ -310,16 +310,16 @@ Catálogo canônico de filmes. Fonte única de metadados, usada por `/recommend`
 
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
-| `movieId` | `string` | ✅ | IMDB ID (ex: `"tt0133093"`) — Partition Key |
+| `movieId` | `string` | ✅ | IMDB ID (ex: `"tt0133093"`) ou ID sintético `omdb-{n}` para filmes sem vínculo IMDB — Partition Key |
 | `title` | `string` | ✅ | Título do filme |
-| `year` | `integer` | ✅ | Ano de lançamento |
+| `year` | `integer` | ❌ | Ano de lançamento. Ausente para ~742 filmes sem data no dataset OMDB. |
 | `genre` | `string` | ✅ | Gênero principal (ex: `"action"`, `"sci-fi"`, `"crime"`) |
 | `director` | `string` | ❌ | Diretor(es) |
-| `rated` | `string` | ❌ | Classificação indicativa (ex: `"PG-13"`, `"R"`, `"PG"`) |
+| `rated` | `string` | ❌ | Classificação indicativa (ex: `"PG-13"`, `"R"`, `"PG"`). Não disponível no dataset OMDB atual — reservado para integração futura. |
 | `runtime` | `integer` | ❌ | Duração em minutos |
 | `poster` | `string` | ❌ | URL do poster (formato URI) |
 | `imdbRating` | `number` | ❌ | Nota IMDB (0.0–10.0) |
-| `streamingServices` | `array<object>` | ❌ | Plataformas de streaming onde o filme está disponível |
+| `streamingServices` | `array<object>` | ❌ | Plataformas de streaming onde o filme está disponível. Não disponível no dataset OMDB atual — reservado para integração futura. |
 
 ### List: `streamingServices`
 
@@ -338,12 +338,12 @@ Cada item é um objeto com os campos:
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "Movie",
   "type": "object",
-  "required": ["movieId", "title", "year", "genre"],
+  "required": ["movieId", "title", "genre"],
   "additionalProperties": false,
   "properties": {
     "movieId": {
       "type": "string",
-      "description": "Partition Key. IMDB ID do filme."
+      "description": "Partition Key. IMDB ID (tt...) ou ID sintético omdb-{n} para filmes sem vínculo IMDB."
     },
     "title": {
       "type": "string",
@@ -351,7 +351,7 @@ Cada item é um objeto com os campos:
     },
     "year": {
       "type": "integer",
-      "description": "Ano de lançamento."
+      "description": "Ano de lançamento. Ausente para ~742 filmes sem data no dataset OMDB."
     },
     "genre": {
       "type": "string",
@@ -363,7 +363,7 @@ Cada item é um objeto com os campos:
     },
     "rated": {
       "type": "string",
-      "description": "Classificação indicativa (ex: PG-13, R, PG)."
+      "description": "Classificação indicativa (ex: PG-13, R, PG). Não disponível no dataset OMDB atual — reservado para integração futura."
     },
     "runtime": {
       "type": "integer",
@@ -379,7 +379,7 @@ Cada item é um objeto com os campos:
     },
     "streamingServices": {
       "type": "array",
-      "description": "Plataformas de streaming onde o filme está disponível.",
+      "description": "Plataformas de streaming onde o filme está disponível. Não disponível no dataset OMDB atual — reservado para integração futura.",
       "items": {
         "type": "object",
         "required": ["name"],

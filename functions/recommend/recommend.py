@@ -76,5 +76,5 @@ def handler(event, context):
         "runtime":            movie.get("runtime"),
         "poster":             movie.get("poster"),
         "imdbRating":         movie.get("imdbRating"),
-        "streaming-services": movie["streamingServices"],
+        "streaming-services": movie.get("streamingServices"),
     })
