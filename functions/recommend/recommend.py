@@ -17,94 +17,25 @@ import random
 from datetime import datetime, timezone
 
 from shared.auth import get_sub
-from shared.db import get_user, historico, write_log
+from shared.db import get_user, historico, movies, write_log
 from shared.response import ok, unauthorized
 
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
-
-# ---------------------------------------------------------------------------
-# Mock catalogue — replace with OMDB lookup in production
-# ---------------------------------------------------------------------------
-_MOCK_CATALOGUE = [
-    {
-        "movieId": "tt0133093",
-        "title":   "The Matrix",
-        "genre":   "action",
-        "streaming-services": [
-            {"name": "Netflix",
-             "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-             "url":   "https://www.netflix.com/title/20557937"},
-        ],
-    },
-    {
-        "movieId": "tt0816692",
-        "title":   "Interstellar",
-        "genre":   "sci-fi",
-        "streaming-services": [
-            {"name": "Amazon Prime",
-             "image": "https://www.amazon.com/favicon.ico",
-             "url":   "https://www.amazon.com/dp/B00TU9UFTS"},
-        ],
-    },
-    {
-        "movieId": "tt1375666",
-        "title":   "Inception",
-        "genre":   "sci-fi",
-        "streaming-services": [
-            {"name": "Netflix",
-             "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-             "url":   "https://www.netflix.com/title/70131314"},
-        ],
-    },
-    {
-        "movieId": "tt0468569",
-        "title":   "The Dark Knight",
-        "genre":   "action",
-        "streaming-services": [
-            {"name": "HBO Max",
-             "image": "https://www.max.com/favicon.ico",
-             "url":   "https://www.max.com/movies/dark-knight/07938dc1-3e25-4b2e-b01e-f23b7eed5977"},
-        ],
-    },
-    {
-        "movieId": "tt0110912",
-        "title":   "Pulp Fiction",
-        "genre":   "crime",
-        "streaming-services": [
-            {"name": "Amazon Prime",
-             "image": "https://www.amazon.com/favicon.ico",
-             "url":   "https://www.amazon.com/dp/B001CWSITY"},
-        ],
-    },
-    {
-        "movieId": "tt0245429",
-        "title":   "Spirited Away",
-        "genre":   "animation",
-        "streaming-services": [
-            {"name": "Netflix",
-             "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-             "url":   "https://www.netflix.com/title/60023642"},
-        ],
-    },
-]
-
-_GENRE_INDEX: dict[str, list[dict]] = {}
-for _m in _MOCK_CATALOGUE:
-    _GENRE_INDEX.setdefault(_m["genre"], []).append(_m)
-
-
-def _resolve_movie(movie_id: str) -> dict | None:
-    """Return a catalogue entry by movieId, or None if not found."""
-    return next((m for m in _MOCK_CATALOGUE if m["movieId"] == movie_id), None)
 
 
 def _pick_movie(preferences: dict) -> dict:
     """Return one movie matching user preferences, or a random one."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
-    candidates: list[dict] = []
-    for g in genres:
-        candidates.extend(_GENRE_INDEX.get(g, []))
-    pool = candidates or _MOCK_CATALOGUE
+    all_movies = movies().scan().get("Items", [])
+    if not all_movies:
+        from shared.response import server_error
+        raise RuntimeError("Movies table is empty")
+
+    if genres:
+        candidates = [m for m in all_movies if m.get("genre", "").lower() in genres]
+        pool = candidates or all_movies
+    else:
+        pool = all_movies
     return random.choice(pool)
 
 
@@ -131,11 +62,19 @@ def handler(event, context):
             "sub":        sub,
             "timestamp":  now_iso,
             "movieTitle": movie["title"],
+            "movieId":    movie["movieId"],
+            "genre":      movie["genre"],
         })
         write_log(sub, now_iso, "RECOMMEND", {"movieId": movie["movieId"]})
 
     return ok({
         "title":              movie["title"],
+        "year":               movie.get("year"),
+        "rated":              movie.get("rated"),
         "genre":              movie["genre"],
-        "streaming-services": movie["streaming-services"],
+        "director":           movie.get("director"),
+        "runtime":            movie.get("runtime"),
+        "poster":             movie.get("poster"),
+        "imdbRating":         movie.get("imdbRating"),
+        "streaming-services": movie["streamingServices"],
     })

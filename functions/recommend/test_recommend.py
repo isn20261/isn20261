@@ -3,7 +3,7 @@ import json
 from boto3.dynamodb.conditions import Key
 from moto import mock_aws
 
-from conftest import setup_dynamodb_tables
+from conftest import setup_dynamodb_tables, seed_movies
 from shared.db import users, historico, logs
 from recommend import handler
 
@@ -11,6 +11,7 @@ from recommend import handler
 @mock_aws
 def test_recommend_anonymous(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: None)
     resp = handler({}, None)
     assert resp["statusCode"] == 200
@@ -23,6 +24,7 @@ def test_recommend_anonymous(monkeypatch):
 @mock_aws
 def test_recommend_authenticated_with_genre_prefs(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-1")
     users().put_item(
         Item={
@@ -40,6 +42,7 @@ def test_recommend_authenticated_with_genre_prefs(monkeypatch):
 @mock_aws
 def test_recommend_authenticated_no_prefs(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-2")
     users().put_item(Item={"sub": "user-2", "email": "c@d.com"})
     resp = handler({}, None)
@@ -51,6 +54,7 @@ def test_recommend_authenticated_no_prefs(monkeypatch):
 @mock_aws
 def test_recommend_authenticated_user_not_found(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "nonexistent")
     resp = handler({}, None)
     assert resp["statusCode"] == 401
@@ -59,6 +63,7 @@ def test_recommend_authenticated_user_not_found(monkeypatch):
 @mock_aws
 def test_recommend_disable_auth_allows_user_not_found_and_saves_history(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setenv("DISABLE_AUTH", "1")
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "nonexistent")
     resp = handler({}, None)
@@ -71,6 +76,7 @@ def test_recommend_disable_auth_allows_user_not_found_and_saves_history(monkeypa
 @mock_aws
 def test_recommend_saves_to_historico(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-3")
     users().put_item(
         Item={
@@ -86,12 +92,15 @@ def test_recommend_saves_to_historico(monkeypatch):
     items = historico().query(KeyConditionExpression=Key("sub").eq("user-3"))["Items"]
     assert len(items) == 1
     assert items[0]["movieTitle"] == body["title"]
+    assert items[0]["movieId"] == "tt0133093" or items[0]["movieId"] == "tt0468569"
+    assert items[0]["genre"] == body["genre"]
     assert "timestamp" in items[0]
 
 
 @mock_aws
 def test_recommend_writes_audit_log(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-4")
     users().put_item(
         Item={
@@ -104,3 +113,29 @@ def test_recommend_writes_audit_log(monkeypatch):
 
     log_items = logs().query(KeyConditionExpression=Key("sub").eq("user-4"))["Items"]
     assert any(item["action"] == "RECOMMEND" for item in log_items)
+
+
+@mock_aws
+def test_recommend_response_includes_all_fields(monkeypatch):
+    setup_dynamodb_tables()
+    seed_movies()
+    monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-5")
+    users().put_item(
+        Item={
+            "sub": "user-5",
+            "email": "i@j.com",
+            "preferences": {"genres": ["action"]},
+        }
+    )
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert "title" in body
+    assert "year" in body
+    assert "rated" in body
+    assert "genre" in body
+    assert "director" in body
+    assert "runtime" in body
+    assert "poster" in body
+    assert "imdbRating" in body
+    assert "streaming-services" in body

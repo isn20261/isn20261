@@ -71,11 +71,20 @@ logs_table = aws.dynamodb.Table(
     ],
 )
 
+movies_table = aws.dynamodb.Table(
+    f"movies-table-{env}",
+    name=f"Movies_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="movieId",
+    attributes=[aws.dynamodb.TableAttributeArgs(name="movieId", type="S")],
+)
+
 dynamodb_tables = {
     "email-to-sub": email_to_sub_table,
     "users": users_table,
     "historico": historico_table,
     "logs": logs_table,
+    "movies": movies_table,
 }
 
 for table_name, table in dynamodb_tables.items():
@@ -117,6 +126,7 @@ aws.iam.RolePolicy(
         users_table.arn,
         historico_table.arn,
         logs_table.arn,
+        movies_table.arn,
     ).apply(
         lambda arns: json.dumps(
             {
@@ -403,6 +413,7 @@ env_vars = {
     "USERS_TABLE": users_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
+    "MOVIES_TABLE": movies_table.name,
     "DISABLE_AUTH": "0",
 }
 

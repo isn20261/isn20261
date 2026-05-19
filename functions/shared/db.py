@@ -9,6 +9,7 @@ EMAIL_TO_SUB    = os.environ.get("EMAIL_TO_SUB_TABLE", "EmailToSub")
 TOKENS_TABLE    = os.environ.get("TOKENS_TABLE",       "Tokens")
 HISTORICO_TABLE = os.environ.get("HISTORICO_TABLE",    "Historico")
 LOGS_TABLE      = os.environ.get("LOGS_TABLE",         "Logs")
+MOVIES_TABLE    = os.environ.get("MOVIES_TABLE",       "Movies")
 
 
 def users():        return _resource.Table(USERS_TABLE)
@@ -16,6 +17,7 @@ def email_to_sub(): return _resource.Table(EMAIL_TO_SUB)
 def tokens():       return _resource.Table(TOKENS_TABLE)
 def historico():    return _resource.Table(HISTORICO_TABLE)
 def logs():         return _resource.Table(LOGS_TABLE)
+def movies():       return _resource.Table(MOVIES_TABLE)
 
 
 def get_user(sub: str) -> dict | None:
