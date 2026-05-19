@@ -74,12 +74,10 @@ export default function RecommendationPage() {
   useEffect(() => {
     if (initialFetchFired.current) return;
     initialFetchFired.current = true;
-    let cancelled = false;
     void (async () => {
       setStatus("loading");
       setError(null);
       const res = await getRecommendationReal();
-      if (cancelled) return;
       if (!res.ok) {
         setError(res.error);
         setStatus("error");
@@ -97,9 +95,6 @@ export default function RecommendationPage() {
       setSaved(false);
       setStatus("ready");
     })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   async function handleAnother() {
