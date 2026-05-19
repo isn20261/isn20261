@@ -52,6 +52,19 @@ uv run pulumi preview --stack dev   # simula alterações
 uv run pulumi up --stack dev        # implanta infraestrutura
 ```
 
+#### Bypass de autenticação (somente dev/local)
+
+Por padrão, os Lambdas **não** aceitam `sub` diretamente na requisição (sem JWT validado).
+Para facilitar testes em ambiente de desenvolvimento, é possível habilitar um bypass de auth
+de forma **explícita** via Pulumi config:
+
+```bash
+pulumi config set isn20261:disableAuth true --stack dev
+```
+
+No stack `dev` do repositório, esse valor já está definido em `Pulumi.dev.yaml`.
+Em `prod`, essa opção é bloqueada.
+
 ### Testes
 
 ```bash

@@ -40,8 +40,12 @@ def handler(event, context):
     if sub:
         user = get_user(sub)
         if not user:
-            return unauthorized()
-        prefs = user.get("preferences") or {}
+            if os.environ.get("DISABLE_AUTH", "").lower() in {"1", "true", "yes"}:
+                prefs = {}
+            else:
+                return unauthorized()
+        else:
+            prefs = user.get("preferences") or {}
     else:
         prefs = {}
 
