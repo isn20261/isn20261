@@ -278,6 +278,7 @@ if is_prod and domain_name:
 
 # --- 5b. SES Domain Configuration (registros DNS) ---
 
+
 ses_dkim = None
 if is_prod and domain_name and zone:
     # Verificação de domínio (TXT record)
