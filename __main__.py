@@ -269,6 +269,7 @@ aws.iam.RolePolicyAttachment(
     policy_arn=cognito_ses_policy.arn,
 )
 
+
 # --- 5a. Route53 Zone (necessária para SES DNS records) ---
 
 zone = None
@@ -276,6 +277,7 @@ if is_prod and domain_name:
     zone = aws.route53.get_zone(name=domain_name)
 
 # --- 5b. SES Domain Configuration (registros DNS) ---
+
 
 ses_dkim = None
 if is_prod and domain_name and zone:
