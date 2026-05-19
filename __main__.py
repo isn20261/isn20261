@@ -806,9 +806,9 @@ pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 if is_prod and domain_name:
     pulumi.export("ses_domain", ses_domain_identity.domain)
     pulumi.export("ses_identity_arn", ses_identity_arn)
