@@ -1,0 +1,80 @@
+name: Pulumi Preview
+
+on:
+  pull_request:
+    paths:
+      - '__main__.py'
+      - 'Pulumi.*.yaml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'functions/**'
+
+jobs:
+  preview:
+    name: Preview (dev)
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.fork == false
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: pulumi/setup-pulumi@v2
+
+      - run: uv sync
+
+      - name: Pulumi preview
+        id: preview
+        run: |
+          set -euo pipefail
+          uv run pulumi preview --stack dev --non-interactive 2>&1 | tee /tmp/preview.txt
+          echo "status=success" >> "$GITHUB_OUTPUT"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: sa-east-1
+
+      - name: Postar resultado no PR
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const text = fs.existsSync('/tmp/preview.txt')
+              ? fs.readFileSync('/tmp/preview.txt', 'utf8')
+              : '(sem output — preview não chegou a rodar)';
+            const status = '${{ steps.preview.outputs.status }}' === 'success' ? '✅' : '❌';
+            const marker = '<!-- pulumi-preview-comment -->';
+            const body = `${marker}\n## ${status} Pulumi Preview — stack \`dev\`\n\`\`\`\n${text.slice(0, 65000)}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
