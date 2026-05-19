@@ -4,7 +4,7 @@ import json
 import os
 import mimetypes
 
-# --- 1. Configurações do Ambiente (12-Factor) ---
+# -- 1. Configurações do Ambiente (12-Factor) --
 
 config = pulumi.Config()
 env = config.require("environment")
