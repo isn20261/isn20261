@@ -137,7 +137,7 @@ def test_recommend_omdb_fetch_success(monkeypatch):
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-omdb")
     monkeypatch.setattr(
         "recommend.recommend._omdb_random_movie",
-        lambda: _OMDB_MOCK_MOVIE,
+        lambda preferences=None: _OMDB_MOCK_MOVIE,
     )
     users().put_item(Item={"sub": "user-omdb", "email": "omdb@test.com"})
 
@@ -163,7 +163,7 @@ def test_recommend_omdb_exhausted_retries_falls_back(monkeypatch):
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: "user-fallback")
     monkeypatch.setattr(
         "recommend.recommend._omdb_random_movie",
-        lambda: None,
+        lambda preferences=None: None,
     )
     users().put_item(Item={"sub": "user-fallback", "email": "fallback@test.com"})
 
@@ -186,7 +186,7 @@ def test_recommend_omdb_anonymous(monkeypatch):
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: None)
     monkeypatch.setattr(
         "recommend.recommend._omdb_random_movie",
-        lambda: _OMDB_MOCK_MOVIE,
+        lambda preferences=None: _OMDB_MOCK_MOVIE,
     )
 
     resp = handler({}, None)
@@ -194,3 +194,108 @@ def test_recommend_omdb_anonymous(monkeypatch):
     body = json.loads(resp["body"])
     assert body["title"] == "Test Movie"
     assert body["genre"] == "comedy"
+
+
+# --- OMDB genre-preference filtering ---
+
+
+def _make_omdb_response(response_value: str, **fields):
+    """Build a stub requests.Response with .json() returning OMDB-shaped data."""
+    payload = {"Response": response_value, **fields}
+
+    class _Resp:
+        def json(self):
+            return payload
+
+    return _Resp()
+
+
+@mock_aws
+def test_recommend_omdb_honors_genre_preferences(monkeypatch):
+    """OMDB result is accepted only when its Genre overlaps preferences.genres."""
+    import recommend.recommend as r
+
+    setup_dynamodb_tables()
+    monkeypatch.setattr(r, "OMDB_API_KEY", "test-key")
+    monkeypatch.setattr(r, "get_sub", lambda event: "user-genre-ok")
+    users().put_item(
+        Item={
+            "sub": "user-genre-ok",
+            "email": "g@h.com",
+            "preferences": {"genres": ["action"]},
+        }
+    )
+
+    # First OMDB call returns a comedy (rejected — no overlap with "action"),
+    # second returns an action movie (accepted).
+    responses = iter(
+        [
+            _make_omdb_response("True", imdbID="tt0000001", Title="Some Comedy",
+                                Genre="Comedy, Romance"),
+            _make_omdb_response("True", imdbID="tt0000002", Title="Some Action",
+                                Genre="Action, Thriller"),
+        ]
+    )
+    monkeypatch.setattr(r.requests, "get", lambda *a, **kw: next(responses))
+
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["title"] == "Some Action"
+    assert "Action" in body["genre"]
+
+
+@mock_aws
+def test_recommend_omdb_genre_mismatch_falls_back(monkeypatch):
+    """If 5 OMDB retries all return non-matching genres, fall back to catalogue."""
+    import recommend.recommend as r
+
+    setup_dynamodb_tables()
+    monkeypatch.setattr(r, "OMDB_API_KEY", "test-key")
+    monkeypatch.setattr(r, "get_sub", lambda event: "user-genre-strict")
+    users().put_item(
+        Item={
+            "sub": "user-genre-strict",
+            "email": "g@h.com",
+            "preferences": {"genres": ["animation"]},
+        }
+    )
+
+    # Every OMDB roll returns "Horror" — never overlaps with "animation".
+    monkeypatch.setattr(
+        r.requests,
+        "get",
+        lambda *a, **kw: _make_omdb_response(
+            "True", imdbID="tt0000001", Title="Horror Film", Genre="Horror"
+        ),
+    )
+
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    # Fallback catalogue has "Spirited Away" tagged "animation".
+    assert body["title"] == "Spirited Away"
+
+
+@mock_aws
+def test_recommend_omdb_filters_non_movies(monkeypatch):
+    """type=movie query parameter is sent on every OMDB call."""
+    import recommend.recommend as r
+
+    setup_dynamodb_tables()
+    monkeypatch.setattr(r, "OMDB_API_KEY", "test-key")
+    monkeypatch.setattr(r, "get_sub", lambda event: None)
+
+    captured_params: list[dict] = []
+
+    def _fake_get(*args, **kwargs):
+        captured_params.append(kwargs.get("params", {}))
+        return _make_omdb_response(
+            "True", imdbID="tt0000001", Title="A Movie", Genre="Drama"
+        )
+
+    monkeypatch.setattr(r.requests, "get", _fake_get)
+
+    handler({}, None)
+    assert captured_params, "expected at least one OMDB call"
+    assert captured_params[0].get("type") == "movie"

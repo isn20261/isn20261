@@ -140,22 +140,49 @@ def _omdb_to_movie(data: dict) -> dict:
         "runtime": _safe_int(data.get("Runtime")),
         "poster": data.get("Poster", ""),
         "imdbRating": _safe_float(data.get("imdbRating")),
+        # OMDB doesn't expose streaming providers; placeholder for a future
+        # JustWatch/etc. enrichment pass.
         "streaming-services": [],
     }
 
 
-def _omdb_random_movie() -> dict | None:
+def _omdb_random_movie(preferences: dict | None = None) -> dict | None:
+    """Randomly sample OMDB by IMDb ID until a movie matches preferences.
+
+    `type=movie` filters series/episodes server-side so we don't waste retries
+    on non-movie IDs. When `preferences.genres` is non-empty, results must
+    overlap at least one user genre; otherwise we re-roll within the same
+    5-retry budget. If preferences are too restrictive (no match in budget),
+    returns None and the caller falls back to the curated catalogue.
+    """
+    user_genres = {
+        g.strip().lower()
+        for g in ((preferences or {}).get("genres") or [])
+        if g
+    }
     for _ in range(5):
         imdb_id = f"tt{random.randint(1, _OMDB_MAX_IMDB_ID):07d}"
         try:
             resp = requests.get(
                 "https://www.omdbapi.com/",
-                params={"apikey": OMDB_API_KEY, "i": imdb_id},
+                params={
+                    "apikey": OMDB_API_KEY,
+                    "i": imdb_id,
+                    "type": "movie",
+                },
                 timeout=5,
             )
             data = resp.json()
-            if data.get("Response") == "True":
-                return _omdb_to_movie(data)
+            if data.get("Response") != "True":
+                continue
+            movie = _omdb_to_movie(data)
+            if user_genres:
+                movie_genres = {
+                    g.strip().lower() for g in (movie["genre"] or "").split(",") if g.strip()
+                }
+                if not (user_genres & movie_genres):
+                    continue
+            return movie
         except Exception:
             continue
     return None
@@ -167,7 +194,7 @@ def _omdb_random_movie() -> dict | None:
 
 def _pick_movie(preferences: dict) -> dict:
     if OMDB_API_KEY:
-        movie = _omdb_random_movie()
+        movie = _omdb_random_movie(preferences)
         if movie:
             return movie
 
