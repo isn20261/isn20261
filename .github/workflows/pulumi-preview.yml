@@ -29,13 +29,15 @@ jobs:
         with:
           enable-cache: true
 
+      - uses: pulumi/setup-pulumi@v2
+
       - run: uv sync
 
       - name: Pulumi preview
         id: preview
         run: |
           set -euo pipefail
-          uv run pulumi preview --stack dev --non-interactive > /tmp/preview.txt 2>&1
+          uv run pulumi preview --stack dev --non-interactive 2>&1 | tee /tmp/preview.txt
           echo "status=success" >> "$GITHUB_OUTPUT"
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
