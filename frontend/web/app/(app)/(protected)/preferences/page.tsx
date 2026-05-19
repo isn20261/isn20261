@@ -1,15 +1,24 @@
 "use client";
 
 /**
- * Phase 8 (PREF-01..05, issue #97) — preferences screen.
+ * Phase 14 (INTG-PREF-01..03, issue #133) — preferences screen, real backend.
  *
- * Lives inside (app)/(protected)/ so the Phase 5 RequireAuth gate guards
- * unauthenticated visitors (PREF-02). Client Component — local React
- * state for chip toggles + useAuth() for the email/sign-out row.
+ * Replaces the Phase 8 local-state-only mock with real GET + POST against the
+ * /preferences Lambda via the Phase 12 fetch wrapper.
  *
- * Per ROADMAP §"Phase 8 Notes": read-only display this milestone.
- * Toggles update local state for visual feedback only; no persistence.
- * v2 (INTG-02) wires real Cognito user attributes.
+ * Wire format / strategy decisions: see .planning/phases/14-preferences-integration/14-CONTEXT.md
+ *   - Per-toggle optimistic with in-flight dedup + replay queue (rollback on error)
+ *   - humor is single-string on the wire — UI is single-select
+ *   - genres is a new SectionCard, sourced from lib/api/recommend.ts GENRES
+ *   - kebab-case "age-rating" is the wire key; JS local identifier is `ageRating`
+ *
+ * Lambda quirk workaround: `_post()` in functions/preferences/preferences.py uses
+ * `if X is not None` to skip unset fields, which means literal null is a no-op.
+ * To clear a single-string field (humor / age-rating), we send "" instead of null.
+ * The UI treats both null and "" as "no selection".
+ *
+ * Auth gate (RequireAuth) and route-group (protected) are inherited from
+ * the (app)/(protected) layout; nothing changed there.
  *
  * DSGN-06 escape hatches (each with // non-tokenized inline):
  *   - max-w-[880px]              : column width primitive (already documented)
@@ -17,36 +26,115 @@
  *   - tracking-[0.18em]          : eyebrow letter-spacing (already documented)
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Chip } from "@/components/Chip";
 import { SectionCard } from "@/components/SectionCard";
+import { ChipsSkeleton } from "@/components/ChipsSkeleton";
 import {
+  GENRES,
   MOODS,
   RATINGS,
   STREAMING_SERVICES,
   type Rating,
 } from "@/lib/api/recommend";
+import {
+  getPreferences,
+  savePreferences,
+  type Preferences,
+} from "@/lib/api/preferences";
+import { useApiErrorUx } from "@/lib/api/useApiErrorUx";
+import type { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
+const EYEBROW =
+  "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
+
+type Field = keyof Preferences;
 
 export default function PreferencesPage() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const [services, setServices] = useState<string[]>([
-    "netflix",
-    "prime",
-    "mubi",
-  ]);
-  const [moods, setMoods] = useState<string[]>(["thoughtful", "chill"]);
-  const [rating, setRating] = useState<Rating>("R");
+  const [prefs, setPrefs] = useState<Preferences | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const inFlight = useRef<Set<Field>>(new Set());
+  const replayQueue = useRef<Map<Field, unknown>>(new Map());
+  useApiErrorUx(error);
 
-  function toggleSet(arr: string[], value: string): string[] {
-    return arr.includes(value)
-      ? arr.filter((v) => v !== value)
-      : [...arr, value];
+  useEffect(() => {
+    let cancelled = false;
+    getPreferences().then((res) => {
+      if (cancelled) return;
+      if (!res.ok) {
+        setError(res.error);
+        setIsLoading(false);
+        return;
+      }
+      setPrefs(res.data);
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function commit<K extends Field>(
+    field: K,
+    next: Preferences[K],
+    prevSnapshot: Preferences,
+  ) {
+    setPrefs((curr) => (curr ? { ...curr, [field]: next } : curr));
+    if (inFlight.current.has(field)) {
+      replayQueue.current.set(field, next);
+      return;
+    }
+    inFlight.current.add(field);
+    let value: Preferences[K] = next;
+    let snapshot = prevSnapshot;
+    // Loop: replay any queued supersede after the in-flight request resolves.
+    while (true) {
+      // Lambda quirk: null in POST is a no-op (functions/preferences/preferences.py
+      // `if X is not None`). Translate null → "" for single-string fields so the
+      // server actually clears the value. Documented in 14-CONTEXT.md / 14-02-PLAN.md.
+      const wireValue =
+        value === null && (field === "humor" || field === "age-rating")
+          ? ""
+          : value;
+      const res = await savePreferences({
+        [field]: wireValue,
+      } as Partial<Preferences>);
+      if (!res.ok) {
+        setPrefs(snapshot);
+        setError(res.error);
+        inFlight.current.delete(field);
+        replayQueue.current.delete(field);
+        return;
+      }
+      const queued = replayQueue.current.get(field);
+      if (queued === undefined) {
+        inFlight.current.delete(field);
+        return;
+      }
+      replayQueue.current.delete(field);
+      value = queued as Preferences[K];
+      snapshot = { ...snapshot, [field]: value };
+    }
+  }
+
+  function toggleSet(
+    arr: readonly string[],
+    value: string,
+  ): readonly string[] {
+    return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+  }
+
+  function toggleSingle(
+    curr: string | null,
+    value: string,
+  ): string | null {
+    return curr === value ? null : value;
   }
 
   function handleSignOut() {
@@ -55,6 +143,7 @@ export default function PreferencesPage() {
   }
 
   const email = user?.email ?? "";
+
   return (
     <div className="max-w-[880px] mx-auto px-6 md:px-10 py-10 md:py-14">
       <p className={`${EYEBROW} mb-2`}>Account</p>
@@ -68,59 +157,108 @@ export default function PreferencesPage() {
 
       <div className="flex flex-col gap-4 mt-8">
         <SectionCard
+          title="Favorite genres"
+          helper="Recommendations will lean toward these."
+        >
+          {isLoading || !prefs ? (
+            <ChipsSkeleton count={6} />
+          ) : (
+            <div className="flex flex-wrap gap-2.5">
+              {GENRES.map((g) => (
+                <Chip
+                  key={g.id}
+                  active={prefs.genres.includes(g.id)}
+                  onClick={() =>
+                    commit("genres", toggleSet(prefs.genres, g.id), prefs)
+                  }
+                >
+                  {g.label}
+                </Chip>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
           title="Streaming services"
           helper="Only suggest things on services you actually have."
         >
-          <div className="flex flex-wrap gap-2.5">
-            {STREAMING_SERVICES.map((s) => (
-              <Chip
-                key={s.id}
-                active={services.includes(s.id)}
-                onClick={() => setServices(toggleSet(services, s.id))}
-              >
-                <span className="font-display font-extrabold text-11">
-                  {s.glyph}
-                </span>
-                <span>{s.name}</span>
-              </Chip>
-            ))}
-          </div>
+          {isLoading || !prefs ? (
+            <ChipsSkeleton count={6} />
+          ) : (
+            <div className="flex flex-wrap gap-2.5">
+              {STREAMING_SERVICES.map((s) => (
+                <Chip
+                  key={s.id}
+                  active={prefs.subscriptions.includes(s.id)}
+                  onClick={() =>
+                    commit(
+                      "subscriptions",
+                      toggleSet(prefs.subscriptions, s.id),
+                      prefs,
+                    )
+                  }
+                >
+                  <span className="font-display font-extrabold text-11">
+                    {s.glyph}
+                  </span>
+                  <span>{s.name}</span>
+                </Chip>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard
           title="Default mood"
           helper="What you usually want. You can override per recommendation."
         >
-          <div className="flex flex-wrap gap-2">
-            {MOODS.map((m) => (
-              <Chip
-                key={m.id}
-                active={moods.includes(m.id)}
-                onClick={() => setMoods(toggleSet(moods, m.id))}
-              >
-                <span aria-hidden>{m.icon}</span>
-                <span>{m.label}</span>
-              </Chip>
-            ))}
-          </div>
+          {isLoading || !prefs ? (
+            <ChipsSkeleton count={4} />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {MOODS.map((m) => (
+                <Chip
+                  key={m.id}
+                  active={prefs.humor === m.id}
+                  onClick={() =>
+                    commit("humor", toggleSingle(prefs.humor, m.id), prefs)
+                  }
+                >
+                  <span aria-hidden>{m.icon}</span>
+                  <span>{m.label}</span>
+                </Chip>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard
           title="Maximum age rating"
           helper="We won't go beyond this."
         >
-          <div className="flex flex-wrap gap-2">
-            {RATINGS.map((r) => (
-              <Chip
-                key={r}
-                active={r === rating}
-                onClick={() => setRating(r)}
-                className="min-w-16"
-              >
-                {r}
-              </Chip>
-            ))}
-          </div>
+          {isLoading || !prefs ? (
+            <ChipsSkeleton count={5} />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {RATINGS.map((r) => (
+                <Chip
+                  key={r}
+                  active={r === prefs["age-rating"]}
+                  onClick={() =>
+                    commit(
+                      "age-rating",
+                      toggleSingle(prefs["age-rating"], r) as Rating | null,
+                      prefs,
+                    )
+                  }
+                  className="min-w-16"
+                >
+                  {r}
+                </Chip>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard title="Account">

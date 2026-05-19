@@ -2,11 +2,30 @@
 
 ## What This Is
 
-The Next.js + TypeScript + TailwindCSS web frontend for **recommend-a**, a movie recommendation app. The frontend mirrors the locked design in `frontend/_design-reference/` and will eventually consume the existing AWS Lambda + Cognito + DynamoDB backend — but every backend interaction is mocked for this milestone so frontend work can ship independently.
+The Next.js + TypeScript + TailwindCSS web frontend for **recommend-a**, a movie recommendation app. v1.0 shipped the design-faithful UI on top of `lib/api/*` mocks. v2.0 replaces those mocks with the real Cognito + API Gateway + Lambda surface so a fresh teammate can clone the repo, follow `ONBOARDING.md`, run `pulumi up` against their own AWS account, and use the app end-to-end against their own infra.
 
 ## Core Value
 
-A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
+**v1.0 (shipped):** A polished, design-faithful UI that matches `frontend/_design-reference/` exactly across 3 breakpoints, with auth, home, recommendation, preferences, history, and watch-later running against typed mocks.
+
+**v2.0 (active):** That same UI consuming the real backend — Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from the onboarding guide and run the app against it.
+
+## Current Milestone: v2.0 Backend Integration
+
+**Goal:** Replace every `lib/api/*` mock with real Cognito + API Gateway + Lambda calls, and ship an end-to-end onboarding guide so a teammate can provision their own AWS infra and run the app against it.
+
+**Target features:**
+- Real Cognito auth wired into the frontend (sign-up → confirm → login) — already in flight as issue #128
+- Typed, production-grade Lambda fetch client (error taxonomy, token refresh, retry/timeout) consumed by every screen
+- Recommendation screen calling real `recommend` Lambda
+- Preferences screen reading/writing real `preferences` Lambda
+- History screen reading real `history` Lambda
+- Watch-later screen reading/writing real `watch_later` Lambda
+- `ONBOARDING.md` validated by a teammate cold-running it on a fresh AWS account (AWS account → IAM → Pulumi install → `pulumi config` → `.env` → `pulumi up` → `pnpm dev`)
+
+**Phase numbering continues from v1.0 (which ended at Phase 10).** v2.0 begins at Phase 11.
+
+**Architecture (Pattern B / Cognito-direct):** Frontend talks directly to Cognito for sign-up/login (using `amazon-cognito-identity-js`); a `post_confirm` Lambda trigger seeds DynamoDB on confirmation; authenticated requests carry the IdToken and hit API Gateway v2's JWT authorizer before reaching the recommend/preferences/history/watch-later Lambdas. Per umbrella issue #127.
 
 ## Requirements
 

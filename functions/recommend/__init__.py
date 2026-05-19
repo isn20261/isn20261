@@ -1,1 +1,1 @@
-from .recommend import _resolve_movie, handler
+from .recommend import handler

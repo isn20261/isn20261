@@ -5,3 +5,4 @@ __pycache__/
 aws
 sam_installation/
 .claude/
+Pulumi.dev-test-combined.yaml

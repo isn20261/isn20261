@@ -1,77 +1,33 @@
 /**
- * Phase 9 (HIST-01..05, issue #98) — typed mock history seam.
+ * Phase 15 (INTG-HIST-01..02, issue #134) — Real history Lambda calls.
  *
- * Self-contained module shaped like a future `getHistory` Lambda response.
- * v2 (INTG-02) replaces `getHistory()` with a real fetch — every other
- * consumer keeps working unchanged. Decoupled from `@/lib/api/auth` per
- * ARCHITECTURE.md anti-pattern note.
+ * Wrapper-backed read-only seam. Returns Result<T, ApiError> so callers
+ * branch on res.ok and feed res.error to useApiErrorUx.
  *
- * Display labels (when, mood) are pre-formatted in the mock; v2 will
- * compute relative-time strings from real `recommendedAt` ISO timestamps.
+ * Wire format (functions/history/history.py): newest-first array of
+ *   { title, "recommended-at" }
+ * Kebab-case "recommended-at" is the wire format. The Lambda sorts via
+ * ScanIndexForward=False; consumers don't re-sort.
+ *
+ * Schema gap noted: poster URL, mood, genre, runtime, id are NOT returned
+ * by the current Lambda. Phase 15 renders the minimal shape; v2.1 backend
+ * enrichment is logged as a follow-up. See 15-CONTEXT.md + docs/inconsistencias.md §2.
+ *
+ * Phase 13 retired the shared MOVIES dataset from `lib/api/recommend.ts`
+ * and inlined a `MOVIES_SEED` local constant here as a stopgap. That seed
+ * is no longer needed — the live Lambda is the source of truth — and is
+ * removed by this commit.
  */
 
-import { MOVIES, type Movie } from "@/lib/api/recommend";
+import { apiGet, type ApiError, type Result } from "@/lib/api/client";
 
-export type HistoryEntry = {
-  id: string;
-  movie: Movie;
-  when: string;
-  mood: string;
+export type HistoryItem = {
+  title: string;
+  "recommended-at": string; // ISO 8601 timestamp
 };
 
-export type HistoryGroup = {
-  label: string;
-  entries: readonly HistoryEntry[];
-};
-
-const FETCH_LATENCY_MS = 250;
-
-function entry(movie: Movie | undefined, when: string, mood: string): HistoryEntry {
-  if (!movie) {
-    throw new Error("history seed references a movie outside MOVIES bounds");
-  }
-  return {
-    id: `${movie.id}-${when.replace(/\s+/g, "-").toLowerCase()}`,
-    movie,
-    when,
-    mood,
-  };
-}
-
-const GROUPS: readonly HistoryGroup[] = [
-  {
-    label: "Today",
-    entries: [
-      entry(MOVIES[0], "2h ago", "Thoughtful"),
-      entry(MOVIES[1], "8h ago", "Thoughtful"),
-    ],
-  },
-  {
-    label: "Yesterday",
-    entries: [
-      entry(MOVIES[2], "Sat 9:14 PM", "Chill"),
-      entry(MOVIES[3], "Sat 9:14 PM", "Funny"),
-    ],
-  },
-  {
-    label: "Last week",
-    entries: [
-      entry(MOVIES[4], "Tue", "Intense"),
-      entry(MOVIES[5], "Wed", "Romantic"),
-      entry(MOVIES[6], "Fri", "Adventurous"),
-    ],
-  },
-  {
-    label: "Earlier",
-    entries: [
-      entry(MOVIES[7], "Apr 2", "Nostalgic"),
-      entry(MOVIES[8], "Mar 28", "Thoughtful"),
-      entry(MOVIES[9], "Mar 17", "Scary"),
-    ],
-  },
-] as const;
-
-export async function getHistory(): Promise<readonly HistoryGroup[]> {
-  await new Promise((resolve) => setTimeout(resolve, FETCH_LATENCY_MS));
-  return GROUPS;
+export async function getHistory(): Promise<
+  Result<readonly HistoryItem[], ApiError>
+> {
+  return apiGet<readonly HistoryItem[]>("/api/v1/history");
 }

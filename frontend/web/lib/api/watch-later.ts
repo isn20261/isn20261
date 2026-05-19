@@ -1,71 +1,38 @@
 /**
- * Phase 10 (WTCL-01..05, issue #99) — typed mock watch-later seam.
+ * Phase 16 (INTG-WTCL-01..03, issue #135) — Real watch-later Lambda calls.
  *
- * localStorage-backed (key: `recommend-a.watch-later`) so the Save button
- * on /recommendation persists across navigations and the /watch-later
- * screen reads the same state.
+ * Wrapper-backed read + add seam. Returns Result<T, ApiError>.
  *
- * Stores a denormalized list of movie IDs only. `getWatchLater()` joins
- * with MOVIES at read time. Per ARCHITECTURE.md the real backend nests
- * `title` inside the array entry — the seam translates between shapes
- * when v2 (INTG-02) wires the real Lambda.
+ * Wire format (functions/watch_later/watch_later.py):
+ *   GET  /api/v1/watch-later → [{ title, "added-at" }] (newest items first)
+ *   POST /api/v1/watch-later { movieId } → 201 created, empty body
  *
- * Defensive guards on every read/write — typeof window check (SSR-safe),
- * try/catch around JSON.parse, reject non-array shapes.
+ * Backend gap (verified 2026-05-14): no PUT / DELETE wired. Remove deferred
+ * to v2.1 — see 16-CONTEXT.md §"Resolved decisions" + docs/inconsistencias.md
+ * §3-4. The Phase 10 localStorage-backed remove path is dropped here; the
+ * UI hides the remove control until backend gains a remove verb.
+ *
+ * Phase 13 had inlined a `MOVIES_SEED` local constant here as a stopgap
+ * after retiring the shared MOVIES dataset from `lib/api/recommend.ts`.
+ * That seed is no longer needed — the live Lambda is the source of truth —
+ * and is removed by this commit.
  */
 
-import { MOVIES, type Movie } from "@/lib/api/recommend";
+import { apiGet, apiPost, type ApiError, type Result } from "@/lib/api/client";
 
-export const WATCH_LATER_KEY = "recommend-a.watch-later" as const;
+export type WatchLaterItem = {
+  title: string;
+  "added-at": string; // ISO 8601 timestamp
+};
 
-function readIds(): string[] {
-  if (typeof window === "undefined") return [];
-  const raw = window.localStorage.getItem(WATCH_LATER_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((v): v is string => typeof v === "string");
-  } catch {
-    return [];
-  }
+export async function getWatchLater(): Promise<
+  Result<readonly WatchLaterItem[], ApiError>
+> {
+  return apiGet<readonly WatchLaterItem[]>("/api/v1/watch-later");
 }
 
-function writeIds(ids: readonly string[]): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(WATCH_LATER_KEY, JSON.stringify(ids));
-}
-
-export function getWatchLater(): readonly Movie[] {
-  const ids = readIds();
-  const lookup = new Map(MOVIES.map((m) => [m.id, m] as const));
-  return ids
-    .map((id) => lookup.get(id))
-    .filter((m): m is Movie => m !== undefined);
-}
-
-export function isInWatchLater(movieId: string): boolean {
-  return readIds().includes(movieId);
-}
-
-export function addToWatchLater(movieId: string): void {
-  const ids = readIds();
-  if (ids.includes(movieId)) return; // idempotent
-  writeIds([...ids, movieId]);
-}
-
-export function removeFromWatchLater(movieId: string): void {
-  const ids = readIds();
-  if (!ids.includes(movieId)) return;
-  writeIds(ids.filter((id) => id !== movieId));
-}
-
-export function reorderWatchLater(nextIds: readonly string[]): void {
-  // Phase 10 ships without drag-to-reorder UI; seam stays available for v2.
-  const valid = new Set(MOVIES.map((m) => m.id));
-  writeIds(nextIds.filter((id) => valid.has(id)));
-}
-
-export function watchLaterCount(): number {
-  return readIds().length;
+export async function addWatchLater(
+  movieId: string,
+): Promise<Result<null, ApiError>> {
+  return apiPost<null>("/api/v1/watch-later", { movieId });
 }
