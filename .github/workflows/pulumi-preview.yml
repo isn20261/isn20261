@@ -13,8 +13,11 @@ jobs:
   preview:
     name: Preview (dev)
     runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.fork == false
     permissions:
+      contents: read
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
 
@@ -50,9 +53,26 @@ jobs:
               ? fs.readFileSync('/tmp/preview.txt', 'utf8')
               : '(sem output — preview não chegou a rodar)';
             const status = '${{ steps.preview.outputs.status }}' === 'success' ? '✅' : '❌';
-            await github.rest.issues.createComment({
+            const marker = '<!-- pulumi-preview-comment -->';
+            const body = `${marker}\n## ${status} Pulumi Preview — stack \`dev\`\n\`\`\`\n${text.slice(0, 65000)}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ${status} Pulumi Preview — stack \`dev\`\n\`\`\`\n${text.slice(0, 65000)}\n\`\`\``
             });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
