@@ -42,7 +42,6 @@ Fonte: [pulumi login | CLI commands](https://www.pulumi.com/docs/iac/cli/command
 ```bash
 make install       # instala AWS CLI, SAM CLI, Pulumi e uv
 uv sync            # instala dependências Python
-make sam           # executa função Lambda localmente com DynamoDB via Docker
 ```
 
 ### Deploy para AWS
