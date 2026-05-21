@@ -29,6 +29,17 @@ ses_from_email = config.require("sesFromEmail") if is_prod else config.get("sesF
 ses_from_name = config.get("sesFromName") or "App"
 ses_reply_to_email = config.get("sesReplyToEmail") or ses_from_email
 
+# Only manage the SES domain identity in Pulumi when the FROM address belongs
+# to the configured domain. Otherwise (e.g. SES sandbox stopgap pointing at a
+# pre-verified personal mailbox) the identity is assumed to be verified out of
+# band, and we skip DomainIdentity / DNS / DKIM resources entirely.
+ses_use_domain_identity = bool(
+    is_prod
+    and domain_name
+    and ses_from_email
+    and ses_from_email.endswith(f"@{domain_name}")
+)
+
 # --- 2. DynamoDB Tables ---
 
 email_to_sub_table = aws.dynamodb.Table(
@@ -202,7 +213,7 @@ aws.cloudwatch.LogGroup(
 # --- 5a. SES Domain Identity ---
 
 ses_domain_identity = None
-if is_prod and domain_name:
+if ses_use_domain_identity:
     ses_domain_identity = aws.ses.DomainIdentity(
         f"ses-domain-{env}",
         domain=domain_name,
@@ -276,16 +287,17 @@ aws.iam.RolePolicyAttachment(
 # --- 5a. Route53 Zone (necessária para SES DNS records) ---
 
 zone = None
-if is_prod and domain_name:
+if ses_use_domain_identity:
     zone = aws.route53.get_zone(name=domain_name)
 
 # --- 5b. SES Domain Configuration (registros DNS) ---
 
 
 ses_dkim = None
-if is_prod and domain_name and zone:
+ses_domain_identity_verification = None
+if ses_use_domain_identity and zone:
     # Verificação de domínio (TXT record)
-    aws.route53.Record(
+    ses_verification_record = aws.route53.Record(
         f"ses-verification-record-{env}",
         zone_id=zone.zone_id,
         name=pulumi.Output.concat("_amazonses.", domain_name),
@@ -294,11 +306,14 @@ if is_prod and domain_name and zone:
         records=[ses_domain_identity.verification_token],
     )
 
-    # Aguarda a criação do domain identity
-    aws.ses.DomainIdentityVerification(
+    # Aguarda a verificação efetiva do domínio (poll na AWS). Precisa do TXT
+    # record já criado, senão a verificação nunca completa.
+    ses_domain_identity_verification = aws.ses.DomainIdentityVerification(
         f"ses-domain-verification-{env}",
         domain=ses_domain_identity.id,
-        opts=pulumi.ResourceOptions(depends_on=[ses_domain_identity]),
+        opts=pulumi.ResourceOptions(
+            depends_on=[ses_domain_identity, ses_verification_record]
+        ),
     )
 
     # DKIM records
@@ -344,6 +359,17 @@ else:
 
 # --- 6. Amazon Cognito ---
 
+# Quando o Cognito é configurado com DEVELOPER + source_arn de uma SES
+# DomainIdentity, ele valida no create/update se a identidade já está
+# verificada. Sem essa dependência explícita o Pulumi cria a UserPool em
+# paralelo com a verificação e falha com
+# `InvalidParameterException: Email address is not verified`.
+user_pool_opts = None
+if ses_domain_identity_verification is not None:
+    user_pool_opts = pulumi.ResourceOptions(
+        depends_on=[ses_domain_identity_verification]
+    )
+
 user_pool = aws.cognito.UserPool(
     f"app-user-pool-{env}",
     name=f"app-users-{env}",
@@ -384,6 +410,7 @@ user_pool = aws.cognito.UserPool(
             ),
         ]
     ),
+    opts=user_pool_opts,
 )
 
 aws.lambda_.Permission(
@@ -811,7 +838,7 @@ pulumi.export("cloudfront_id", distribution.id)
 # ---------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES
 # ---------------------------------------------------------------------------
-if is_prod and domain_name:
+if ses_use_domain_identity:
     pulumi.export("ses_domain", ses_domain_identity.domain)
     pulumi.export("ses_identity_arn", ses_identity_arn)
     pulumi.export(

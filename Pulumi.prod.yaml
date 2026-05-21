@@ -2,5 +2,10 @@ config:
   aws:region: sa-east-1
   isn20261:environment: prod
   isn20261:domainName: cinedica.video
-  isn20261:sesFromEmail: no-reply@cinedica.video
+  # Stopgap enquanto a SES está em sandbox em sa-east-1 e o domínio
+  # cinedica.video ainda não está verificado. Voltar para
+  # no-reply@cinedica.video assim que (1) a SES sair do sandbox e
+  # (2) a verificação do domínio completar. Vide fix da race
+  # condition Cognito↔SES em __main__.py.
+  isn20261:sesFromEmail: etorresini@ifsc.edu.br
   isn20261:sesFromName: Cine Dica
