@@ -255,3 +255,218 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-05-04*
+
+---
+
+## Milestone v2.0 — Backend Integration
+
+**Defined:** 2026-05-12
+**Umbrella issue:** #127
+**Phase numbering:** continues from v1.0 (which ended at Phase 10). v2.0 begins at **Phase 11**.
+
+### Overview
+
+Seven sequential phases that replace every `lib/api/*` mock with the real Cognito + API Gateway v2 + Lambda surface, and ship an end-to-end onboarding guide so a fresh teammate can clone the repo, provision their own AWS infra via Pulumi, and run the app against it. Pattern B / Cognito-direct: the frontend talks to Cognito for sign-up/login (via `amazon-cognito-identity-js`), a `post_confirm` Lambda trigger seeds DynamoDB on confirmation, and authenticated requests carry the IdToken to API Gateway v2's JWT authorizer before reaching the per-screen Lambdas.
+
+### Context
+
+- **v2 branches off `main`** (v1 already merged) — not off `frontend`. The `frontend` branch is closed at the end of v1.0.
+- **1 phase = 1 sub-issue under umbrella #127 = 1 feature branch off `main` = 1 PR back into `main`.** Branch naming: `feature/issue-{N}-{slug}`. Phase 11 is already in PR as issue #128 (retroactively roadmapped); Phases 12–17 will open new sub-issues under #127.
+- **Backend remains read-only this milestone.** `functions/`, `__main__.py`, Pulumi configs (`Pulumi.dev.yaml`, etc.) are not modified. The only exceptions are minimal fixes strictly required to unblock integration — these are flagged in the phase plan and surfaced to the user, not done unilaterally. Standing pre-existing backend concerns (env-var mismatch, missing PyJWT, ~8/11 lambdas not wired) are tracked in `.planning/codebase/CONCERNS.md` and addressed by separate non-roadmap issues (#117 closed, #120 closed, #122 closed, #123, #125).
+- **Phase order is fixed and sequential.** 11 → 12 → 13 → 14 → 15 → 16 → 17. Cognito tokens (P11) must exist before the fetch wrapper (P12) can inject them; the wrapper must exist before per-screen Lambda integration (P13–P16); all integrations must work before the onboarding guide (P17) can be cold-run end-to-end.
+- **Out of scope, per REQUIREMENTS.md §v2.0 Out of Scope:** backend bugfixes beyond what blocks integration, LocalStack (handled separately by a teammate), OAuth/magic-link/2FA/password-reset UI, CI/CD pipeline (v2.1), production hardening (v2.1), native mobile.
+
+### Phases
+
+- [ ] **Phase 11: Cognito Frontend Integration** — Replace the `lib/api/auth` mock with `amazon-cognito-identity-js`; sign-up → email confirm → sign-in → logout round-trip against real Cognito + `post_confirm` Lambda → DynamoDB (issue #128, retroactive — already in PR)
+- [x] **Phase 12: Secure Lambda Fetch Wrapper** — Typed `lib/api/client.ts` that auto-injects the Cognito IdToken, exposes a discriminated `ApiError` taxonomy, refreshes-and-replays once on 401, applies per-request timeouts, and surfaces error-class-aware UX (TBD — open as sub-issue of #127) (completed 2026-05-12)
+- [ ] **Phase 13: Recommendation Lambda Integration** — Recommendation screen calls the real `/recommend` Lambda through the wrapper with loading / error / empty states (TBD — open as sub-issue of #127)
+- [x] **Phase 14: Preferences Lambda Integration** — Preferences screen reads + writes the real `/preferences` Lambda (GET + POST; PUT was an issue-title mistake — POST only) with loading / error / empty states and a documented per-toggle optimistic update strategy (issue #133, completed 2026-05-14 — live-AWS smoke deferred)
+- [ ] **Phase 15: History Lambda Integration** — History screen reads the real `/history` Lambda with loading / error / empty states (TBD — open as sub-issue of #127)
+- [ ] **Phase 16: Watch-Later Lambda Integration** — Watch-later screen reads + writes (add / remove) the real `/watch-later` Lambda with loading / error / empty states (TBD — open as sub-issue of #127)
+- [ ] **Phase 17: Onboarding Guide + E2E Cold-Run** — `ONBOARDING.md` covers AWS account + IAM → AWS CLI → Pulumi install + config → `pulumi up` → `.env` from `pulumi stack output` → `pnpm install && pnpm dev` → end-to-end smoke test; validated by a teammate cold-running it on a fresh AWS account (TBD — open as sub-issue of #127)
+
+### Phase Details
+
+#### Phase 11: Cognito Frontend Integration
+**Goal**: A user can sign up with a fresh email, confirm with the emailed code, sign in against real Cognito, and the resulting session shows them as a confirmed user in the DynamoDB users table — with zero mock fallback remaining in the auth code path.
+**GitHub issue**: #128 (retroactive — already in PR)
+**Branch**: `feature/issue-128-cognito-auth`
+**Depends on**: v1.0 complete (Phases 1–10)
+**Requirements**: AUTH-COGN-01, AUTH-COGN-02, AUTH-COGN-03, AUTH-COGN-04, AUTH-COGN-05, AUTH-COGN-06
+**Success Criteria** (what must be TRUE):
+  1. A user submitting `/register` with a fresh email + valid password receives a confirmation code by email and can complete the `confirm` flow from the UI; their Cognito user transitions from `UNCONFIRMED` to `CONFIRMED`.
+  2. After confirmation, a `GetItem` against the `recommend-a.users` DynamoDB table by the same `sub` returns a row — proving the `post_confirm` Lambda trigger fired end-to-end from a frontend-initiated sign-up.
+  3. A user submitting `/login` with confirmed credentials receives real Cognito tokens (IdToken + RefreshToken), the IdToken decodes (jwt.io or in-app) to the expected `sub` / `email` / `cognito:groups` claims, and the session persists across a browser refresh.
+  4. Clicking logout clears the Cognito session and the frontend token storage; any subsequent navigation to a protected route redirects to `/login`.
+  5. `git grep -E 'MOCK_LATENCY_MS|USERS_KEY|signIn.*mock|signUp.*mock'` against `frontend/web/lib/api/auth*` and `frontend/web/components/` returns zero hits — no mock fallback remains in the auth path.
+**Plans**: TBD
+
+**Notes / risks:**
+- Retroactively roadmapped: work landed before v2.0 was formally defined, so this phase documents what already shipped on `feature/issue-128-cognito-auth`. Plan-phase for P11 captures the final state, not future work.
+- The `post_confirm` Lambda was fixed in #117 (now closed). If the cold-run reveals a regression, it's a v2.0 bug, not a backend-bugfix carve-out.
+- Cognito user pool + client are managed by Pulumi (`__main__.py`); `.env` carries `NEXT_PUBLIC_COGNITO_USER_POOL_ID` and `NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID`. Onboarding (P17) must document the `.env` → `pulumi stack output` mapping.
+
+#### Phase 12: Secure Lambda Fetch Wrapper
+**Goal**: Every authenticated frontend call to API Gateway v2 routes through a single typed wrapper that injects the Cognito IdToken, classifies errors into a discriminated union, retries once on 401 via refresh-then-replay, and times out cleanly — providing the one seam the per-screen integration phases (13–16) consume.
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-fetch-wrapper`
+**Depends on**: Phase 11 (real Cognito tokens are needed for IdToken injection and RefreshToken-based replay)
+**Requirements**: FETCH-01, FETCH-02, FETCH-03, FETCH-04, FETCH-05, FETCH-06, FETCH-07
+**Success Criteria** (what must be TRUE):
+  1. Every typed `lib/api/*` endpoint function (`recommend`, `getPreferences`, `putPreferences`, `getHistory`, `getWatchLater`, `addWatchLater`, `removeWatchLater`) returns a `Result<T, ApiError>` where `ApiError` is a discriminated union of `NetworkError | UnauthorizedError | ForbiddenError | ValidationError | ServerError` — exhaustively checkable in TypeScript.
+  2. A successful authenticated call carries `Authorization: Bearer <IdToken>` (the current Cognito IdToken at call time) and `git grep -nE '\\bfetch\\(' frontend/web` outside `lib/api/client.ts` returns zero hits — all callers go through the wrapper.
+  3. Forcing a 401 (e.g. via an expired IdToken in devtools) results in exactly one silent refresh-then-replay using the RefreshToken; if the replay also returns 401 the wrapper triggers logout and routes to `/login` — verifiable in the Network panel as `original 401 → token refresh call → replayed request 200`, or `original 401 → refresh → replayed 401 → logout`.
+  4. A request that exceeds the wrapper's per-request timeout (default 10s, overridable via caller signal) aborts and surfaces a `NetworkError` to the caller — verifiable by pointing one endpoint at a delay endpoint or via `setTimeout` in a test harness.
+  5. A reusable hook/utility consumes the `ApiError` discriminated union and renders error-class-appropriate UX (toast for `NetworkError`/`ServerError`, inline form message for `ValidationError`, forced redirect for `UnauthorizedError` after the retry budget is spent) — exercisable from at least one screen in this phase.
+**Plans**: 4 plans
+Plans:
+- [x] 12-01-PLAN.md — Sonner install + Toaster mount in app/layout + .env.example documentation (foundation; partial FETCH-06, FETCH-07)
+- [x] 12-02-PLAN.md — `lib/api/client.ts` wrapper (types, env init, getSession-per-request, IdToken injection, AbortController timeout, 5-kind ApiError classifier, sanitization) + `setOnUnauthorized(signOut)` registration in AuthProvider (FETCH-01, FETCH-02, FETCH-03 pre-emptive, FETCH-04, FETCH-06 introduces wrapper)
+- [x] 12-03-PLAN.md — `useApiErrorUx` hook + `recommend.real.ts` demonstrator typed function (FETCH-05 partial, FETCH-07)
+- [x] 12-04-PLAN.md — End-of-phase verification: grep gates (FETCH-06 enforcement, threat-model checks T-12-01..06), manual auth-flow walkthrough, summary report
+
+**Notes / risks:**
+- Refresh-then-replay must NOT race: if a second 401 arrives mid-refresh, the second caller should reuse the in-flight refresh promise, not start a new one. Plan-phase should call this out.
+- API Gateway v2 JWT authorizer expects the IdToken (not AccessToken) — the wrapper must read the IdToken from the same storage Phase 11 writes to.
+- Single source of `Authorization` header injection: if a caller passes their own `Authorization` header, the wrapper should reject or replace it deterministically — document the choice in the plan.
+
+#### Phase 13: Recommendation Lambda Integration
+**Goal**: The recommendation screen renders a real movie recommendation fetched from the `/recommend` Lambda through the Phase 12 wrapper, with explicit loading, error and empty states — and no recommendation mock left in the code path.
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-reco-integration`
+**Depends on**: Phase 12 (consumes the typed fetch wrapper + `Result<T, ApiError>` contract)
+**Requirements**: INTG-RECO-01, INTG-RECO-02
+**Success Criteria** (what must be TRUE):
+  1. Visiting `/recommendation` while authenticated triggers a real `GET /recommend` (or POST per the Lambda contract) request visible in the Network panel, and the rendered poster / title / summary / metadata are sourced from the Lambda response — not from `lib/api/recommend` mock data.
+  2. `git grep -n 'mock' frontend/web/lib/api/recommend*` and `git grep -nE 'lib/api/recommend' frontend/web/app frontend/web/components` show all imports route through the wrapper-backed function only; no fallback mock dataset remains in the recommendation code path.
+  3. Cutting the network (devtools offline) renders the wrapper's error-class-aware error UX on the recommendation screen — not a blank page or unhandled exception.
+  4. A response with no recommendation (empty or null payload) renders the screen's empty state per the Phase 7 design — not a crash and not a loading spinner.
+**Plans**: 4 plans
+Plans:
+- [x] 13-01-type-narrowing-and-adapter-PLAN.md — Narrow recommend.real.ts to a Phase-13-specific `RecommendationResponse` / `RecommendedMovie` type; introduce kebab→camel adapter at the lib boundary; getRecommendationReal() returns `Result<RecommendedMovie | null, ApiError>` (INTG-RECO-01)
+- [x] 13-02-screen-swap-and-states-PLAN.md — Swap `/recommendation` page from mock-backed `getRecommendation()`/`getSimilar()` to `getRecommendationReal()`; wire useApiErrorUx; render loading/ready/empty/error branches; hide Similar Films rail; conditionally omit Phase-7-only fields (INTG-RECO-01, INTG-RECO-02)
+- [ ] 13-03-mock-deletion-PLAN.md — Delete MOVIES dataset + getRecommendation + getSimilar + PICK_LATENCY_MS from lib/api/recommend.ts; keep Movie/Service types, RATINGS/STREAMING_SERVICES/MOODS constants, posterUrl/backdropUrl helpers; rewrite module header (zero "mock" references) (INTG-RECO-02)
+- [ ] 13-04-verification-PLAN.md — End-of-phase verification gate: automated grep gates (Block A), build/lint/tsc (Block B), code-inspection (Block C), manual live-AWS smoke 6 scenarios (Block D), closure summary (Block E)
+
+**Notes / risks:**
+- The live `/api/v1/recommend` Lambda shape (verified 2026-05-14 against `dev-test-combined`) returns ONLY `title` / `genre` / `streaming-services` — 10 Phase-7 fields (year, runtime, rating, match, director, cast, synopsis, mood, posterSeed, backdropSeed) are NOT returned. Phase 13 chose Option C — graceful degradation now, backend enrichment deferred to issue #70 (OMDb + Streaming Availability API).
+- The kebab-case wire key `streaming-services` is converted to camelCase `streamingServices` at the adapter boundary inside `recommend.real.ts` — that file is the SOLE place in `frontend/web/` that touches the kebab form.
+- The Similar Films rail is hidden this phase (no `/similar` endpoint exists). JSX comment marker preserves the layout slot for re-introduction.
+- Backend remains read-only — no edits to `functions/recommend/recommend.py` or `__main__.py` in this phase chain (CORS was already added separately in commit 8f06653).
+- `/smoke` page (Phase 12 manual harness) stays through Phase 16; Phase 17 owns its deletion.
+
+#### Phase 14: Preferences Lambda Integration
+**Goal**: The preferences screen reads from and writes to the real `/preferences` Lambda through the Phase 12 wrapper, with explicit loading, error and empty states and a documented update strategy (optimistic vs conservative).
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-prefs-integration`
+**Depends on**: Phase 12
+**Requirements**: INTG-PREF-01, INTG-PREF-02, INTG-PREF-03
+**Success Criteria** (what must be TRUE):
+  1. Visiting `/preferences` while authenticated triggers a real `GET /preferences` request and the rendered genres / subscriptions / age rating / humor reflect the Lambda response — not mocked data.
+  2. Saving an edit on `/preferences` triggers a real `PUT` (or `POST`) request to the `/preferences` Lambda; reloading the page shows the persisted value — proving round-trip persistence end-to-end against the user's own DynamoDB.
+  3. The update strategy (optimistic-update-then-rollback-on-error vs conservative-disable-until-confirmed) is explicitly chosen and documented in the plan, and the resulting UX matches: cutting the network during save renders the chosen failure path (rollback or disabled state) and the wrapper's error UX surfaces.
+  4. Loading and empty states render correctly: first visit before the request resolves shows a loading state; a brand-new account with no preferences row renders the empty state (or default-prefs flow, whichever the plan chooses) without crashing.
+**Plans**: TBD
+
+**Notes / risks:**
+- Backend preferences shape diverges from `Modelagem.md` (per `ARCHITECTURE.md`); confirm the live shape against the Pulumi stack output before locking the wire format in the plan.
+- The `preferences` Lambda may not be wired in API Gateway yet (`CONCERNS.md` ~8/11 not wired); if so, surface a narrow integration-blocker exception in plan-phase.
+
+#### Phase 15: History Lambda Integration
+**Goal**: The history screen renders the user's real recommendation history fetched from the `/history` Lambda through the Phase 12 wrapper, with explicit loading, error and empty states.
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-history-integration`
+**Depends on**: Phase 12
+**Requirements**: INTG-HIST-01, INTG-HIST-02
+**Success Criteria** (what must be TRUE):
+  1. Visiting `/history` while authenticated triggers a real `GET /history` request and the rendered list (title / date / poster thumb) reflects the Lambda response — not the mocked dataset from Phase 9.
+  2. A brand-new account with no history renders the empty state per the Phase 9 design — not a crash and not a perpetual loading spinner.
+  3. Cutting the network on the history screen renders the wrapper's error-class-aware error UX — not a blank list.
+  4. `git grep -n 'mock' frontend/web/lib/api/history*` shows all imports route through the wrapper-backed function only; no fallback mock dataset remains in the history code path.
+**Plans**: TBD
+
+**Notes / risks:**
+- History payloads can be long; if the Lambda doesn't paginate, the plan should note current behaviour (render-all) and flag pagination as a v2.1 concern.
+- History Lambda may not be wired in API Gateway yet (`CONCERNS.md`); if so, surface in plan-phase.
+
+#### Phase 16: Watch-Later Lambda Integration
+**Goal**: The watch-later screen reads and mutates (add / remove) the user's real watch-later list against the `/watch-later` Lambda through the Phase 12 wrapper, with explicit loading, error and empty states.
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-watch-later-integration`
+**Depends on**: Phase 12
+**Requirements**: INTG-WTCL-01, INTG-WTCL-02, INTG-WTCL-03
+**Success Criteria** (what must be TRUE):
+  1. Visiting `/watch-later` while authenticated triggers a real `GET /watch-later` request and the rendered list (title / poster / added-at) reflects the Lambda response — not the mocked dataset from Phase 10.
+  2. Clicking "add" on a movie triggers a real add request (POST/PUT) and the item appears in the list on the next read; clicking "remove" triggers a real remove request (DELETE) and the item disappears — verifiable round-trip against the user's own DynamoDB.
+  3. A brand-new account with no saved items renders the empty state per the Phase 10 design; cutting the network during add/remove renders the wrapper's error UX and (per the documented update strategy) leaves the list in a consistent state.
+  4. `git grep -n 'mock' frontend/web/lib/api/watch*later*` shows no fallback mock dataset remains in the watch-later code path.
+**Plans**: TBD
+
+**Notes / risks:**
+- Watch-later schema nests `title` inside the array entry per `ARCHITECTURE.md`; mirror the live Lambda shape, not `Modelagem.md`.
+- Add/remove update strategy should mirror Phase 14's choice (optimistic vs conservative) unless the plan explicitly justifies divergence.
+
+#### Phase 17: Onboarding Guide + E2E Cold-Run
+**Goal**: A teammate who has never seen the project can clone the repo, follow `ONBOARDING.md` on a fresh AWS account, provision the full stack via `pulumi up`, populate `frontend/web/.env` from `pulumi stack output`, run `pnpm dev`, and complete the full smoke test (sign-up → confirm → home → recommend → preferences → history → watch-later) end-to-end against their own infra — with any gaps the cold-run surfaces folded back into the guide.
+**GitHub issue**: TBD — open as sub-issue of #127
+**Branch**: `feature/issue-TBD-onboarding-guide`
+**Depends on**: Phases 11, 12, 13, 14, 15, 16 (the guide validates the full working app end-to-end)
+**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05, DOCS-06, DOCS-07
+**Success Criteria** (what must be TRUE):
+  1. `ONBOARDING.md` exists at the repo root and walks through, in order: AWS account creation → IAM user/role with required permissions (Cognito, Lambda, API Gateway, DynamoDB, IAM, CloudWatch, S3 if needed) → AWS CLI install + `aws configure` → Pulumi install + `pulumi login` + per-stack `pulumi config` → `.env` for `frontend/web/` (UserPoolId, ClientId, API Gateway URL) sourced from `pulumi stack output` → `pulumi up` with documented expected outputs → `pnpm install && pnpm dev`.
+  2. The smoke-test checklist in `ONBOARDING.md` enumerates the full user flow — sign-up → email confirm → login → home → recommend → preferences (read + edit) → history → watch-later (add + remove) — and a teammate ticking through it can verify the app works end-to-end against their own infra.
+  3. A teammate who did not author the guide cold-runs it on a fresh AWS account, the app works end-to-end, and the run is logged (notes, screenshots, or PR comment trail). Every gap or ambiguity the teammate hits is folded back into `ONBOARDING.md` before this phase closes.
+  4. After the cold-run, a second dry read-through by either the author or the teammate produces zero new corrections — the guide is stable.
+**Plans**: TBD
+
+**Notes / risks:**
+- The cold-run is the success bar — not "guide reads well." Schedule the teammate's cold-run before claiming Phase 17 complete.
+- IAM permission scoping is the easiest place for gaps; document the exact least-privilege policy(ies), not "AdministratorAccess."
+- `pulumi stack output` field names must match the `.env` keys the frontend expects (`NEXT_PUBLIC_COGNITO_USER_POOL_ID`, `NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID`, API Gateway URL); verify mapping in the plan.
+- LocalStack support is explicitly out of scope (handled by a teammate separately); do not include LocalStack paths in the guide.
+
+### Dependencies / Phase Order
+
+v2.0 phases execute in strict numeric order — no parallelization:
+
+```
+11 (Cognito) → 12 (Fetch wrapper) → 13 (Reco) → 14 (Prefs) → 15 (History) → 16 (Watch-later) → 17 (Onboarding)
+```
+
+- **Phase 12 depends on Phase 11**: the fetch wrapper auto-injects the Cognito IdToken and uses the RefreshToken for the refresh-then-replay path; neither exists until Phase 11 lands real Cognito tokens.
+- **Phases 13, 14, 15, 16 each depend on Phase 12**: every screen integration consumes the same typed wrapper, the same `Result<T, ApiError>` contract, and the same error-class-aware UX hook.
+- **Phase 17 depends on Phases 11–16**: the onboarding guide's success bar is a teammate cold-running the full app end-to-end against their own AWS infra, which requires every screen integration to work.
+
+Phases 13–16 are sequenced (not concurrent) because branches stack and PRs land sequentially per the project rule "1 phase = 1 sub-issue = 1 feature branch off `main` = 1 PR." If a reviewer/the user later opts to parallelize 13–16 (independent screens), the dependency on Phase 12 still holds and concurrency is a workflow choice, not a roadmap change.
+
+### Progress (v2.0)
+
+**Execution Order:** 11 → 12 → 13 → 14 → 15 → 16 → 17
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 11. Cognito Frontend Integration | 0/TBD | Defining | - |
+| 12. Secure Lambda Fetch Wrapper | 4/4 | Complete   | 2026-05-12 |
+| 13. Recommendation Lambda Integration | 4/4 | Complete | 2026-05-15 |
+| 14. Preferences Lambda Integration | 3/3 | Complete (smoke deferred) | 2026-05-14 |
+| 15. History Lambda Integration | 0/TBD | Not started | - |
+| 16. Watch-Later Lambda Integration | 0/TBD | Not started | - |
+| 17. Onboarding Guide + E2E Cold-Run | 0/TBD | Not started | - |
+
+### Coverage (v2.0)
+
+- v2.0 requirements: 30 total
+  - AUTH-COGN-01..06 (6) → Phase 11
+  - FETCH-01..07 (7) → Phase 12
+  - INTG-RECO-01..02 (2) → Phase 13
+  - INTG-PREF-01..03 (3) → Phase 14
+  - INTG-HIST-01..02 (2) → Phase 15
+  - INTG-WTCL-01..03 (3) → Phase 16
+  - DOCS-01..07 (7) → Phase 17
+- Mapped to phases: 30
+- Unmapped: 0
+- Duplicates across phases: 0
+
+---
+*v2.0 roadmap section added: 2026-05-12*
