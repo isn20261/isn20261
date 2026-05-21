@@ -74,7 +74,7 @@ export function HeroCTA() {
         "
       >
         <Sparkles size={20} aria-hidden />
-        Pick a movie for me
+        Escolha um filme pra mim
       </span>
     </Link>
   );
