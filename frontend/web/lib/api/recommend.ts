@@ -56,27 +56,27 @@ export const STREAMING_SERVICES = [
 ] as const;
 
 export const MOODS = [
-  { id: "chill", label: "Chill", icon: "◐" },
-  { id: "intense", label: "Intense", icon: "◆" },
-  { id: "funny", label: "Funny", icon: "◑" },
-  { id: "romantic", label: "Romantic", icon: "♡" },
-  { id: "thoughtful", label: "Thoughtful", icon: "◇" },
-  { id: "adventurous", label: "Adventurous", icon: "▲" },
-  { id: "scary", label: "Scary", icon: "✕" },
-  { id: "nostalgic", label: "Nostalgic", icon: "◌" },
+  { id: "chill", label: "Tranquilo", icon: "◐" },
+  { id: "intense", label: "Intenso", icon: "◆" },
+  { id: "funny", label: "Engraçado", icon: "◑" },
+  { id: "romantic", label: "Romântico", icon: "♡" },
+  { id: "thoughtful", label: "Reflexivo", icon: "◇" },
+  { id: "adventurous", label: "Aventureiro", icon: "▲" },
+  { id: "scary", label: "Assustador", icon: "✕" },
+  { id: "nostalgic", label: "Nostálgico", icon: "◌" },
 ] as const;
 
 export const GENRES = [
   { id: "drama", label: "Drama" },
-  { id: "mystery", label: "Mystery" },
+  { id: "mystery", label: "Mistério" },
   { id: "romance", label: "Romance" },
-  { id: "sci-fi", label: "Sci-Fi" },
-  { id: "action", label: "Action" },
-  { id: "comedy", label: "Comedy" },
-  { id: "adventure", label: "Adventure" },
+  { id: "sci-fi", label: "Ficção Científica" },
+  { id: "action", label: "Ação" },
+  { id: "comedy", label: "Comédia" },
+  { id: "adventure", label: "Aventura" },
   { id: "crime", label: "Crime" },
-  { id: "horror", label: "Horror" },
-  { id: "thriller", label: "Thriller" },
+  { id: "horror", label: "Terror" },
+  { id: "thriller", label: "Suspense" },
 ] as const;
 
 export const RATINGS = ["G", "PG", "PG-13", "R", "NC-17"] as const;
