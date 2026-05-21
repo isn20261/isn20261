@@ -21,18 +21,18 @@ type NavbarProps = {
 export function Navbar({ variant = "home" }: NavbarProps) {
   const { isAuthenticated, user } = useAuth();
   const loggedIn = isAuthenticated;
-  const userName = user?.email.split("@")[0] ?? "there";
+  const userName = user?.email.split("@")[0] ?? "você";
   if (variant === "mobile") {
     return (
       // non-tokenized: 18px vertical padding from reference home.jsx:221 — between p-4 (16px) and p-5 (20px)
       <header className="flex items-center justify-between py-[18px] px-5">
-        <Link href="/" aria-label="recommend-a — home">
+        <Link href="/" aria-label="recommend-a — início">
           <BrandMark size={24} withWord={false} />
         </Link>
         <button
           type="button"
           disabled
-          aria-label="Notifications (coming soon)"
+          aria-label="Notificações (em breve)"
           className="w-9 h-9 rounded-md flex items-center justify-center text-text-muted"
         >
           <Bell size={18} />
@@ -44,7 +44,7 @@ export function Navbar({ variant = "home" }: NavbarProps) {
   // variant === "home" (desktop)
   return (
     <header className="flex items-center justify-between py-6 px-10">
-      <Link href="/" aria-label="recommend-a — home">
+      <Link href="/" aria-label="recommend-a — início">
         <BrandMark size={28} withWord />
       </Link>
 
@@ -53,7 +53,7 @@ export function Navbar({ variant = "home" }: NavbarProps) {
           <button
             type="button"
             disabled
-            aria-label="Notifications (coming soon)"
+            aria-label="Notificações (em breve)"
             className="w-9 h-9 rounded-md flex items-center justify-center text-text-muted"
           >
             <Bell size={18} />
@@ -61,10 +61,10 @@ export function Navbar({ variant = "home" }: NavbarProps) {
           <AccountMenu userName={userName}>
             <button
               type="button"
-              aria-label={`Account menu for ${userName}`}
+              aria-label={`Menu da conta de ${userName}`}
               className="text-text-secondary hover:text-text-primary text-14 font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
             >
-              Hi, {userName}
+              Olá, {userName}
             </button>
           </AccountMenu>
         </div>
@@ -74,13 +74,13 @@ export function Navbar({ variant = "home" }: NavbarProps) {
             href="/login"
             className="text-text-secondary hover:text-text-primary text-14 font-semibold transition-colors duration-150 px-3 py-2 rounded-md focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
-            Sign in
+            Entrar
           </Link>
           <Link
             href="/register"
             className="text-on-accent bg-accent hover:bg-accent-hover text-14 font-semibold transition-colors duration-150 px-3 py-2 rounded-md focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
-            Create account
+            Criar conta
           </Link>
         </div>
       )}
