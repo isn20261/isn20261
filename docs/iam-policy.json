@@ -205,7 +205,8 @@
         "iam:ListPolicyVersions",
         "iam:ListPolicyTags",
         "iam:TagPolicy",
-        "iam:UntagPolicy"
+        "iam:UntagPolicy",
+        "iam:CreatePolicyVersion"
       ],
       "Resource": "arn:aws:iam::*:policy/CognitoSESPolicy-*"
     },
