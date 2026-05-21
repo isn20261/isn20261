@@ -566,7 +566,7 @@ stage = aws.apigatewayv2.Stage(
 
 bucket = aws.s3.Bucket(f"frontend-bucket-{env}")
 
-frontend_dir = "frontend"
+frontend_dir = "frontend/web/out"
 for root, dirs, files in os.walk(frontend_dir, followlinks=True):
     for file in files:
         file_path = os.path.join(root, file)
