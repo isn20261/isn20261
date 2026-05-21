@@ -61,10 +61,10 @@ function RegisterForm() {
 
     // D-09 verbatim — STRAIGHT ASCII apostrophe in "Passwords don't match" (UI-SPEC hook #10)
     const errs: Record<string, string> = {};
-    if (!email.includes("@")) errs.email = "Enter a valid email";
-    if (pw1.length < 8) errs.pw1 = "Use at least 8 characters";
-    if (pw1 !== pw2) errs.pw2 = "Passwords don't match";
-    if (!agree) errs.agree = "Required";
+    if (!email.includes("@")) errs.email = "Digite um e-mail válido";
+    if (pw1.length < 8) errs.pw1 = "Use pelo menos 8 caracteres";
+    if (pw1 !== pw2) errs.pw2 = "As senhas não coincidem";
+    if (!agree) errs.agree = "Obrigatório";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -81,11 +81,11 @@ function RegisterForm() {
       }
     } catch (err) {
       if (err instanceof UsernameExistsException) {
-        setFormError("An account with this email already exists.");
+        setFormError("Já existe uma conta com este e-mail.");
       } else if (err instanceof InvalidPasswordException) {
-        setFormError(err.message || "Password does not meet the policy.");
+        setFormError(err.message || "A senha não atende aos requisitos.");
       } else {
-        setFormError("Could not create your account. Try again.");
+        setFormError("Não foi possível criar sua conta. Tente novamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -96,16 +96,16 @@ function RegisterForm() {
     <>
       {/* non-tokenized: text-[26px], tracking-[-0.02em], leading-[1.02] match the reference .display class — see UI-SPEC §Typography */}
       <h1 className="font-display text-[26px] font-extrabold tracking-[-0.02em] leading-[1.02] text-center text-text-primary">
-        Make it yours.
+        Personalize do seu jeito.
       </h1>
       {/* non-tokenized: text-[13px] is the reference auth.jsx:135 fontSize:13 — see UI-SPEC §Typography */}
       <p className="text-center text-text-secondary text-[13px] mt-1.5">
-        Save recommendations, build a queue, learn what you love.
+        Salve recomendações, monte uma fila e descubra o que você ama.
       </p>
 
       <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-6">
         <Field
-          label="Email"
+          label="E-mail"
           type="email"
           name="email"
           autoComplete="email"
@@ -115,18 +115,18 @@ function RegisterForm() {
           disabled={isSubmitting}
         />
         <Field
-          label="Password"
+          label="Senha"
           type="password"
           name="password"
           autoComplete="new-password"
           value={pw1}
           onChange={setPw1}
           error={errors.pw1}
-          hint="At least 8 characters"
+          hint="No mínimo 8 caracteres"
           disabled={isSubmitting}
         />
         <Field
-          label="Confirm password"
+          label="Confirmar senha"
           type="password"
           name="confirmPassword"
           autoComplete="new-password"
@@ -145,7 +145,7 @@ function RegisterForm() {
               disabled={isSubmitting}
               className="accent-accent mt-0.5"
             />
-            <span>I agree to the Terms and Privacy Policy.</span>
+            <span>Concordo com os Termos e a Política de Privacidade.</span>
           </label>
           {errors.agree && (
             <p className="text-12 text-danger leading-tight" aria-live="polite">
@@ -174,7 +174,7 @@ function RegisterForm() {
         >
           {isSubmitting ? (
             <>
-              Create account
+              Criar conta
               <span
                 className="w-4 h-4 rounded-full border-2 border-on-accent border-t-transparent animate-spin"
                 aria-hidden
@@ -182,7 +182,7 @@ function RegisterForm() {
             </>
           ) : (
             <>
-              Create account
+              Criar conta
               <ArrowRight size={16} />
             </>
           )}
@@ -190,12 +190,12 @@ function RegisterForm() {
       </form>
 
       <p className="text-center text-text-secondary text-[13px] mt-4">
-        Already have one?{" "}
+        Já tem uma conta?{" "}
         <Link
           href="/login"
           className="text-accent font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
         >
-          Sign in
+          Entrar
         </Link>
       </p>
     </>

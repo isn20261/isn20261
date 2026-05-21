@@ -20,18 +20,18 @@ export default function ForgotPage() {
     <>
       {/* non-tokenized: text-[26px], tracking-[-0.02em], leading-[1.02] match the reference .display class — see UI-SPEC §Typography */}
       <h1 className="font-display text-[26px] font-extrabold tracking-[-0.02em] leading-[1.02] text-center text-text-primary">
-        Reset password — coming soon
+        Redefinir senha — em breve
       </h1>
       {/* non-tokenized: text-[13px] is the auth-subtitle scale — see UI-SPEC §Typography */}
       <p className="text-center text-text-secondary text-[13px] mt-1.5">
-        Password reset is coming in a future update.
+        A redefinição de senha chegará em uma atualização futura.
       </p>
       <div className="flex justify-center mt-6">
         <Link
           href="/login"
           className="text-text-secondary hover:text-text-primary text-14 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
         >
-          ← Back to sign in
+          ← Voltar para entrar
         </Link>
       </div>
     </>

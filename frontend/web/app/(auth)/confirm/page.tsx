@@ -47,8 +47,8 @@ function ConfirmForm() {
     if (isSubmitting) return;
 
     const errs: Record<string, string> = {};
-    if (!email.includes("@")) errs.email = "Enter a valid email";
-    if (code.trim().length < 4) errs.code = "Enter the code from your email";
+    if (!email.includes("@")) errs.email = "Digite um e-mail válido";
+    if (code.trim().length < 4) errs.code = "Digite o código enviado para seu e-mail";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -62,9 +62,9 @@ function ConfirmForm() {
       router.push(`/login?${loginQuery.toString()}`);
     } catch (err) {
       if (err instanceof CodeMismatchException) {
-        setFormError("That code is invalid or expired. Try again or resend.");
+        setFormError("Código inválido ou expirado. Tente novamente ou reenvie.");
       } else {
-        setFormError("Could not confirm your account. Try again.");
+        setFormError("Não foi possível confirmar sua conta. Tente novamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -74,7 +74,7 @@ function ConfirmForm() {
   async function handleResend() {
     if (isResending) return;
     if (!email.includes("@")) {
-      setErrors((prev) => ({ ...prev, email: "Enter a valid email" }));
+      setErrors((prev) => ({ ...prev, email: "Digite um e-mail válido" }));
       return;
     }
     setFormError(null);
@@ -82,9 +82,9 @@ function ConfirmForm() {
     setIsResending(true);
     try {
       await resendConfirmationCode(email);
-      setResendNotice("We sent a fresh code to your email.");
+      setResendNotice("Enviamos um novo código para seu e-mail.");
     } catch {
-      setFormError("Could not resend the code. Try again in a minute.");
+      setFormError("Não foi possível reenviar o código. Tente novamente em um minuto.");
     } finally {
       setIsResending(false);
     }
@@ -94,16 +94,16 @@ function ConfirmForm() {
     <>
       {/* non-tokenized: text-[26px], tracking-[-0.02em], leading-[1.02] match the reference .display class — see UI-SPEC §Typography */}
       <h1 className="font-display text-[26px] font-extrabold tracking-[-0.02em] leading-[1.02] text-center text-text-primary">
-        Check your email.
+        Verifique seu e-mail.
       </h1>
       {/* non-tokenized: text-[13px] is the auth-subtitle scale — see UI-SPEC §Typography */}
       <p className="text-center text-text-secondary text-[13px] mt-1.5">
-        We sent a 6-digit code to confirm your address.
+        Enviamos um código de 6 dígitos para confirmar seu endereço.
       </p>
 
       <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-6">
         <Field
-          label="Email"
+          label="E-mail"
           type="email"
           name="email"
           autoComplete="email"
@@ -113,14 +113,14 @@ function ConfirmForm() {
           disabled={isSubmitting}
         />
         <Field
-          label="Verification code"
+          label="Código de verificação"
           type="text"
           name="code"
           autoComplete="one-time-code"
           value={code}
           onChange={setCode}
           error={errors.code}
-          hint="6 digits from your inbox"
+          hint="6 dígitos enviados ao seu e-mail"
           disabled={isSubmitting}
         />
 
@@ -155,7 +155,7 @@ function ConfirmForm() {
         >
           {isSubmitting ? (
             <>
-              Confirm
+              Confirmar
               <span
                 className="w-4 h-4 rounded-full border-2 border-on-accent border-t-transparent animate-spin"
                 aria-hidden
@@ -163,7 +163,7 @@ function ConfirmForm() {
             </>
           ) : (
             <>
-              Confirm
+              Confirmar
               <ArrowRight size={16} />
             </>
           )}
@@ -177,13 +177,13 @@ function ConfirmForm() {
           disabled={isResending}
           className="text-accent font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm disabled:opacity-60"
         >
-          {isResending ? "Resending…" : "Resend code"}
+          {isResending ? "Reenviando…" : "Reenviar código"}
         </button>
         <Link
           href="/login"
           className="text-text-secondary hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
         >
-          Back to sign in
+          Voltar para entrar
         </Link>
       </div>
     </>
