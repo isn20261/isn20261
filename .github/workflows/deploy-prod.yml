@@ -44,15 +44,6 @@ jobs:
         working-directory: frontend/web
         run: pnpm install --frozen-lockfile
 
-      - name: Build frontend (Next.js static export)
-        working-directory: frontend/web
-        env:
-          NEXT_PUBLIC_COGNITO_REGION: ${{ vars.NEXT_PUBLIC_COGNITO_REGION }}
-          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ vars.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-          NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID: ${{ vars.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-        run: pnpm build
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -66,10 +57,36 @@ jobs:
       - name: Install Python deps into ./venv (where Pulumi.yaml expects)
         run: uv sync --frozen
 
-      - name: Pulumi up
+      # Pass 1: provision Cognito + API + (empty/stale) S3 bucket. The S3 sync
+      # at __main__.py:597 walks frontend/web/out — on first run it's empty,
+      # on later runs it re-uploads the previous bundle. Either is fine; pass 2
+      # ships the freshly built bundle once we have the real env vars.
+      - name: Pulumi up (pass 1 — provision infra)
         uses: pulumi/actions@v6
         with:
           command: up
           stack-name: prod
           work-dir: .
           refresh: true
+
+      - name: Read Pulumi outputs into env
+        run: |
+          {
+            echo "NEXT_PUBLIC_COGNITO_REGION=sa-east-1"
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$(pulumi stack output user_pool_id --stack prod)"
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$(pulumi stack output user_pool_client_id --stack prod)"
+            echo "NEXT_PUBLIC_API_BASE_URL=$(pulumi stack output public_url --stack prod)"
+          } >> "$GITHUB_ENV"
+
+      - name: Build frontend (Next.js static export)
+        working-directory: frontend/web
+        run: pnpm build
+
+      # Pass 2: re-runs os.walk(frontend/web/out) and ships the just-built
+      # bundle to S3. Cognito/API/etc are no-ops on this pass.
+      - name: Pulumi up (pass 2 — sync built frontend)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: prod
+          work-dir: .

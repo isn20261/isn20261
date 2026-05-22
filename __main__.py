@@ -834,6 +834,8 @@ final_public_url = pulumi.Output.all(
 pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
+pulumi.export("user_pool_id", user_pool.id)
+pulumi.export("user_pool_client_id", user_pool_client.id)
 
 # ---------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES
