@@ -241,8 +241,8 @@ async function request<T>(
     const error: ApiError = {
       kind: "network",
       message: isAbort
-        ? "Request timed out. Please try again."
-        : "Network error. Please check your connection.",
+        ? "Tempo limite esgotado. Tente novamente."
+        : "Erro de rede. Verifique sua conexão.",
       cause,
     };
     return { ok: false, error };
@@ -265,7 +265,7 @@ async function request<T>(
     const error: ApiError = {
       kind: "server",
       status: response.status,
-      message: "We received an invalid response from the server.",
+      message: "Recebemos uma resposta inválida do servidor.",
       cause,
     };
     return { ok: false, error };

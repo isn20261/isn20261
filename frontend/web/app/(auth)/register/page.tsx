@@ -83,7 +83,7 @@ function RegisterForm() {
       if (err instanceof UsernameExistsException) {
         setFormError("Já existe uma conta com este e-mail.");
       } else if (err instanceof InvalidPasswordException) {
-        setFormError(err.message || "A senha não atende aos requisitos.");
+        setFormError("A senha não atende aos requisitos.");
       } else {
         setFormError("Não foi possível criar sua conta. Tente novamente.");
       }

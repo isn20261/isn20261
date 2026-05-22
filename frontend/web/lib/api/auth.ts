@@ -70,7 +70,7 @@ function getPool(): CognitoUserPool {
 function translateError(err: unknown): Error {
   const e = err as { name?: string; code?: string; message?: string };
   const name = e?.name ?? e?.code ?? "";
-  const msg = e?.message ?? "Authentication failed.";
+  const msg = e?.message ?? "Falha na autenticação.";
   switch (name) {
     case "UsernameExistsException":
       return new UsernameExistsException(msg);
