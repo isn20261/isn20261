@@ -33,12 +33,12 @@ const TYPE_SCALE = [
   { className: "text-64", label: "text-64 / 64px" },
 ] as const;
 
-const LOREM = "The quick brown fox jumps over the lazy dog";
+const LOREM = "Um pequeno jabuti xereta viu dez cegonhas felizes";
 
 function ColorSwatch({ utility, name, value, isText }: { utility: string; name: string; value: string; isText?: boolean }) {
   return (
     <div className="rounded-md border border-border overflow-hidden">
-      <div className={`h-20 ${utility}`} aria-label={`${name} swatch`} />
+      <div className={`h-20 ${utility}`} aria-label={`amostra ${name}`} />
       <div className="p-3 text-12">
         <div className="font-mono text-text-primary">{name}</div>
         <div className="text-muted">{value}</div>
@@ -57,27 +57,27 @@ export default function TokensPage() {
         role="note"
         className="mb-8 rounded-md border border-accent bg-accent-soft p-4 text-14 text-accent"
       >
-        <strong className="font-display font-semibold">Author rule:</strong>{" "}
-        components in <code className="font-mono">app/</code> and{" "}
-        <code className="font-mono">components/</code> may use only Tailwind theme variables —
-        no hardcoded hex or px. See{" "}
+        <strong className="font-display font-semibold">Regra de autoria:</strong>{" "}
+        componentes em <code className="font-mono">app/</code> e{" "}
+        <code className="font-mono">components/</code> podem usar apenas variáveis de tema do
+        Tailwind — sem hex ou px hardcoded. Veja{" "}
         <code className="font-mono">frontend/web/AGENTS.md</code>.
       </div>
       <header className="mb-12">
-        <h1 className="font-display text-40 leading-none mb-2">recommend-a — design tokens</h1>
+        <h1 className="font-display text-40 leading-none mb-2">recommend-a — tokens de design</h1>
         <p className="text-secondary text-14">
-          Visible no-drift gallery for every token in{" "}
+          Galeria visível sem drift para cada token em{" "}
           <code className="font-mono text-text-secondary">frontend/_design-reference/styles.css</code>.
-          Author rule: only Tailwind theme variables in components — no hardcoded hex or px.
+          Regra de autoria: apenas variáveis de tema do Tailwind em componentes — sem hex ou px hardcoded.
         </p>
         <Link href="/" className="text-accent text-14 underline mt-2 inline-block">
-          ← Back to home
+          ← Voltar para o início
         </Link>
       </header>
 
       {/* === Colors === */}
       <section aria-labelledby="colors-heading" className="mb-16">
-        <h2 id="colors-heading" className="font-display text-28 mb-6">Colors</h2>
+        <h2 id="colors-heading" className="font-display text-28 mb-6">Cores</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {COLORS.map((color) => (
             <ColorSwatch
@@ -93,7 +93,7 @@ export default function TokensPage() {
 
       {/* === Typography === */}
       <section aria-labelledby="type-heading" className="mb-16">
-        <h2 id="type-heading" className="font-display text-28 mb-6">Typography</h2>
+        <h2 id="type-heading" className="font-display text-28 mb-6">Tipografia</h2>
         <div className="space-y-6">
           {TYPE_SCALE.map((step) => (
             <div key={step.className} className="border-b border-border pb-4">
@@ -111,7 +111,7 @@ export default function TokensPage() {
 
       {/* === Radii === */}
       <section aria-labelledby="radii-heading" className="mb-16">
-        <h2 id="radii-heading" className="font-display text-28 mb-6">Radii</h2>
+        <h2 id="radii-heading" className="font-display text-28 mb-6">Raios</h2>
         <div className="flex flex-wrap gap-6">
           {(
             [
@@ -131,7 +131,7 @@ export default function TokensPage() {
 
       {/* === Shadows === */}
       <section aria-labelledby="shadows-heading" className="mb-16">
-        <h2 id="shadows-heading" className="font-display text-28 mb-6">Shadows</h2>
+        <h2 id="shadows-heading" className="font-display text-28 mb-6">Sombras</h2>
         <div className="flex flex-wrap gap-8">
           {(
             [
@@ -149,7 +149,7 @@ export default function TokensPage() {
 
       {/* === Layout sizes === */}
       <section aria-labelledby="layout-heading" className="mb-16">
-        <h2 id="layout-heading" className="font-display text-28 mb-6">Layout sizes</h2>
+        <h2 id="layout-heading" className="font-display text-28 mb-6">Tamanhos de layout</h2>
         <div className="space-y-4">
           <div>
             <div className="w-rail h-tab bg-accent rounded-md" />
@@ -157,7 +157,7 @@ export default function TokensPage() {
           </div>
           <div>
             <div className="w-full h-tab bg-surface-elevated border border-border rounded-md" />
-            <div className="text-12 text-muted font-mono mt-2">h-tab band — 64px tall</div>
+            <div className="text-12 text-muted font-mono mt-2">faixa h-tab — 64px de altura</div>
           </div>
         </div>
       </section>

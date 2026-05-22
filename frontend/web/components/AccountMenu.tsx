@@ -29,7 +29,7 @@ type AccountMenuProps = {
 
 export function AccountMenu({
   children,
-  userName = "June",
+  userName = "você",
   side = "bottom",
   align = "end",
 }: AccountMenuProps) {
@@ -54,11 +54,11 @@ export function AccountMenu({
       >
         <Link
           href="/preferences"
-          aria-label={`Account for ${userName}`}
+          aria-label={`Conta de ${userName}`}
           className="flex items-center gap-2 px-3 py-2 rounded-sm text-14 font-medium text-text-primary hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]"
         >
           <User size={16} />
-          <span>Account</span>
+          <span>Conta</span>
         </Link>
         <button
           type="button"
@@ -66,7 +66,7 @@ export function AccountMenu({
           className="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-14 font-medium text-danger hover:bg-danger/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]"
         >
           <LogOut size={16} />
-          <span>Sign out</span>
+          <span>Sair</span>
         </button>
       </PopoverContent>
     </Popover>

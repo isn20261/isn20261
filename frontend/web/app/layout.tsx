@@ -20,7 +20,7 @@ const fontBody = Inter({
 
 export const metadata: Metadata = {
   title: "recommend-a",
-  description: "Movie recommendation app — coming soon.",
+  description: "App de recomendação de filmes — em breve.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${fontDisplay.variable} ${fontBody.variable}`}>
+    <html lang="pt-BR" className={`${fontDisplay.variable} ${fontBody.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
         <Toaster />

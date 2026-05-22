@@ -151,13 +151,13 @@ export default function RecommendationPage() {
           {/* non-tokenized: pt-[220px] mobile / pt-[280px] md+ — backdrop clearance primitives */}
           {/* non-tokenized: max-w-[880px] — header column width primitive */}
           <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px] animate-fade-up [animation-delay:60ms]">
-            <p className={`${EYEBROW} mb-3`}>Something went wrong</p>
+            <p className={`${EYEBROW} mb-3`}>Algo deu errado</p>
             {/* non-tokenized: leading-[0.98] tracking-[-0.03em] match the reference .display recipe */}
             <h1 className="font-display text-28 md:text-40 font-extrabold tracking-[-0.03em] leading-[0.98] text-text-primary">
-              We couldn&apos;t load a recommendation
+              Não foi possível carregar uma recomendação
             </h1>
             <p className="mt-6 mb-7 text-14 text-text-secondary max-w-[640px]">
-              We couldn&apos;t load a recommendation right now.
+              Não conseguimos carregar uma recomendação agora.
             </p>
             <div className="flex flex-wrap gap-2.5 mb-8">
               <button
@@ -166,7 +166,7 @@ export default function RecommendationPage() {
                 className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-accent hover:bg-accent-hover text-on-accent text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 <RefreshCw size={16} aria-hidden />
-                Try again
+                Tentar novamente
               </button>
             </div>
           </div>
@@ -182,13 +182,13 @@ export default function RecommendationPage() {
           {/* non-tokenized: pt-[220px] mobile / pt-[280px] md+ — backdrop clearance primitives */}
           {/* non-tokenized: max-w-[880px] — header column width primitive */}
           <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px] animate-fade-up [animation-delay:60ms]">
-            <p className={`${EYEBROW} mb-3`}>No recommendation right now</p>
+            <p className={`${EYEBROW} mb-3`}>Sem recomendações no momento</p>
             {/* non-tokenized: leading-[0.98] tracking-[-0.03em] match the reference .display recipe */}
             <h1 className="font-display text-28 md:text-40 font-extrabold tracking-[-0.03em] leading-[0.98] text-text-primary">
-              We&apos;ve got nothing for you yet
+              Ainda não temos nada pra você
             </h1>
             <p className="mt-6 mb-7 text-14 text-text-secondary max-w-[640px]">
-              Try again — we&apos;ll roll a new one.
+              Tente de novo — vamos sortear outra.
             </p>
             <div className="flex flex-wrap gap-2.5 mb-8">
               <button
@@ -197,7 +197,7 @@ export default function RecommendationPage() {
                 className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-accent hover:bg-accent-hover text-on-accent text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 <RefreshCw size={16} aria-hidden />
-                Try again
+                Tentar novamente
               </button>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function RecommendationPage() {
         <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px] animate-fade-up [animation-delay:60ms]">
           <p className={`${EYEBROW} text-accent flex items-center gap-2 mb-3`}>
             <span aria-hidden>✦</span>
-            <span>We think you&apos;ll like this one</span>
+            <span>Achamos que você vai gostar deste</span>
           </p>
           {/* non-tokenized: leading-[0.98] tracking-[-0.03em] match the reference .display recipe */}
           <h1 className="font-display text-40 md:text-64 font-extrabold tracking-[-0.03em] leading-[0.98] text-text-primary">
@@ -250,7 +250,7 @@ export default function RecommendationPage() {
             <div className="flex items-center flex-wrap gap-x-3.5 gap-y-2 mt-4 text-13 text-text-secondary">
               {movie.match !== undefined && (
                 <span className="text-accent text-14 font-semibold">
-                  {movie.match}% match
+                  {movie.match}% compatível
                 </span>
               )}
               {movie.year !== undefined && <span>{movie.year}</span>}
@@ -284,7 +284,7 @@ export default function RecommendationPage() {
                 className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-accent hover:bg-accent-hover text-on-accent text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 <Play size={16} aria-hidden />
-                Watch on {primaryService.name}
+                Assistir em {primaryService.name}
               </a>
             )}
             <button
@@ -299,7 +299,7 @@ export default function RecommendationPage() {
               ) : (
                 <Bookmark size={16} aria-hidden />
               )}
-              {saved ? "Saved" : "Save to watch later"}
+              {saved ? "Salvo" : "Salvar para assistir depois"}
             </button>
             {/* Note: no disabled/aria-busy here — entering "loading" replaces the entire screen with the skeleton in the branch above, so the button is unmounted while a fetch is in flight. */}
             <button
@@ -308,14 +308,14 @@ export default function RecommendationPage() {
               className="inline-flex items-center gap-2 h-12 px-5 rounded-md text-text-secondary hover:text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
             >
               <RefreshCw size={16} aria-hidden />
-              Recommend another
+              Recomendar outro
             </button>
           </div>
 
           {/* Where to watch */}
           {movie.streamingServices.length > 0 && (
             <div className="mb-8">
-              <p className={`${EYEBROW} mb-2.5`}>Where to watch</p>
+              <p className={`${EYEBROW} mb-2.5`}>Onde assistir</p>
               <div className="flex flex-wrap gap-2.5">
                 {movie.streamingServices.map((s) => (
                   // non-tokenized: live data has no kind tier — default to "included" until issue #70 enriches with rent/buy info.
@@ -335,7 +335,7 @@ export default function RecommendationPage() {
           <div className="px-6 md:px-14 mb-9 max-w-[880px] grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6 animate-fade-up [animation-delay:220ms]">
             {movie.director && (
               <div>
-                <p className={`${EYEBROW} mb-1.5`}>Director</p>
+                <p className={`${EYEBROW} mb-1.5`}>Diretor</p>
                 <p className="text-14 font-semibold text-text-primary">
                   {movie.director}
                 </p>
@@ -343,7 +343,7 @@ export default function RecommendationPage() {
             )}
             {movie.cast && movie.cast.length > 0 && (
               <div>
-                <p className={`${EYEBROW} mb-1.5`}>Cast</p>
+                <p className={`${EYEBROW} mb-1.5`}>Elenco</p>
                 <p className="text-14 text-text-secondary leading-[1.6]">
                   {movie.cast.join(" · ")}
                 </p>

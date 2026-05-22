@@ -39,22 +39,22 @@ export default function HomePage() {
         <div className="flex flex-col items-center text-center px-6 md:px-10 pt-10 md:pt-20 pb-16 gap-7">
           {/* non-tokenized: tracking-[0.18em] is the reference .eyebrow letter-spacing widget */}
           <p className="text-12 font-medium tracking-[0.18em] uppercase text-text-muted">
-            Tonight, on the couch
+            Esta noite, no sofá
           </p>
 
           {/* non-tokenized: leading-[1.05]/[1.02] + tracking-[-0.03em] match the reference .display-lg recipe */}
           {/* non-tokenized: max-w-[880px] is the hero heading container width primitive */}
           <h1 className="font-display text-40 md:text-64 font-extrabold tracking-[-0.03em] leading-[1.05] md:leading-[1.02] max-w-[880px] text-text-primary">
-            One button. <span className="text-accent">One movie</span>.
+            Um botão. <span className="text-accent">Um filme</span>.
             <br />
-            Decided.
+            Decidido.
           </h1>
 
           {/* non-tokenized: text-[17px] sits between Phase 2 type-scale steps (16/20) */}
           {/* non-tokenized: max-w-[560px] is the hero body container width primitive */}
           <p className="text-text-secondary text-14 md:text-[17px] leading-[1.5] max-w-[560px]">
-            Stop scrolling for forty minutes. We&apos;ll pick something good for
-            you in three seconds.
+            Pare de rolar a tela por quarenta minutos. A gente escolhe algo bom
+            pra você em três segundos.
           </p>
 
           <HeroCTA />
@@ -73,11 +73,11 @@ function SignupNudge() {
       <div className="max-w-[1120px] mx-auto rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(245,181,68,0.06),rgba(255,255,255,0.02))] px-7 py-7 md:px-8 md:py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div>
           <h3 className="font-display text-20 font-bold text-text-primary">
-            Save what catches your eye.
+            Salve o que chamar sua atenção.
           </h3>
           <p className="text-text-secondary text-14 mt-1.5 max-w-[560px]">
-            Sign up and we&apos;ll remember every recommendation, build a watch
-            later queue, and learn what you actually love.
+            Cadastre-se e a gente lembra de cada recomendação, monta sua fila
+            para assistir depois e aprende o que você realmente curte.
           </p>
         </div>
         <div className="flex gap-2 self-stretch md:self-auto">
@@ -85,13 +85,13 @@ function SignupNudge() {
             href="/login"
             className="inline-flex items-center justify-center px-4 h-10 rounded-md text-14 font-semibold text-text-secondary hover:text-text-primary border border-border-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
-            Sign in
+            Entrar
           </Link>
           <Link
             href="/register"
             className="inline-flex items-center justify-center px-4 h-10 rounded-md text-14 font-semibold bg-accent hover:bg-accent-hover text-on-accent transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
-            Create account
+            Criar conta
           </Link>
         </div>
       </div>

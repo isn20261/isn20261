@@ -63,16 +63,16 @@ export default function WatchLaterPage() {
     <div className="max-w-[920px] mx-auto px-6 md:px-10 py-10 md:py-14">
       <div className="flex items-end justify-between gap-5 mb-7 flex-wrap">
         <div>
-          <p className={`${EYEBROW} mb-2`}>Library</p>
+          <p className={`${EYEBROW} mb-2`}>Biblioteca</p>
           {/* non-tokenized: text-[36px] page title — between Phase 2 steps (28/40) */}
           <h1 className="font-display text-[36px] font-extrabold tracking-[-0.02em] leading-[1.05] text-text-primary">
-            Watch later
+            Assistir depois
           </h1>
           <p className="text-text-secondary text-14 mt-2">
             <span className="text-text-primary font-semibold">
-              {count} {count === 1 ? "movie" : "movies"}
+              {count} {count === 1 ? "filme" : "filmes"}
             </span>{" "}
-            saved.
+            salvos.
           </p>
         </div>
         <Link
@@ -88,7 +88,7 @@ export default function WatchLaterPage() {
           `}
         >
           <Sparkles size={16} aria-hidden />
-          Surprise me from this list
+          Surpreenda-me desta lista
         </Link>
       </div>
 
@@ -96,7 +96,7 @@ export default function WatchLaterPage() {
         <div
           className="flex flex-col gap-2 animate-pulse"
           aria-busy="true"
-          aria-label="Loading watch-later"
+          aria-label="Carregando lista de assistir depois"
         >
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-12 rounded-md bg-surface" />
@@ -104,9 +104,9 @@ export default function WatchLaterPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="Your queue is empty."
-          body="Get a recommendation and save what catches your eye. Everything you save lives here."
-          ctaLabel="Pick a movie for me"
+          title="Sua fila está vazia."
+          body="Receba uma recomendação e salve o que chamar sua atenção. Tudo que você salvar aparece aqui."
+          ctaLabel="Escolha um filme pra mim"
           ctaHref="/"
         />
       ) : (
