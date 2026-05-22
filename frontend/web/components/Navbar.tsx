@@ -26,7 +26,7 @@ export function Navbar({ variant = "home" }: NavbarProps) {
     return (
       // non-tokenized: 18px vertical padding from reference home.jsx:221 — between p-4 (16px) and p-5 (20px)
       <header className="flex items-center justify-between py-[18px] px-5">
-        <Link href="/" aria-label="recommend-a — início">
+        <Link href="/" aria-label="cinedica — início">
           <BrandMark size={24} withWord={false} />
         </Link>
         <button
@@ -44,7 +44,7 @@ export function Navbar({ variant = "home" }: NavbarProps) {
   // variant === "home" (desktop)
   return (
     <header className="flex items-center justify-between py-6 px-10">
-      <Link href="/" aria-label="recommend-a — início">
+      <Link href="/" aria-label="cinedica — início">
         <BrandMark size={28} withWord />
       </Link>
 

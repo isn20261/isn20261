@@ -19,10 +19,39 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, CheckCircle2, Circle } from "lucide-react";
 import { Field } from "@/components/Field";
 import { InvalidPasswordException, UsernameExistsException } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
+
+const PASSWORD_REQS = [
+  { key: "length",  label: "Mínimo 8 caracteres",                test: (p: string) => p.length >= 8 },
+  { key: "upper",   label: "Uma letra maiúscula (A–Z)",           test: (p: string) => /[A-Z]/.test(p) },
+  { key: "lower",   label: "Uma letra minúscula (a–z)",           test: (p: string) => /[a-z]/.test(p) },
+  { key: "number",  label: "Um número (0–9)",                     test: (p: string) => /[0-9]/.test(p) },
+  { key: "symbol",  label: "Um caractere especial (!@#$%...)",    test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
+function PasswordRequirements({ password }: { password: string }) {
+  if (!password) return null;
+  return (
+    <ul className="flex flex-col gap-1 mt-0.5" aria-label="Requisitos de senha">
+      {PASSWORD_REQS.map((req) => {
+        const met = req.test(password);
+        return (
+          <li key={req.key} className="flex items-center gap-1.5 text-12 leading-tight">
+            {met ? (
+              <CheckCircle2 size={13} className="text-success shrink-0" aria-hidden />
+            ) : (
+              <Circle size={13} className="text-text-muted shrink-0" aria-hidden />
+            )}
+            <span className={met ? "text-success" : "text-text-muted"}>{req.label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 const AUTH_PATHS = new Set(["/login", "/register", "/forgot"]);
 
@@ -62,7 +91,8 @@ function RegisterForm() {
     // D-09 verbatim — STRAIGHT ASCII apostrophe in "Passwords don't match" (UI-SPEC hook #10)
     const errs: Record<string, string> = {};
     if (!email.includes("@")) errs.email = "Digite um e-mail válido";
-    if (pw1.length < 8) errs.pw1 = "Use pelo menos 8 caracteres";
+    const unmetReqs = PASSWORD_REQS.filter((r) => !r.test(pw1));
+    if (unmetReqs.length > 0) errs.pw1 = "A senha não atende a todos os requisitos";
     if (pw1 !== pw2) errs.pw2 = "As senhas não coincidem";
     if (!agree) errs.agree = "Obrigatório";
     setErrors(errs);
@@ -114,17 +144,19 @@ function RegisterForm() {
           error={errors.email}
           disabled={isSubmitting}
         />
-        <Field
-          label="Senha"
-          type="password"
-          name="password"
-          autoComplete="new-password"
-          value={pw1}
-          onChange={setPw1}
-          error={errors.pw1}
-          hint="No mínimo 8 caracteres"
-          disabled={isSubmitting}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Senha"
+            type="password"
+            name="password"
+            autoComplete="new-password"
+            value={pw1}
+            onChange={setPw1}
+            error={errors.pw1}
+            disabled={isSubmitting}
+          />
+          <PasswordRequirements password={pw1} />
+        </div>
         <Field
           label="Confirmar senha"
           type="password"
