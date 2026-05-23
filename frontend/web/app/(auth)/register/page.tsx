@@ -9,11 +9,16 @@
  * On UsernameExistsException: form-level error banner with copy
  * "An account with this email already exists." (UI-SPEC §Copywriting).
  *
- * Validators (D-09 verbatim):
- *   - email contains '@'                   → "Enter a valid email"
- *   - password length >= 8                 → "Use at least 8 characters"
- *   - password === confirm                 → "Passwords don't match"  (STRAIGHT ASCII apostrophe)
- *   - Terms checkbox checked               → "Required"
+ * Validators (D-09):
+ *   - email contains '@'                   → "Digite um e-mail válido"
+ *   - password meets ALL PASSWORD_REQS:
+ *       length >= 8                        → "A senha não atende a todos os requisitos"
+ *       uppercase letter (A–Z)
+ *       lowercase letter (a–z)
+ *       digit (0–9)
+ *       special character (!@#$%… — no whitespace)
+ *   - password === confirm                 → "As senhas não coincidem"
+ *   - Terms checkbox checked               → "Obrigatório"
  */
 
 import { Suspense, useState } from "react";
