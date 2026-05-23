@@ -29,7 +29,7 @@ const PASSWORD_REQS = [
   { key: "upper",   label: "Uma letra maiúscula (A–Z)",           test: (p: string) => /[A-Z]/.test(p) },
   { key: "lower",   label: "Uma letra minúscula (a–z)",           test: (p: string) => /[a-z]/.test(p) },
   { key: "number",  label: "Um número (0–9)",                     test: (p: string) => /[0-9]/.test(p) },
-  { key: "symbol",  label: "Um caractere especial (!@#$%...)",    test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  { key: "symbol",  label: "Um caractere especial (!@#$%...)",    test: (p: string) => /[^A-Za-z0-9\s]/.test(p) },
 ];
 
 function PasswordRequirements({ password }: { password: string }) {
