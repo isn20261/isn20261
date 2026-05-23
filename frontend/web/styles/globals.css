@@ -1,5 +1,5 @@
 /*
- * cinedica — Tailwind v4 entry + design tokens (Phase 2 / DSGN-01..04 / issue #91).
+ * Cinedica — Tailwind v4 entry + design tokens (Phase 2 / DSGN-01..04 / issue #91).
  *
  * The `@theme` block mirrors frontend/_design-reference/styles.css:5-50 verbatim
  * (token names per Phase 2 CONTEXT D-02). It produces the Tailwind utilities every
@@ -100,11 +100,11 @@
   /* delay:Nms]` to stagger groups.                                    */
   /* ------------------------------------------------------------------ */
 
-  --animate-fade-up: ra-fade-up 0.4s ease-out backwards;
-  --animate-fade-in: ra-fade-in 0.3s ease-out backwards;
+  --animate-fade-up: fade-up 0.4s ease-out backwards;
+  --animate-fade-in: fade-in 0.3s ease-out backwards;
 }
 
-@keyframes ra-fade-up {
+@keyframes fade-up {
   from {
     opacity: 0;
     transform: translateY(12px);
@@ -115,7 +115,7 @@
   }
 }
 
-@keyframes ra-fade-in {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
