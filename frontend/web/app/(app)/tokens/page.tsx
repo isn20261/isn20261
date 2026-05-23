@@ -64,7 +64,7 @@ export default function TokensPage() {
         <code className="font-mono">frontend/web/AGENTS.md</code>.
       </div>
       <header className="mb-12">
-        <h1 className="font-display text-40 leading-none mb-2">cinedica — tokens de design</h1>
+        <h1 className="font-display text-40 leading-none mb-2">Cinedica — tokens de design</h1>
         <p className="text-secondary text-14">
           Galeria visível sem drift para cada token em{" "}
           <code className="font-mono text-text-secondary">frontend/_design-reference/styles.css</code>.
