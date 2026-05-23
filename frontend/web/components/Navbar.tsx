@@ -44,7 +44,7 @@ export function Navbar({ variant = "home" }: NavbarProps) {
   // variant === "home" (desktop)
   return (
     <header className="flex items-center justify-between py-6 px-10">
-      <Link href="/" aria-label="cinedica — início">
+      <Link href="/" aria-label="Cinedica — início">
         <BrandMark size={28} withWord />
       </Link>
 
