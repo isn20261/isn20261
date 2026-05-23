@@ -1,4 +1,4 @@
-# Roadmap: recommend-a Frontend
+# Roadmap: Cinedica Frontend
 
 ## Overview
 
@@ -296,7 +296,7 @@ Seven sequential phases that replace every `lib/api/*` mock with the real Cognit
 **Requirements**: AUTH-COGN-01, AUTH-COGN-02, AUTH-COGN-03, AUTH-COGN-04, AUTH-COGN-05, AUTH-COGN-06
 **Success Criteria** (what must be TRUE):
   1. A user submitting `/register` with a fresh email + valid password receives a confirmation code by email and can complete the `confirm` flow from the UI; their Cognito user transitions from `UNCONFIRMED` to `CONFIRMED`.
-  2. After confirmation, a `GetItem` against the `recommend-a.users` DynamoDB table by the same `sub` returns a row — proving the `post_confirm` Lambda trigger fired end-to-end from a frontend-initiated sign-up.
+  2. After confirmation, a `GetItem` against the `cinedica.users` DynamoDB table by the same `sub` returns a row — proving the `post_confirm` Lambda trigger fired end-to-end from a frontend-initiated sign-up.
   3. A user submitting `/login` with confirmed credentials receives real Cognito tokens (IdToken + RefreshToken), the IdToken decodes (jwt.io or in-app) to the expected `sub` / `email` / `cognito:groups` claims, and the session persists across a browser refresh.
   4. Clicking logout clears the Cognito session and the frontend token storage; any subsequent navigation to a protected route redirects to `/login`.
   5. `git grep -E 'MOCK_LATENCY_MS|USERS_KEY|signIn.*mock|signUp.*mock'` against `frontend/web/lib/api/auth*` and `frontend/web/components/` returns zero hits — no mock fallback remains in the auth path.
