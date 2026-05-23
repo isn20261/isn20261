@@ -3,7 +3,7 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-// Dark-locked Sonner toaster for recommend-a (CLAUDE.md hard rule #4 / DSGN-06).
+// Dark-locked Sonner toaster for Cinedica (CLAUDE.md hard rule #4 / DSGN-06).
 //
 // The shadcn template ships with `useTheme()` from `next-themes` and `theme="system"`,
 // but this project is dark-only — there is no theme switcher. We hardcode `theme="dark"`

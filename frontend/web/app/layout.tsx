@@ -19,8 +19,8 @@ const fontBody = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "recommend-a",
-  description: "App de recomendação de filmes — em breve.",
+  title: "Cinedica",
+  description: "Cinedica, o melhor site de recomendação de filmes",
 };
 
 export default function RootLayout({

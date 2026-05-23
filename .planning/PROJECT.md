@@ -1,8 +1,8 @@
-# recommend-a Frontend
+# Cinedica Frontend
 
 ## What This Is
 
-The Next.js + TypeScript + TailwindCSS web frontend for **recommend-a**, a movie recommendation app. v1.0 shipped the design-faithful UI on top of `lib/api/*` mocks. v2.0 replaces those mocks with the real Cognito + API Gateway + Lambda surface so a fresh teammate can clone the repo, follow `ONBOARDING.md`, run `pulumi up` against their own AWS account, and use the app end-to-end against their own infra.
+The Next.js + TypeScript + TailwindCSS web frontend for **Cinedica**, a movie recommendation app. v1.0 shipped the design-faithful UI on top of `lib/api/*` mocks. v2.0 replaces those mocks with the real Cognito + API Gateway + Lambda surface so a fresh teammate can clone the repo, follow `ONBOARDING.md`, run `pulumi up` against their own AWS account, and use the app end-to-end against their own infra.
 
 ## Core Value
 
