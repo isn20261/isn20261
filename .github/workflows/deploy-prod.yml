@@ -1,0 +1,120 @@
+name: Deploy (prod)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: sa-east-1
+      AWS_DEFAULT_REGION: sa-east-1
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      UV_PROJECT_ENVIRONMENT: venv
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/web/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        working-directory: frontend/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Python deps into ./venv (where Pulumi.yaml expects)
+        run: uv sync --frozen
+
+      # Pass 1: provision Cognito + API + (empty/stale) S3 bucket. The S3 sync
+      # at __main__.py:597 walks frontend/web/out — on first run it's empty,
+      # on later runs it re-uploads the previous bundle. Either is fine; pass 2
+      # ships the freshly built bundle once we have the real env vars.
+      - name: Pulumi up (pass 1 — provision infra)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: prod
+          work-dir: .
+          refresh: true
+
+      - name: Read Pulumi outputs into env
+        run: |
+          set -euo pipefail
+          USER_POOL_ID="$(pulumi stack output user_pool_id --stack prod)"
+          USER_POOL_CLIENT_ID="$(pulumi stack output user_pool_client_id --stack prod)"
+          PUBLIC_URL="$(pulumi stack output public_url --stack prod)"
+          CLOUDFRONT_ID="$(pulumi stack output cloudfront_id --stack prod)"
+          : "${USER_POOL_ID:?empty user_pool_id from pulumi}"
+          : "${USER_POOL_CLIENT_ID:?empty user_pool_client_id from pulumi}"
+          : "${PUBLIC_URL:?empty public_url from pulumi}"
+          : "${CLOUDFRONT_ID:?empty cloudfront_id from pulumi}"
+          echo "Pool=$USER_POOL_ID Client=$USER_POOL_CLIENT_ID Url=$PUBLIC_URL Cdn=$CLOUDFRONT_ID"
+          {
+            echo "NEXT_PUBLIC_COGNITO_REGION=sa-east-1"
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$USER_POOL_ID"
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID"
+            echo "NEXT_PUBLIC_API_BASE_URL=$PUBLIC_URL"
+            echo "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Build frontend (Next.js static export)
+        working-directory: frontend/web
+        env:
+          NEXT_PUBLIC_COGNITO_REGION: ${{ env.NEXT_PUBLIC_COGNITO_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          : "${NEXT_PUBLIC_COGNITO_USER_POOL_ID:?empty at build time}"
+          : "${NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID:?empty at build time}"
+          : "${NEXT_PUBLIC_API_BASE_URL:?empty at build time}"
+          echo "Building with pool=$NEXT_PUBLIC_COGNITO_USER_POOL_ID api=$NEXT_PUBLIC_API_BASE_URL"
+          pnpm build
+
+      # Pass 2: re-runs os.walk(frontend/web/out) and ships the just-built
+      # bundle to S3. Cognito/API/etc are no-ops on this pass.
+      - name: Pulumi up (pass 2 — sync built frontend)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: prod
+          work-dir: .
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --paths "/*"

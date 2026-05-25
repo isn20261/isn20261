@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: Milestone v1.0 COMPLETE — all 10 phases merged into frontend; ready for frontend → main PR
-last_updated: "2026-05-06T12:00:00.000Z"
-last_activity: 2026-05-06 -- Phase 10 approved + merged; design-reference deleted; .claude/ untracked
+milestone: v2.0
+milestone_name: Backend Integration
+status: "Phase 13 (Recommendation, #132) merged into backend-integration on 2026-05-15. Phase 14 (Preferences Lambda Integration) complete on feature/issue-133-preferences-integration; Block A static gates all green; live-AWS smoke deferred (mirror of Phase 12). Phase 15 (History) next."
+stopped_at: Phase 14 complete (live-AWS smoke deferred); Phase 15 next
+last_updated: "2026-05-15T00:00:00.000Z"
+last_activity: 2026-05-15 — Phase 13 merged + Phase 14 closure on its own branch
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 24
-  completed_plans: 24
-  percent: 100
+  total_phases: 17
+  completed_phases: 7
+  total_plans: 31
+  completed_plans: 28
+  percent: 41
 ---
 
 # Project State
@@ -19,25 +19,23 @@ progress:
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-04)
-See: .planning/ROADMAP.md (created 2026-05-04)
+See: .planning/ROADMAP.md (v2.0 section added 2026-05-12)
 
-**Core value:** A user can navigate a polished, design-faithful UI that matches `frontend/_design-reference/` exactly — sign up, log in, browse home, get a recommendation, and manage preferences/history/watch-later — even though every backend call is currently mocked.
-**Current focus:** Phase 04 — auth-ui
+**Core value:** v2.0 — The same polished v1.0 UI consuming the real backend: Cognito sign-up/confirm/login, JWT-authorized Lambda calls via API Gateway v2, errors and token refresh handled production-style. A new collaborator can stand up their own AWS infra from `ONBOARDING.md` and run the app against it.
+**Current focus:** Phase 14 — Preferences Lambda Integration (COMPLETE; live-AWS smoke deferred). Next: open PR `feature/issue-133-preferences-integration` → `backend-integration`, then run Phase 15 (History) GSD cycle. Phase 13 (#132 Recommendation) is being handled on a parallel teammate branch.
 
 ## Current Position
 
-Phase: 10 (watch later) — COMPLETE
-Plan: 1/1
-Status: Milestone v1.0 closed — all 10 phases merged into `frontend`. Awaiting `frontend → main` PR.
-Last activity: 2026-05-06 -- Phase 10 merged; design-reference deleted; .claude/ untracked.
-
-Overall: 10/10 phases complete
+Phase: 14 (Preferences Lambda Integration) — COMPLETE (3/3 plans, 2026-05-14) on top of Phase 13 (merged 2026-05-15)
+Plan: 3 of 3 (14-03 verification gate + transition)
+Status: Phase 14 closure SUMMARY written; automated Block A gates all green (tsc/lint/build/mock-grep/fetch-grep/DSGN-06); Block B layout-only pass; Block C live-AWS smoke SKIPPED-AWS-DEFERRED with run-when-home checklist in 14-03-SUMMARY.md
+Last activity: 2026-05-15 — rebased Phase 14 branch onto post-Phase-13 backend-integration
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed (v1.0): 8
 - Average duration: ~10 min
 - Total execution time: ~1.4 hours
 
@@ -54,6 +52,7 @@ Overall: 10/10 phases complete
 - Trend: Steady ~2-15 min per plan
 
 *Updated after each plan completion*
+| Phase 13 P02 | ~3 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -67,6 +66,13 @@ Recent decisions affecting current work:
 - Project init: 1 GSD phase = 1 GitHub sub-issue = 1 feature branch off `frontend` = 1 PR.
 - Project init: Skip Research agent (Lean workflow); stack is fixed by issue #88.
 - Project init: Defer `_design-reference/` deletion until just before final `frontend → main` PR.
+- v2.0 init (2026-05-12): Phase numbering continues from v1.0 — v2.0 starts at Phase 11.
+- v2.0 init (2026-05-12): v2 branches off `main` (v1 already merged), not off `frontend`.
+- v2.0 init (2026-05-12): Pattern B / Cognito-direct architecture per umbrella issue #127 — frontend → Cognito directly via `amazon-cognito-identity-js`; `post_confirm` Lambda trigger seeds DynamoDB; authenticated requests carry IdToken to API Gateway v2 JWT authorizer.
+- v2.0 init (2026-05-12): Backend (`functions/`, `__main__.py`, Pulumi configs) remains read-only this milestone; only narrow fixes strictly required to unblock integration are in scope, and they must be surfaced before being done.
+- [Phase 13]: Phase 13 Plan 02: ServiceBadge placeholder kind=included until issue #70 enriches with rent/buy tier data
+- [Phase 13]: Phase 13 Plan 02: Backdrop strategy Path B (suppress img element, keep gradient scrims) — backdropUrl deleted from /recommendation
+- [Phase 13]: Phase 13 Plan 02: Watch-later interim id pattern live:title until Phase 16 wires real /watch-later Lambda
 
 ### Decisions (Plan 01-01)
 
@@ -101,7 +107,7 @@ Recent decisions affecting current work:
 
 - shadcn 'base-nova' style emits a Popover backed by @base-ui/react (not @radix-ui/react-popover); plan §key_links expectation diverged but @base-ui/react was already a Phase 1 dep, so no new package landed
 - Mock auth seam exposes MOCK_LATENCY_MS / SESSION_KEY / USERS_KEY as `as const` literal types; tests can override latency to [0, 0]
-- Plain-text passwords in `recommend-a.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
+- Plain-text passwords in `cinedica.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
 - Defensive guards landed: `typeof window === 'undefined'` on every storage path, `Object.prototype.hasOwnProperty.call` for prototype-pollution, JSON.parse shape check rejects null/array/primitive
 
 ### Decisions (Plan 04-02)
@@ -121,30 +127,51 @@ Recent decisions affecting current work:
 - Terms checkbox is the ONLY raw <input> allowed in /register (UI-SPEC hook #5 explicitly permits checkbox raw inputs); email/password/confirm all go through <Field>
 - text-accent on bottom-card link is the Phase 4 supplement entry #8 to the accent reserved-for list (the other 7 entries inherited from Phase 3 + Plan 04-01/02)
 
+### Decisions (Phase 14 — 14-01 / 14-02 / 14-03)
+
+- D-01 Update strategy: **per-toggle optimistic with replay queue** (user-locked 2026-05-14). Each chip click fires savePreferences immediately; in-flight per-field dedup via useRef<Set>; concurrent supersedes queued in useRef<Map> and replayed after the in-flight POST resolves. On failure: rollback to snapshot + useApiErrorUx toast. **Phase 16 (watch-later) MUST mirror this** unless its plan justifies divergence (ROADMAP §Phase 16 Notes).
+- D-02 `humor` shape: **single-select UI**. The wire's `humor: string | null` is matched faithfully by the chip toggle returning `string | null`. The Phase 8 multi-select mood UX was a wire-divergence and is corrected here.
+- D-03 New `<SectionCard title="Favorite genres">` added above Streaming services. Chips driven by `GENRES` const newly exported from `lib/api/recommend.ts`.
+- D-04 The TypeScript write function is named `savePreferences()` (semantic verb, not HTTP-shaped). The endpoint is POST-only — no PUT route exists or will exist this milestone (`__main__.py:340-341`). The original issue title's mention of "PUT" was a user-clarified mistake (2026-05-14).
+- D-05 Kebab-case `"age-rating"` is the wire key — accessed via `prefs["age-rating"]`. No client-side renaming to camelCase. The TS type carries the literal bracket key.
+- D-06 Lambda `if X is not None` quirk: literal `null` in POST is silently dropped by `_post()`. Workaround at the page-level `commit()` function: translate `null → ""` for single-string fields (`humor`, `age-rating`) right before the wire write. UI treats both `null` and `""` as "no selection". Backend cleanup deferred to v2.1.
+- D-07 ChipsSkeleton component is the first skeleton primitive in the repo. Phase 16 may reuse; Phase 15 (history) likely needs a different row-style skeleton.
+- D-08 Pre-existing smoke harness lint fix: 1-line `eslint-disable-next-line react-hooks/purity` on `Date.now()` in `app/(app)/(protected)/smoke/page.tsx:66`. Minimum-scope patch to keep full lint gate green; harness is scheduled for Phase 17 deletion anyway.
+
 ### Pending Todos
 
-None yet.
+- Phase 11 plan: capture the final state shipped on `feature/issue-128-cognito-auth` (retroactive plan).
+- Phase 15: open `/gsd:discuss-phase 15` to start the history integration GSD cycle. Pattern is largely the Phase 14 lib seam shape minus the write path.
+- Phase 16: open `/gsd:discuss-phase 16` for watch-later. Mirror Phase 14's per-toggle optimistic + replay-queue + rollback strategy.
+- Phase 17: schedule a teammate cold-run on a fresh AWS account before claiming the phase complete.
+- Phase 17: **delete `frontend/web/app/(app)/(protected)/smoke/`** before the final `backend-integration → main` PR. It's the throwaway Phase 12 fetch-wrapper smoke harness (commit 6bfb57f). Kept through P13–P16 because it's a useful manual harness for the real-Lambda integrations; the "REVERT BEFORE PR" note on the commit was scoped to the (now-superseded) Phase 12 PR-back-into-frontend gate. Phase 14 added a 1-line eslint-disable to keep lint green; deletion will remove it.
+- v2.1 backend cleanup: `functions/preferences/preferences.py:_post` should differentiate `null` (clear field) from missing (skip field). Phase 14 currently sends `""` to clear single-string fields — works, but is a wart.
+- Pre-existing review: `frontend/web/components/MovieCard.tsx:50` and `frontend/web/components/ui/sonner.tsx:43` both use `style={...}` — verify these are dynamic non-design-system properties (allowed) vs design-system values (forbidden per DSGN-06). Not blocking Phase 14 PR.
 
 ### Blockers/Concerns
 
-- Issue #88 explicitly blocks Phases 4–10 until Phases 1–3 (issues #90/#91/#92) are merged into `frontend`. Phase ordering enforces this.
-- Backend has known issues tracked in `.planning/codebase/CONCERNS.md` (env-var name mismatch, missing PyJWT dep, ~8/11 lambdas not wired). Out of scope this milestone — flagged so the mock-vs-real boundary is explicit when v2 (INTG-01..04) starts.
+- Phase 12 cannot start until Phase 11's Cognito tokens are durable client-side (the wrapper auto-injects the IdToken and refresh-replays via the RefreshToken). Sequential order enforced by the v2.0 dependency block.
+- Phases 13–16 each depend on the Phase 12 fetch wrapper landing. Any per-screen integration starting before P12 will reintroduce raw `fetch()` calls and break FETCH-06.
+- Pre-existing backend concerns remain in `.planning/codebase/CONCERNS.md` (env-var name mismatch, missing PyJWT dep, ~8 of 11 lambdas not wired). Most are addressed by separate non-roadmap issues (#117 closed, #120 closed, #122 closed, #123, #125). If an integration phase trips on an unwired Lambda, surface a narrow read-only-backend exception in plan-phase rather than silently editing `functions/`.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Backend integration | INTG-01 Real Cognito SDK | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-02 Real Lambda / API Gateway calls | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-03 Real session refresh / token rotation | v2 | 2026-05-04 (project init) |
-| Backend integration | INTG-04 Error UX for real network/auth failures | v2 | 2026-05-04 (project init) |
+| Backend integration | INTG-01 Real Cognito SDK | Concretized as AUTH-COGN-01..06 (Phase 11) | 2026-05-04 (project init) → re-scoped 2026-05-12 |
+| Backend integration | INTG-02 Real Lambda / API Gateway calls | Concretized as FETCH-01..07 (P12) + INTG-RECO/PREF/HIST/WTCL (P13–P16) | 2026-05-04 → re-scoped 2026-05-12 |
+| Backend integration | INTG-03 Real session refresh / token rotation | Concretized as FETCH-03 (Phase 12) | 2026-05-04 → re-scoped 2026-05-12 |
+| Backend integration | INTG-04 Error UX for real network/auth failures | Concretized as FETCH-02 + FETCH-07 (Phase 12) | 2026-05-04 → re-scoped 2026-05-12 |
+| CI/CD | Pipeline | v2.1 | 2026-05-12 |
+| Production hardening | Rate-limit UI, account lockout UX | v2.1 | 2026-05-12 |
+| LocalStack | Local AWS emulation | Handled separately by a teammate | 2026-05-12 |
+| Phase 14 smoke | Live-AWS GET+POST round-trip vs DynamoDB | run-when-home (checklist in 14-03-SUMMARY.md) | 2026-05-14 |
+| Backend cleanup | `_post()` null-vs-missing differentiation in functions/preferences/preferences.py | v2.1 follow-up (workaround: send "" for clear) | 2026-05-14 |
+| Style audit | MovieCard.tsx:50 + ui/sonner.tsx:43 inline style props review | Non-blocking — verify dynamic-only vs design-system | 2026-05-14 |
 
 ## Session Continuity
 
-Last session: 2026-05-06T06:00:00Z
-Stopped at: Phase 04 (auth-ui) COMPLETE — Plan 04-05 verification gate approved (automated + manual all PASS).
-  Deliverables shipped this phase: lib/api/auth.ts, components/Field.tsx, components/AccountMenu.tsx,
-  app/(auth)/login/page.tsx, app/(auth)/register/page.tsx, app/(auth)/forgot/page.tsx,
-  Sidebar/Navbar wired with AccountMenu.
-Next step: `/gsd:transition` to Phase 5 (Auth Context + Protected Routes, issue #94)
-Resume file: .planning/ROADMAP.md §"Phase 5: Auth Context + Protected Routes"
+Last session: 2026-05-15T00:00:00.000Z
+Stopped at: Phase 14 complete (live-AWS smoke deferred); PR #153 open against post-Phase-13 backend-integration
+Next step: Phase 15 (History) and Phase 16 (Watch-Later) PRs rebase onto post-Phase-13 backend-integration in parallel; then Phase 17 (Onboarding Guide) once all three merge.
+Resume file: .planning/phases/14-preferences-integration/14-03-SUMMARY.md

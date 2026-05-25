@@ -2,5 +2,5 @@ config:
   aws:region: sa-east-1
   isn20261:environment: dev
   isn20261:disableAuth: true
-  isn20261:sesFromEmail: no-reply@cinedica.video
+  isn20261:sesFromEmail: etorresini@ifsc.edu.br
   isn20261:sesFromName: Cine Dica

@@ -9,20 +9,54 @@
  * On UsernameExistsException: form-level error banner with copy
  * "An account with this email already exists." (UI-SPEC §Copywriting).
  *
- * Validators (D-09 verbatim):
- *   - email contains '@'                   → "Enter a valid email"
- *   - password length >= 8                 → "Use at least 8 characters"
- *   - password === confirm                 → "Passwords don't match"  (STRAIGHT ASCII apostrophe)
- *   - Terms checkbox checked               → "Required"
+ * Validators (D-09):
+ *   - email contains '@'                   → "Digite um e-mail válido"
+ *   - password meets ALL PASSWORD_REQS:
+ *       length >= 8                        → "A senha não atende a todos os requisitos"
+ *       uppercase letter (A–Z)
+ *       lowercase letter (a–z)
+ *       digit (0–9)
+ *       special character (!@#$%… — no whitespace)
+ *   - password === confirm                 → "As senhas não coincidem"
+ *   - Terms checkbox checked               → "Obrigatório"
  */
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, CheckCircle2, Circle } from "lucide-react";
 import { Field } from "@/components/Field";
-import { UsernameExistsException } from "@/lib/api/auth";
+import { InvalidPasswordException, UsernameExistsException } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
+
+const PASSWORD_REQS = [
+  { key: "length",  label: "Mínimo 8 caracteres",                test: (p: string) => p.length >= 8 },
+  { key: "upper",   label: "Uma letra maiúscula (A–Z)",           test: (p: string) => /[A-Z]/.test(p) },
+  { key: "lower",   label: "Uma letra minúscula (a–z)",           test: (p: string) => /[a-z]/.test(p) },
+  { key: "number",  label: "Um número (0–9)",                     test: (p: string) => /[0-9]/.test(p) },
+  { key: "symbol",  label: "Um caractere especial (!@#$%...)",    test: (p: string) => /[^A-Za-z0-9\s]/.test(p) },
+];
+
+function PasswordRequirements({ password }: { password: string }) {
+  if (!password) return null;
+  return (
+    <ul className="flex flex-col gap-1 mt-0.5" aria-label="Requisitos de senha">
+      {PASSWORD_REQS.map((req) => {
+        const met = req.test(password);
+        return (
+          <li key={req.key} className="flex items-center gap-1.5 text-12 leading-tight">
+            {met ? (
+              <CheckCircle2 size={13} className="text-success shrink-0" aria-hidden />
+            ) : (
+              <Circle size={13} className="text-text-muted shrink-0" aria-hidden />
+            )}
+            <span className={met ? "text-success" : "text-text-muted"}>{req.label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 const AUTH_PATHS = new Set(["/login", "/register", "/forgot"]);
 
@@ -61,25 +95,32 @@ function RegisterForm() {
 
     // D-09 verbatim — STRAIGHT ASCII apostrophe in "Passwords don't match" (UI-SPEC hook #10)
     const errs: Record<string, string> = {};
-    if (!email.includes("@")) errs.email = "Enter a valid email";
-    if (pw1.length < 8) errs.pw1 = "Use at least 8 characters";
-    if (pw1 !== pw2) errs.pw2 = "Passwords don't match";
-    if (!agree) errs.agree = "Required";
+    if (!email.includes("@")) errs.email = "Digite um e-mail válido";
+    const unmetReqs = PASSWORD_REQS.filter((r) => !r.test(pw1));
+    if (unmetReqs.length > 0) errs.pw1 = "A senha não atende a todos os requisitos";
+    if (pw1 !== pw2) errs.pw2 = "As senhas não coincidem";
+    if (!agree) errs.agree = "Obrigatório";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setFormError(null);
     setIsSubmitting(true);
     try {
-      await signUp({ email, password: pw1 });
-      router.push(safeReturnPath(searchParams.get("from")));
-    } catch (err) {
-      // Collapse all unknown failures into the safe "An account with this email already exists."
-      // copy — never leak Cognito-internal messages (UI-SPEC §Interaction Contracts).
-      if (err instanceof UsernameExistsException) {
-        setFormError("An account with this email already exists.");
+      const result = await signUp({ email, password: pw1 });
+      const from = searchParams.get("from");
+      const fromQuery = from ? `&from=${encodeURIComponent(from)}` : "";
+      if (result.needsConfirmation) {
+        router.push(`/confirm?email=${encodeURIComponent(result.email)}${fromQuery}`);
       } else {
-        setFormError("An account with this email already exists.");
+        router.push(safeReturnPath(from));
+      }
+    } catch (err) {
+      if (err instanceof UsernameExistsException) {
+        setFormError("Já existe uma conta com este e-mail.");
+      } else if (err instanceof InvalidPasswordException) {
+        setFormError("A senha não atende aos requisitos.");
+      } else {
+        setFormError("Não foi possível criar sua conta. Tente novamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -90,16 +131,16 @@ function RegisterForm() {
     <>
       {/* non-tokenized: text-[26px], tracking-[-0.02em], leading-[1.02] match the reference .display class — see UI-SPEC §Typography */}
       <h1 className="font-display text-[26px] font-extrabold tracking-[-0.02em] leading-[1.02] text-center text-text-primary">
-        Make it yours.
+        Personalize do seu jeito.
       </h1>
       {/* non-tokenized: text-[13px] is the reference auth.jsx:135 fontSize:13 — see UI-SPEC §Typography */}
       <p className="text-center text-text-secondary text-[13px] mt-1.5">
-        Save recommendations, build a queue, learn what you love.
+        Salve recomendações, monte uma fila e descubra o que você ama.
       </p>
 
       <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-6">
         <Field
-          label="Email"
+          label="E-mail"
           type="email"
           name="email"
           autoComplete="email"
@@ -108,19 +149,21 @@ function RegisterForm() {
           error={errors.email}
           disabled={isSubmitting}
         />
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Senha"
+            type="password"
+            name="password"
+            autoComplete="new-password"
+            value={pw1}
+            onChange={setPw1}
+            error={errors.pw1}
+            disabled={isSubmitting}
+          />
+          <PasswordRequirements password={pw1} />
+        </div>
         <Field
-          label="Password"
-          type="password"
-          name="password"
-          autoComplete="new-password"
-          value={pw1}
-          onChange={setPw1}
-          error={errors.pw1}
-          hint="At least 8 characters"
-          disabled={isSubmitting}
-        />
-        <Field
-          label="Confirm password"
+          label="Confirmar senha"
           type="password"
           name="confirmPassword"
           autoComplete="new-password"
@@ -139,7 +182,7 @@ function RegisterForm() {
               disabled={isSubmitting}
               className="accent-accent mt-0.5"
             />
-            <span>I agree to the Terms and Privacy Policy.</span>
+            <span>Concordo com os Termos e a Política de Privacidade.</span>
           </label>
           {errors.agree && (
             <p className="text-12 text-danger leading-tight" aria-live="polite">
@@ -168,7 +211,7 @@ function RegisterForm() {
         >
           {isSubmitting ? (
             <>
-              Create account
+              Criar conta
               <span
                 className="w-4 h-4 rounded-full border-2 border-on-accent border-t-transparent animate-spin"
                 aria-hidden
@@ -176,7 +219,7 @@ function RegisterForm() {
             </>
           ) : (
             <>
-              Create account
+              Criar conta
               <ArrowRight size={16} />
             </>
           )}
@@ -184,12 +227,12 @@ function RegisterForm() {
       </form>
 
       <p className="text-center text-text-secondary text-[13px] mt-4">
-        Already have one?{" "}
+        Já tem uma conta?{" "}
         <Link
           href="/login"
           className="text-accent font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
         >
-          Sign in
+          Entrar
         </Link>
       </p>
     </>

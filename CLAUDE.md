@@ -1,6 +1,6 @@
-# recommend-a — Frontend Milestone
+# Cinedica — Frontend Milestone
 
-This repo is mid-milestone on the **recommend-a frontend**, planned and tracked via GSD. Read these files first when picking up work:
+This repo is mid-milestone on the **Cinedica frontend**, planned and tracked via GSD. Read these files first when picking up work:
 
 - `.planning/PROJECT.md` — what this is, core value, decisions
 - `.planning/REQUIREMENTS.md` — 56 v1 REQ-IDs grouped by category

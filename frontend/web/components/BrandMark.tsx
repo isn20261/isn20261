@@ -28,24 +28,24 @@ export function BrandMark({ size = 28, withWord = true }: BrandMarkProps) {
         role="img"
       >
         <defs>
-          <linearGradient id="ra-bg" x1="0" x2="1" y1="0" y2="1">
+          <linearGradient id="cinedica-bg" x1="0" x2="1" y1="0" y2="1">
             {/* non-tokenized: SVG <stop stopColor> can't be reached by Tailwind — see UI-SPEC §Color Escape Hatches */}
             <stop offset="0" stopColor="var(--color-accent)" />
             <stop offset="1" stopColor="var(--color-accent-hover)" />
           </linearGradient>
         </defs>
         {/* non-tokenized: SVG <rect fill> can't be reached by Tailwind — see UI-SPEC §Color Escape Hatches */}
-        <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#ra-bg)" />
+        <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#cinedica-bg)" />
         {/* non-tokenized: SVG <path fill> can't be reached by Tailwind — see UI-SPEC §Color Escape Hatches */}
         <path
-          d="M11 22V10h6.2c2.4 0 4 1.5 4 3.7 0 1.7-.9 2.9-2.4 3.4l3 4.9h-3l-2.7-4.5h-2.4V22zm2.7-6.7h3c1.2 0 2-.6 2-1.6s-.8-1.6-2-1.6h-3z"
+          d="M21 12 C17 9 9 10.5 9 16 C9 21.5 17 23 21 20 L21 17.5 C18 21 12 19.5 12 16 C12 12.5 18 11 21 14.5 Z"
           fill="var(--color-on-accent)"
         />
       </svg>
       {withWord && (
         // non-tokenized: brand-mark wordmark size 18px is outside the Phase 2 type scale (12/14/16/20/28/40/64) — see UI-SPEC §Typography
         <span className="font-display font-extrabold tracking-tight text-[18px] text-text-primary leading-tight">
-          Recommend<span className="text-accent">·</span>a
+          Cinedica
         </span>
       )}
     </span>

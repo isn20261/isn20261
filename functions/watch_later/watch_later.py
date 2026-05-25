@@ -9,6 +9,7 @@ Environment variables: shared db/auth vars
 import json
 from datetime import datetime, timezone
 
+from shared.movies import resolve_movie
 from shared.auth import get_sub, get_method
 from shared.db import get_user, movies, users, write_log
 from shared.response import ok, created, bad_request, unauthorized
@@ -17,6 +18,8 @@ from shared.response import ok, created, bad_request, unauthorized
 def _resolve_movie(movie_id: str) -> dict | None:
     """Return a movie entry from the Movies table by movieId, or None if not found."""
     return movies().get_item(Key={"movieId": movie_id}).get("Item")
+
+
 
 def handler(event, context):
     sub = get_sub(event)
@@ -57,7 +60,7 @@ def _post(event: dict, sub: str):
     if not movie_id or len(movie_id) > 255:
         return bad_request("movieId is required")
 
-    movie = _resolve_movie(movie_id)
+    movie = resolve_movie(movie_id)
     title = movie["title"] if movie else movie_id
 
     now_iso = datetime.now(timezone.utc).isoformat()

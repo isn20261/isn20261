@@ -27,22 +27,3 @@ pulumi:
 
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
-
-sam:
-	@status=0; \
-	$(MAKE) sam-start || status=$$?; \
-	$(MAKE) sam-stop; \
-	exit $$status
-
-sam-start:
-	$(MAKE) sam-dynamodb
-	$(MAKE) sam-lambda
-
-sam-dynamodb:
-	docker compose up -d
-
-sam-lambda:
-	sam local invoke -t template.yaml -e event.json --docker-network sam-local
-
-sam-stop:
-	docker compose down

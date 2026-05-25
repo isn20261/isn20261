@@ -50,7 +50,8 @@
         "cloudfront:UpdateOriginRequestPolicy",
         "cloudfront:DeleteOriginRequestPolicy",
         "cloudfront:TagResource",
-        "cloudfront:UntagResource"
+        "cloudfront:UntagResource",
+        "cloudfront:CreateInvalidation"
       ],
       "Resource": "*"
     },
@@ -117,9 +118,7 @@
         "dynamodb:UpdateContributorInsights",
         "dynamodb:DescribeContributorInsights"
       ],
-      "Resource": [
-        "arn:aws:dynamodb:sa-east-1:*:table/*"
-      ]
+      "Resource": ["arn:aws:dynamodb:sa-east-1:*:table/*"]
     },
     {
       "Sid": "IAMPassRole",
@@ -190,7 +189,8 @@
         "iam:ListRolePolicies",
         "iam:ListAttachedRolePolicies",
         "iam:DeleteRolePolicy",
-        "iam:ListInstanceProfilesForRole"
+        "iam:ListInstanceProfilesForRole",
+        "iam:CreatePolicyVersion"
       ],
       "Resource": "arn:aws:iam::*:role/CognitoSESRole-*"
     },
@@ -206,7 +206,8 @@
         "iam:ListPolicyVersions",
         "iam:ListPolicyTags",
         "iam:TagPolicy",
-        "iam:UntagPolicy"
+        "iam:UntagPolicy",
+        "iam:CreatePolicyVersion"
       ],
       "Resource": "arn:aws:iam::*:policy/CognitoSESPolicy-*"
     },
@@ -273,11 +274,7 @@
     {
       "Sid": "S3ObjectManagement",
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::*"
     },
     {

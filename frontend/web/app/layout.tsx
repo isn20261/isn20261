@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const fontDisplay = Manrope({
   subsets: ["latin"],
@@ -18,8 +19,8 @@ const fontBody = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "recommend-a",
-  description: "Movie recommendation app — coming soon.",
+  title: "Cinedica",
+  description: "Cinedica, o melhor site de recomendação de filmes",
 };
 
 export default function RootLayout({
@@ -28,9 +29,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${fontDisplay.variable} ${fontBody.variable}`}>
+    <html lang="pt-BR" className={`${fontDisplay.variable} ${fontBody.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

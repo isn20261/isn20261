@@ -15,24 +15,8 @@ export function Footer() {
     <footer className="border-t border-border py-6 px-5 md:px-10 flex flex-col md:flex-row items-center md:justify-between gap-4 text-text-muted text-12 font-body">
       <div className="flex items-center gap-3">
         <BrandMark size={24} withWord={false} />
-        <span>Recommend·a is a fictional concept design.</span>
+        <span>Cinedica, o melhor site de recomendação de filmes</span>
       </div>
-      <nav className="flex items-center gap-4" aria-label="Footer">
-        <a
-          href="#"
-          aria-disabled="true"
-          className="text-12 font-medium text-text-muted"
-        >
-          About
-        </a>
-        <a
-          href="#"
-          aria-disabled="true"
-          className="text-12 font-medium text-text-muted"
-        >
-          Privacy
-        </a>
-      </nav>
     </footer>
   );
 }

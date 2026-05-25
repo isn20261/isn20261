@@ -1,67 +1,78 @@
 "use client";
 
 /**
- * Phase 10 (WTCL-01..05, issue #99) — watch-later screen.
+ * Phase 16 (INTG-WTCL-01..03, issue #135) — watch-later screen, real backend.
  *
- * Lives inside (app)/(protected)/ so the Phase 5 RequireAuth gate
- * covers WTCL-02. Reads the localStorage-backed seam on mount; updates
- * local state on remove. Drag-to-reorder is deferred (seam exposes
- * reorderWatchLater for v2).
+ * Phase 10 used a localStorage-backed MOVIES-decorated grid with a remove
+ * button. The real /watch-later Lambda returns only { title, "added-at" }
+ * per row and has no PUT/DELETE verb (verified 2026-05-14). Phase 16
+ * degrades the UI to a minimal title + relative-time row list, drops the
+ * remove button (no backend support), and ships read + add only.
+ *
+ * v2.1 follow-ups: backend PUT/DELETE for remove; richer GET response
+ * (poster URL, mood, etc.) to restore the Phase 10 grid; idempotency on
+ * POST to prevent duplicate adds.
  *
  * DSGN-06 escape hatches (each marked // non-tokenized inline):
- *   - max-w-[1100px]                            : grid container width
- *   - text-[36px]                               : page title — between Phase 2 steps
- *   - tracking-[0.18em]                         : eyebrow letter-spacing
- *   - gap-[18px]                                : grid gap between 16/20 step
- *   - grid-cols-[repeat(auto-fill,minmax(168px,1fr))] : responsive grid recipe
- *   - w-7 h-7 (top-right X), bg-black/60        : delete-btn primitive
+ *   - max-w-[920px]              : column width primitive (matches Phase 15 history)
+ *   - text-[36px]                : page title — between Phase 2 steps (28/40)
+ *   - tracking-[0.18em]          : eyebrow letter-spacing (already documented)
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
-import { MovieCard } from "@/components/MovieCard";
 import {
   getWatchLater,
-  removeFromWatchLater,
+  type WatchLaterItem,
 } from "@/lib/api/watch-later";
-import type { Movie } from "@/lib/api/recommend";
+import { useApiErrorUx } from "@/lib/api/useApiErrorUx";
+import type { ApiError } from "@/lib/api/client";
+import { relativeTime } from "@/lib/time";
 
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
 export default function WatchLaterPage() {
-  const [items, setItems] = useState<readonly Movie[] | null>(null);
+  const [items, setItems] = useState<readonly WatchLaterItem[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  useApiErrorUx(error);
 
   useEffect(() => {
-    // Read browser-only state into React on mount — same documented exception
-    // as AuthContext rehydrate. localStorage is unavailable during SSR.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    setItems(getWatchLater());
-    /* eslint-enable react-hooks/set-state-in-effect */
+    let cancelled = false;
+    getWatchLater().then((res) => {
+      if (cancelled) return;
+      if (!res.ok) {
+        setError(res.error);
+        setIsLoading(false);
+        return;
+      }
+      setItems(res.data);
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function handleRemove(id: string) {
-    removeFromWatchLater(id);
-    setItems((prev) => (prev ? prev.filter((m) => m.id !== id) : prev));
-  }
-
   const count = items?.length ?? 0;
+  const now = new Date();
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6 md:px-10 py-10 md:py-14">
+    <div className="max-w-[920px] mx-auto px-6 md:px-10 py-10 md:py-14">
       <div className="flex items-end justify-between gap-5 mb-7 flex-wrap">
         <div>
-          <p className={`${EYEBROW} mb-2`}>Library</p>
+          <p className={`${EYEBROW} mb-2`}>Biblioteca</p>
           {/* non-tokenized: text-[36px] page title — between Phase 2 steps (28/40) */}
           <h1 className="font-display text-[36px] font-extrabold tracking-[-0.02em] leading-[1.05] text-text-primary">
-            Watch later
+            Assistir depois
           </h1>
           <p className="text-text-secondary text-14 mt-2">
             <span className="text-text-primary font-semibold">
-              {count} {count === 1 ? "movie" : "movies"}
+              {count} {count === 1 ? "filme" : "filmes"}
             </span>{" "}
-            saved.
+            salvos.
           </p>
         </div>
         <Link
@@ -77,41 +88,40 @@ export default function WatchLaterPage() {
           `}
         >
           <Sparkles size={16} aria-hidden />
-          Surprise me from this list
+          Surpreenda-me desta lista
         </Link>
       </div>
 
-      {items === null ? (
+      {isLoading || items === null ? (
         <div
-          className="grid gap-[18px] grid-cols-[repeat(auto-fill,minmax(168px,1fr))] animate-pulse"
+          className="flex flex-col gap-2 animate-pulse"
           aria-busy="true"
+          aria-label="Carregando lista de assistir depois"
         >
-          <div className="h-[252px] rounded-lg bg-surface-2" />
-          <div className="h-[252px] rounded-lg bg-surface-2" />
-          <div className="h-[252px] rounded-lg bg-surface-2" />
-          <div className="h-[252px] rounded-lg bg-surface-2" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-md bg-surface" />
+          ))}
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title="Your queue is empty."
-          body="Get a recommendation and save what catches your eye. Everything you save lives here."
-          ctaLabel="Pick a movie for me"
+          title="Sua fila está vazia."
+          body="Receba uma recomendação e salve o que chamar sua atenção. Tudo que você salvar aparece aqui."
+          ctaLabel="Escolha um filme pra mim"
           ctaHref="/"
         />
       ) : (
-        <div className="grid gap-[18px] grid-cols-[repeat(auto-fill,minmax(168px,1fr))] animate-fade-up [animation-delay:60ms]">
-          {items.map((m) => (
-            <div key={m.id} className="relative group">
-              <button
-                type="button"
-                onClick={() => handleRemove(m.id)}
-                aria-label={`Remove ${m.title} from watch later`}
-                /* non-tokenized: 28×28 floating delete primitive over poster */
-                className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-              >
-                <X size={12} aria-hidden />
-              </button>
-              <MovieCard movie={m} width={168} height={252} />
+        <div className="flex flex-col gap-2 animate-fade-up [animation-delay:60ms]">
+          {items.map((item, idx) => (
+            <div
+              key={`${item["added-at"]}-${idx}`}
+              className="flex items-center justify-between px-4 py-3 rounded-md bg-surface border border-border"
+            >
+              <span className="text-14 font-medium text-text-primary truncate pr-4">
+                {item.title}
+              </span>
+              <span className="text-12 text-text-muted shrink-0">
+                {relativeTime(item["added-at"], now)}
+              </span>
             </div>
           ))}
         </div>

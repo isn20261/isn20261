@@ -4,7 +4,7 @@ import json
 import os
 import mimetypes
 
-# --- 1. Configurações do Ambiente (12-Factor) ---
+# -- 1. Configurações do Ambiente (12-Factor) --
 
 config = pulumi.Config()
 env = config.require("environment")
@@ -28,6 +28,17 @@ if api_default_route_throttling_burst_limit is None:
 ses_from_email = config.require("sesFromEmail") if is_prod else config.get("sesFromEmail")
 ses_from_name = config.get("sesFromName") or "App"
 ses_reply_to_email = config.get("sesReplyToEmail") or ses_from_email
+
+# Only manage the SES domain identity in Pulumi when the FROM address belongs
+# to the configured domain. Otherwise (e.g. SES sandbox stopgap pointing at a
+# pre-verified personal mailbox) the identity is assumed to be verified out of
+# band, and we skip DomainIdentity / DNS / DKIM resources entirely.
+ses_use_domain_identity = bool(
+    is_prod
+    and domain_name
+    and ses_from_email
+    and ses_from_email.endswith(f"@{domain_name}")
+)
 
 # --- 2. DynamoDB Tables ---
 
@@ -211,6 +222,9 @@ shared_layer = aws.lambda_.LayerVersion(
             ),
             "python/shared/auth.py": pulumi.FileAsset("./functions/shared/auth.py"),
             "python/shared/db.py": pulumi.FileAsset("./functions/shared/db.py"),
+            "python/shared/movies.py": pulumi.FileAsset(
+                "./functions/shared/movies.py"
+            ),
             "python/shared/response.py": pulumi.FileAsset(
                 "./functions/shared/response.py"
             ),
@@ -247,7 +261,7 @@ aws.cloudwatch.LogGroup(
 # --- 5a. SES Domain Identity ---
 
 ses_domain_identity = None
-if is_prod and domain_name:
+if ses_use_domain_identity:
     ses_domain_identity = aws.ses.DomainIdentity(
         f"ses-domain-{env}",
         domain=domain_name,
@@ -317,18 +331,21 @@ aws.iam.RolePolicyAttachment(
     policy_arn=cognito_ses_policy.arn,
 )
 
+
 # --- 5a. Route53 Zone (necessária para SES DNS records) ---
 
 zone = None
-if is_prod and domain_name:
+if ses_use_domain_identity:
     zone = aws.route53.get_zone(name=domain_name)
 
 # --- 5b. SES Domain Configuration (registros DNS) ---
 
+
 ses_dkim = None
-if is_prod and domain_name and zone:
+ses_domain_identity_verification = None
+if ses_use_domain_identity and zone:
     # Verificação de domínio (TXT record)
-    aws.route53.Record(
+    ses_verification_record = aws.route53.Record(
         f"ses-verification-record-{env}",
         zone_id=zone.zone_id,
         name=pulumi.Output.concat("_amazonses.", domain_name),
@@ -337,11 +354,14 @@ if is_prod and domain_name and zone:
         records=[ses_domain_identity.verification_token],
     )
 
-    # Aguarda a criação do domain identity
-    aws.ses.DomainIdentityVerification(
+    # Aguarda a verificação efetiva do domínio (poll na AWS). Precisa do TXT
+    # record já criado, senão a verificação nunca completa.
+    ses_domain_identity_verification = aws.ses.DomainIdentityVerification(
         f"ses-domain-verification-{env}",
         domain=ses_domain_identity.id,
-        opts=pulumi.ResourceOptions(depends_on=[ses_domain_identity]),
+        opts=pulumi.ResourceOptions(
+            depends_on=[ses_domain_identity, ses_verification_record]
+        ),
     )
 
     # DKIM records
@@ -387,6 +407,17 @@ else:
 
 # --- 6. Amazon Cognito ---
 
+# Quando o Cognito é configurado com DEVELOPER + source_arn de uma SES
+# DomainIdentity, ele valida no create/update se a identidade já está
+# verificada. Sem essa dependência explícita o Pulumi cria a UserPool em
+# paralelo com a verificação e falha com
+# `InvalidParameterException: Email address is not verified`.
+user_pool_opts = None
+if ses_domain_identity_verification is not None:
+    user_pool_opts = pulumi.ResourceOptions(
+        depends_on=[ses_domain_identity_verification]
+    )
+
 user_pool = aws.cognito.UserPool(
     f"app-user-pool-{env}",
     name=f"app-users-{env}",
@@ -427,6 +458,7 @@ user_pool = aws.cognito.UserPool(
             ),
         ]
     ),
+    opts=user_pool_opts,
 )
 
 aws.lambda_.Permission(
@@ -489,8 +521,28 @@ recommend_lambda = create_lambda("recommend", "recommend.handler")
 watch_later_lambda = create_lambda("watch_later", "watch_later.handler")
 
 # --- 6. API Gateway v2 (HTTP API) ---
+# CORS: in prod the frontend is served same-origin via CloudFront (/api/v1/* path
+# behavior at __main__.py:521), so preflight never fires. In dev the frontend
+# runs at http://localhost:3000 and hits the API Gateway origin directly, which
+# *does* trigger preflight because the wrapper sends `Authorization: Bearer …`
+# (non-simple header). Without this config, OPTIONS /api/v1/* returns 404 and
+# every authenticated call from localhost fails. Origins are stack-gated so dev
+# keys can't be used from prod and vice versa.
+cors_allowed_origins = (
+    [f"https://{domain_name}"] if is_prod and domain_name else ["http://localhost:3000"]
+)
 
-api = aws.apigatewayv2.Api(f"http-api-{env}", protocol_type="HTTP")
+api = aws.apigatewayv2.Api(
+    f"http-api-{env}",
+    protocol_type="HTTP",
+    cors_configuration=aws.apigatewayv2.ApiCorsConfigurationArgs(
+        allow_origins=cors_allowed_origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        allow_credentials=False,  # Bearer tokens, not cookies
+        max_age=300,
+    ),
+)
 
 api_access_log_group = aws.cloudwatch.LogGroup(
     f"api-access-log-group-{env}",
@@ -590,7 +642,7 @@ stage = aws.apigatewayv2.Stage(
 
 bucket = aws.s3.Bucket(f"frontend-bucket-{env}")
 
-frontend_dir = "frontend"
+frontend_dir = "frontend/web/out"
 for root, dirs, files in os.walk(frontend_dir, followlinks=True):
     for file in files:
         file_path = os.path.join(root, file)
@@ -831,11 +883,13 @@ final_public_url = pulumi.Output.all(
 pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
+pulumi.export("user_pool_id", user_pool.id)
+pulumi.export("user_pool_client_id", user_pool_client.id)
 
 # ---------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES
 # ---------------------------------------------------------------------------
-if is_prod and domain_name:
+if ses_use_domain_identity:
     pulumi.export("ses_domain", ses_domain_identity.domain)
     pulumi.export("ses_identity_arn", ses_identity_arn)
     pulumi.export(
