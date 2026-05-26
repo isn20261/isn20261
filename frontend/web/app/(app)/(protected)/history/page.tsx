@@ -29,10 +29,10 @@ const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted
 type Bucket = "today" | "yesterday" | "lastWeek" | "earlier";
 
 const BUCKET_LABELS: Record<Bucket, string> = {
-  today: "Today",
-  yesterday: "Yesterday",
-  lastWeek: "Last week",
-  earlier: "Earlier",
+  today: "Hoje",
+  yesterday: "Ontem",
+  lastWeek: "Semana passada",
+  earlier: "Mais antigo",
 };
 
 const BUCKET_ORDER: readonly Bucket[] = [
@@ -70,16 +70,16 @@ function relativeTime(iso: string, now: Date): string {
   const hr = Math.floor(ms / 3_600_000);
   const day = 24 * 60 * 60 * 1000;
   if (sameDay(date, now)) {
-    if (min < 60) return min <= 0 ? "Just now" : `${min}m ago`;
-    return `${hr}h ago`;
+    if (min < 60) return min <= 0 ? "Agora mesmo" : `há ${min}m`;
+    return `há ${hr}h`;
   }
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (sameDay(date, yesterday)) return "Yesterday";
+  if (sameDay(date, yesterday)) return "Ontem";
   if (ms < 7 * day) {
-    return date.toLocaleDateString(undefined, { weekday: "short" });
+    return date.toLocaleDateString("pt-BR", { weekday: "short" });
   }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
 }
 
 export default function HistoryPage() {
@@ -122,20 +122,21 @@ export default function HistoryPage() {
 
   return (
     <div className="max-w-[920px] mx-auto px-6 md:px-10 py-10 md:py-14">
-      <p className={`${EYEBROW} mb-2`}>Library</p>
+      <p className={`${EYEBROW} mb-2`}>Biblioteca</p>
       {/* non-tokenized: text-[36px] page title — between Phase 2 steps (28/40) */}
       <h1 className="font-display text-[36px] font-extrabold tracking-[-0.02em] leading-[1.05] text-text-primary">
-        History
+        Histórico
       </h1>
       <p className="text-text-secondary text-14 mt-2 mb-8">
-        Every recommendation we&apos;ve served you, newest first.
+        Todas as recomendações que enviamos pra você, das mais recentes às
+        mais antigas.
       </p>
 
       {isLoading || !buckets ? (
         <div
           className="flex flex-col gap-2 animate-pulse"
           aria-busy="true"
-          aria-label="Loading history"
+          aria-label="Carregando histórico"
         >
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-12 rounded-md bg-surface" />
@@ -143,9 +144,9 @@ export default function HistoryPage() {
         </div>
       ) : items && items.length === 0 ? (
         <EmptyState
-          title="Your history is empty."
-          body="Recommendations you've gotten will show up here."
-          ctaLabel="Pick a movie for me"
+          title="Seu histórico está vazio."
+          body="As recomendações que você receber aparecerão aqui."
+          ctaLabel="Escolha um filme pra mim"
           ctaHref="/"
         />
       ) : (

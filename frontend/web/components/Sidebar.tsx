@@ -37,11 +37,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/",               label: "Home",          Icon: Home,     exact: true },
-  { href: "/history",        label: "History",       Icon: Clock,    exact: false },
-  { href: "/recommendation", label: "Pick a movie",  Icon: Sparkles, exact: false, primary: true },
-  { href: "/watch-later",    label: "Watch later",   Icon: Bookmark, exact: false },
-  { href: "/preferences",    label: "Preferences",   Icon: User,     exact: false },
+  { href: "/",               label: "Início",          Icon: Home,     exact: true },
+  { href: "/history",        label: "Histórico",       Icon: Clock,    exact: false },
+  { href: "/recommendation", label: "Escolher filme",  Icon: Sparkles, exact: false, primary: true },
+  { href: "/watch-later",    label: "Assistir depois", Icon: Bookmark, exact: false },
+  { href: "/preferences",    label: "Preferências",    Icon: User,     exact: false },
 ] as const;
 
 function isActive(pathname: string, href: string, exact: boolean): boolean {
@@ -53,10 +53,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
   const loggedIn = isAuthenticated;
-  const userName = user?.email.split("@")[0] ?? "there";
+  const userName = user?.email.split("@")[0] ?? "você";
   const initials = userName.slice(0, 2).toUpperCase();
   const avatarHref = loggedIn ? "/preferences" : "/login";
-  const avatarLabel = loggedIn ? `Account: ${userName}` : "Sign in";
+  const avatarLabel = loggedIn ? `Conta: ${userName}` : "Entrar";
 
   return (
     <>
@@ -64,7 +64,7 @@ export function Sidebar() {
       {/* non-tokenized: bg-bg/70 approximates reference rgba(8,8,9,.7) — see UI-SPEC §Color Escape Hatches. Promote to --color-rail-bg if reviewers spot drift at PR. */}
       <aside
         className="hidden md:flex fixed left-0 top-0 bottom-0 w-rail flex-col items-center bg-bg/70 backdrop-blur-md border-r border-border py-4 gap-1 z-30"
-        aria-label="Primary"
+        aria-label="Navegação principal"
       >
         <div className="flex items-center justify-center pb-3">
           <BrandMark size={28} withWord={false} />
@@ -103,8 +103,8 @@ export function Sidebar() {
             <AccountMenu side="right" align="start" userName={userName}>
               <button
                 type="button"
-                aria-label={`Account menu for ${userName}`}
-                title={`Account menu for ${userName}`}
+                aria-label={`Menu da conta de ${userName}`}
+                title={`Menu da conta de ${userName}`}
                 className="w-9 h-9 rounded-full border border-border-strong flex items-center justify-center text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 <span className="font-display text-12 font-semibold text-text-primary">{initials}</span>
@@ -127,7 +127,7 @@ export function Sidebar() {
       {/* non-tokenized: bg-bg/90 (slightly more opaque than rail to mask scroll content underneath) — also approximation of reference rgba(8,8,9,...) */}
       <nav
         className="flex md:hidden fixed left-0 right-0 bottom-0 h-tab grid grid-cols-5 items-center px-1.5 bg-bg/90 backdrop-blur-lg border-t border-border z-30"
-        aria-label="Primary"
+        aria-label="Navegação principal"
       >
         {NAV_ITEMS.map(({ href, label, Icon, exact, primary }) => {
           const active = isActive(pathname, href, exact);

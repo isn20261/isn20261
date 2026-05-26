@@ -87,7 +87,7 @@ export function Field({
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            aria-label={show ? "Hide password" : "Show password"}
+            aria-label={show ? "Ocultar senha" : "Mostrar senha"}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
           >
             {show ? <EyeOff size={16} /> : <Eye size={16} />}

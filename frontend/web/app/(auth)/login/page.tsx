@@ -61,8 +61,8 @@ function LoginForm() {
 
     // D-09 verbatim: email contains '@'; password length >= 6
     const errs: Record<string, string> = {};
-    if (!email.includes("@")) errs.email = "Enter a valid email";
-    if (password.length < 6) errs.password = "Min 6 characters";
+    if (!email.includes("@")) errs.email = "Digite um e-mail válido";
+    if (password.length < 6) errs.password = "Mínimo de 6 caracteres";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -79,9 +79,9 @@ function LoginForm() {
         return;
       }
       if (err instanceof NotAuthorizedException) {
-        setFormError("Incorrect email or password.");
+        setFormError("E-mail ou senha incorretos.");
       } else {
-        setFormError("Incorrect email or password.");
+        setFormError("E-mail ou senha incorretos.");
       }
     } finally {
       setIsSubmitting(false);
@@ -92,16 +92,16 @@ function LoginForm() {
     <>
       {/* non-tokenized: text-[26px], tracking-[-0.02em], leading-[1.02] match the reference .display class — see UI-SPEC §Typography */}
       <h1 className="font-display text-[26px] font-extrabold tracking-[-0.02em] leading-[1.02] text-center text-text-primary">
-        Welcome back.
+        Bem-vindo de volta.
       </h1>
       {/* non-tokenized: text-[13px] is the reference auth.jsx:88 fontSize:13 — see UI-SPEC §Typography */}
       <p className="text-center text-text-secondary text-[13px] mt-1.5">
-        Pick up your queue and history.
+        Continue de onde parou na sua fila e histórico.
       </p>
 
       <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-6">
         <Field
-          label="Email"
+          label="E-mail"
           type="email"
           name="email"
           autoComplete="email"
@@ -111,7 +111,7 @@ function LoginForm() {
           disabled={isSubmitting}
         />
         <Field
-          label="Password"
+          label="Senha"
           type="password"
           name="password"
           autoComplete="current-password"
@@ -126,7 +126,7 @@ function LoginForm() {
             href="/forgot"
             className="text-text-secondary hover:text-text-primary text-12 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
           >
-            Forgot password?
+            Esqueceu a senha?
           </Link>
         </div>
 
@@ -136,7 +136,7 @@ function LoginForm() {
             aria-live="polite"
             className="text-accent text-12 font-medium text-center"
           >
-            Your account is confirmed. Sign in to continue.
+            Sua conta foi confirmada. Entre para continuar.
           </div>
         )}
 
@@ -160,7 +160,7 @@ function LoginForm() {
         >
           {isSubmitting ? (
             <>
-              Sign in
+              Entrar
               <span
                 className="w-4 h-4 rounded-full border-2 border-on-accent border-t-transparent animate-spin"
                 aria-hidden
@@ -168,7 +168,7 @@ function LoginForm() {
             </>
           ) : (
             <>
-              Sign in
+              Entrar
               <ArrowRight size={16} />
             </>
           )}
@@ -176,12 +176,12 @@ function LoginForm() {
       </form>
 
       <p className="text-center text-text-secondary text-[13px] mt-4">
-        New here?{" "}
+        Novo por aqui?{" "}
         <Link
           href="/register"
           className="text-accent font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
         >
-          Create an account
+          Criar uma conta
         </Link>
       </p>
     </>

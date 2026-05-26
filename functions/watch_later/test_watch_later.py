@@ -2,7 +2,7 @@ import json
 
 from moto import mock_aws
 
-from conftest import setup_dynamodb_tables
+from conftest import setup_dynamodb_tables, seed_movies
 from shared.db import users
 from watch_later import handler
 
@@ -67,6 +67,7 @@ def test_get_returns_movieid_fallback(monkeypatch):
 @mock_aws
 def test_post_valid_movieid_in_catalogue(monkeypatch):
     setup_dynamodb_tables()
+    seed_movies()
     monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
     users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
 

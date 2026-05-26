@@ -82,11 +82,58 @@ logs_table = aws.dynamodb.Table(
     ],
 )
 
+movies_import_bucket = aws.s3.Bucket(
+    f"movies-import-bucket-{env}",
+    bucket=pulumi.Output.concat("movies-import-", env, "-", aws.get_caller_identity().account_id),
+    acl="private",
+    force_destroy=True,
+)
+
+aws.s3.BucketPolicy(
+    f"movies-import-bucket-policy-{env}",
+    bucket=movies_import_bucket.id,
+    policy=pulumi.Output.all(movies_import_bucket.arn).apply(
+        lambda args: json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": "dynamodb.amazonaws.com"},
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Resource": [args[0], f"{args[0]}/*"],
+            }],
+        })
+    ),
+)
+
+movies_import_object = aws.s3.BucketObject(
+    f"movies-import-object-{env}",
+    bucket=movies_import_bucket.id,
+    key="movies.json",
+    source=pulumi.FileAsset("./datasets/movies.json"),
+    content_type="application/json",
+)
+
+movies_table = aws.dynamodb.Table(
+    f"movies-table-{env}",
+    name=f"Movies_{env}",
+    billing_mode="PAY_PER_REQUEST",
+    hash_key="movieId",
+    attributes=[aws.dynamodb.TableAttributeArgs(name="movieId", type="S")],
+    import_table=aws.dynamodb.TableImportTableArgs(
+        input_format="DYNAMODB_JSON",
+        s3_bucket_source=aws.dynamodb.TableImportTableS3BucketSourceArgs(
+            bucket=movies_import_bucket.id,
+            key_prefix="movies.json",
+        ),
+    ),
+)
+
 dynamodb_tables = {
     "email-to-sub": email_to_sub_table,
     "users": users_table,
     "historico": historico_table,
     "logs": logs_table,
+    "movies": movies_table,
 }
 
 for table_name, table in dynamodb_tables.items():
@@ -128,6 +175,7 @@ aws.iam.RolePolicy(
         users_table.arn,
         historico_table.arn,
         logs_table.arn,
+        movies_table.arn,
     ).apply(
         lambda arns: json.dumps(
             {
@@ -435,6 +483,7 @@ env_vars = {
     "USERS_TABLE": users_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
+    "MOVIES_TABLE": movies_table.name,
     "DISABLE_AUTH": "0",
 }
 

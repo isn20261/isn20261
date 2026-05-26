@@ -142,11 +142,11 @@ function extractValidationFields(body: unknown): Record<string, string> | undefi
 }
 
 function defaultMessageForStatus(status: number): string {
-  if (status === 401) return "Your session expired. Please sign in again.";
-  if (status === 403) return "You don't have permission to do that.";
-  if (status === 404) return "We couldn't find what you were looking for.";
-  if (status >= 400 && status < 500) return "Your request couldn't be processed.";
-  return "Something went wrong on our end. Please try again.";
+  if (status === 401) return "Sua sessão expirou. Entre novamente.";
+  if (status === 403) return "Você não tem permissão para fazer isso.";
+  if (status === 404) return "Não encontramos o que você procurava.";
+  if (status >= 400 && status < 500) return "Não foi possível processar sua solicitação.";
+  return "Algo deu errado no servidor. Tente novamente.";
 }
 
 // -----------------------------------------------------------------------------
@@ -241,8 +241,8 @@ async function request<T>(
     const error: ApiError = {
       kind: "network",
       message: isAbort
-        ? "Request timed out. Please try again."
-        : "Network error. Please check your connection.",
+        ? "Tempo limite esgotado. Tente novamente."
+        : "Erro de rede. Verifique sua conexão.",
       cause,
     };
     return { ok: false, error };
@@ -265,7 +265,7 @@ async function request<T>(
     const error: ApiError = {
       kind: "server",
       status: response.status,
-      message: "We received an invalid response from the server.",
+      message: "Recebemos uma resposta inválida do servidor.",
       cause,
     };
     return { ok: false, error };

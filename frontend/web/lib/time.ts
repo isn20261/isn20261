@@ -25,14 +25,14 @@ export function relativeTime(iso: string, now: Date): string {
   const hr = Math.floor(ms / 3_600_000);
   const day = 24 * 60 * 60 * 1000;
   if (sameDay(date, now)) {
-    if (min < 60) return min <= 0 ? "Just now" : `${min}m ago`;
-    return `${hr}h ago`;
+    if (min < 60) return min <= 0 ? "Agora mesmo" : `há ${min}m`;
+    return `há ${hr}h`;
   }
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (sameDay(date, yesterday)) return "Yesterday";
+  if (sameDay(date, yesterday)) return "Ontem";
   if (ms < 7 * day) {
-    return date.toLocaleDateString(undefined, { weekday: "short" });
+    return date.toLocaleDateString("pt-BR", { weekday: "short" });
   }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
 }

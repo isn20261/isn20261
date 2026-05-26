@@ -9,9 +9,9 @@
 import type { Service } from "@/lib/api/recommend";
 
 const KIND_LABEL: Record<Service["kind"], string> = {
-  included: "Included",
-  rent: "Rent",
-  buy: "Buy",
+  included: "Incluso",
+  rent: "Alugar",
+  buy: "Comprar",
 };
 
 export function ServiceBadge({ service }: { service: Service }) {

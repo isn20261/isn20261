@@ -77,7 +77,7 @@ export function MovieCard({
           {movie.title}
         </span>
         <span className="text-12 text-text-muted">
-          {movie.year} · {movie.match}% match
+          {movie.year} · {movie.match}% compatível
         </span>
       </div>
     </div>

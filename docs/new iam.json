@@ -50,8 +50,7 @@
                 "cloudfront:UpdateOriginRequestPolicy",
                 "cloudfront:DeleteOriginRequestPolicy",
                 "cloudfront:TagResource",
-                "cloudfront:UntagResource",
-                "cloudfront:CreateInvalidation"
+                "cloudfront:UntagResource"
             ],
             "Resource": "*"
         },
@@ -118,8 +117,7 @@
                 "dynamodb:UpdateContributorInsights",
                 "dynamodb:DescribeContributorInsights",
                 "dynamodb:ImportTable",
-                "dynamodb:DescribeImport",
-                "dynamodb:Scan"
+                "dynamodb:DescribeImport"
             ],
             "Resource": [
                 "arn:aws:dynamodb:sa-east-1:*:table/*"

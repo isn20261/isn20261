@@ -146,19 +146,19 @@ export default function PreferencesPage() {
 
   return (
     <div className="max-w-[880px] mx-auto px-6 md:px-10 py-10 md:py-14">
-      <p className={`${EYEBROW} mb-2`}>Account</p>
+      <p className={`${EYEBROW} mb-2`}>Conta</p>
       {/* non-tokenized: text-[36px] page title — between Phase 2 steps (28/40) */}
       <h1 className="font-display text-[36px] font-extrabold tracking-[-0.02em] leading-[1.05] text-text-primary">
-        Preferences
+        Preferências
       </h1>
       <p className="text-text-secondary text-14 mt-2">
-        Tune the recommendations. Changes save automatically.
+        Ajuste suas recomendações. As alterações são salvas automaticamente.
       </p>
 
       <div className="flex flex-col gap-4 mt-8">
         <SectionCard
-          title="Favorite genres"
-          helper="Recommendations will lean toward these."
+          title="Gêneros favoritos"
+          helper="As recomendações vão dar preferência a estes."
         >
           {isLoading || !prefs ? (
             <ChipsSkeleton count={6} />
@@ -180,8 +180,8 @@ export default function PreferencesPage() {
         </SectionCard>
 
         <SectionCard
-          title="Streaming services"
-          helper="Only suggest things on services you actually have."
+          title="Serviços de streaming"
+          helper="Só sugerimos filmes nos serviços que você assina."
         >
           {isLoading || !prefs ? (
             <ChipsSkeleton count={6} />
@@ -210,8 +210,8 @@ export default function PreferencesPage() {
         </SectionCard>
 
         <SectionCard
-          title="Default mood"
-          helper="What you usually want. You can override per recommendation."
+          title="Humor padrão"
+          helper="O que você costuma querer. Pode ser ajustado em cada recomendação."
         >
           {isLoading || !prefs ? (
             <ChipsSkeleton count={4} />
@@ -234,8 +234,8 @@ export default function PreferencesPage() {
         </SectionCard>
 
         <SectionCard
-          title="Maximum age rating"
-          helper="We won't go beyond this."
+          title="Classificação etária máxima"
+          helper="Não vamos além disso."
         >
           {isLoading || !prefs ? (
             <ChipsSkeleton count={5} />
@@ -261,15 +261,15 @@ export default function PreferencesPage() {
           )}
         </SectionCard>
 
-        <SectionCard title="Account">
+        <SectionCard title="Conta">
           <div className="flex flex-col gap-3.5">
             <div className="flex items-center justify-between gap-4 pb-3.5 border-b border-border">
               <div>
-                <p className="text-13 font-semibold text-text-primary">Email</p>
+                <p className="text-13 font-semibold text-text-primary">E-mail</p>
                 <p className="text-12 text-text-secondary mt-0.5">{email}</p>
                 <p className="text-11 text-text-muted mt-1">
-                  Email changes require confirmation from both old and new
-                  addresses.
+                  Alterações de e-mail exigem confirmação tanto do endereço
+                  antigo quanto do novo.
                 </p>
               </div>
               <button
@@ -277,17 +277,17 @@ export default function PreferencesPage() {
                 disabled
                 className="shrink-0 inline-flex items-center justify-center px-3.5 h-9 rounded-md bg-surface-2 border border-border text-13 font-semibold text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Change
+                Alterar
               </button>
             </div>
 
             <div className="flex items-center justify-between gap-4 pb-3.5 border-b border-border">
               <div>
                 <p className="text-13 font-semibold text-text-primary">
-                  Password
+                  Senha
                 </p>
                 <p className="text-12 text-text-secondary mt-0.5">
-                  Last changed 4 months ago
+                  Alterada há 4 meses
                 </p>
               </div>
               <button
@@ -295,17 +295,17 @@ export default function PreferencesPage() {
                 disabled
                 className="shrink-0 inline-flex items-center justify-center px-3.5 h-9 rounded-md bg-surface-2 border border-border text-13 font-semibold text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Change
+                Alterar
               </button>
             </div>
 
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-13 font-semibold text-text-primary">
-                  Sign out
+                  Sair
                 </p>
                 <p className="text-12 text-text-secondary mt-0.5">
-                  You&apos;ll need to sign back in to see your queue.
+                  Você precisará entrar novamente para ver sua fila.
                 </p>
               </div>
               <button
@@ -314,7 +314,7 @@ export default function PreferencesPage() {
                 className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 h-9 rounded-md bg-danger/10 border border-danger/40 hover:border-danger text-13 font-semibold text-danger transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
               >
                 <LogOut size={14} aria-hidden />
-                Sign out
+                Sair
               </button>
             </div>
           </div>

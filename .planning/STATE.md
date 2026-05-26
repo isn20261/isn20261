@@ -107,7 +107,7 @@ Recent decisions affecting current work:
 
 - shadcn 'base-nova' style emits a Popover backed by @base-ui/react (not @radix-ui/react-popover); plan §key_links expectation diverged but @base-ui/react was already a Phase 1 dep, so no new package landed
 - Mock auth seam exposes MOCK_LATENCY_MS / SESSION_KEY / USERS_KEY as `as const` literal types; tests can override latency to [0, 0]
-- Plain-text passwords in `recommend-a.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
+- Plain-text passwords in `cinedica.users` accepted (CONTEXT D-02) — INTG-01 swap point documented in module header
 - Defensive guards landed: `typeof window === 'undefined'` on every storage path, `Object.prototype.hasOwnProperty.call` for prototype-pollution, JSON.parse shape check rejects null/array/primitive
 
 ### Decisions (Plan 04-02)

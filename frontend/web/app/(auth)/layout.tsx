@@ -32,7 +32,7 @@ export default function AuthGroupLayout({
         {children}
       </div>
       <div className="absolute bottom-6 left-0 right-0 text-center text-text-muted text-12 font-body">
-        Recommend·a is a fictional concept design.
+        Cinedica, o melhor site de recomendação de filmes
       </div>
     </div>
   );
