@@ -34,6 +34,7 @@ def test_history_returns_newest_first(monkeypatch):
             "sub": "user-1",
             "timestamp": "2025-01-01T10:00:00Z",
             "movieTitle": "Old Movie",
+            "genre": "action",
         }
     )
     historico().put_item(
@@ -41,6 +42,7 @@ def test_history_returns_newest_first(monkeypatch):
             "sub": "user-1",
             "timestamp": "2025-02-01T10:00:00Z",
             "movieTitle": "New Movie",
+            "genre": "sci-fi",
         }
     )
     historico().put_item(
@@ -48,6 +50,7 @@ def test_history_returns_newest_first(monkeypatch):
             "sub": "user-1",
             "timestamp": "2025-01-15T10:00:00Z",
             "movieTitle": "Mid Movie",
+            "genre": "crime",
         }
     )
 
@@ -69,13 +72,35 @@ def test_history_response_shape(monkeypatch):
             "sub": "user-1",
             "timestamp": "2025-01-01T10:00:00Z",
             "movieTitle": "The Matrix",
+            "movieId": "tt0133093",
+            "genre": "action",
         }
     )
 
     resp = handler({}, None)
     body = json.loads(resp["body"])
     item = body[0]
-    assert set(item.keys()) == {"title", "recommended-at"}
+    assert set(item.keys()) == {"title", "genre", "recommended-at"}
     assert item["title"] == "The Matrix"
+    assert item["genre"] == "action"
     assert item["recommended-at"] == "2025-01-01T10:00:00Z"
-    assert "genre" not in item
+
+
+@mock_aws
+def test_history_backward_compat_no_genre(monkeypatch):
+    setup_dynamodb_tables()
+    monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
+    historico().put_item(
+        Item={
+            "sub": "user-1",
+            "timestamp": "2025-01-01T10:00:00Z",
+            "movieTitle": "Old Entry",
+        }
+    )
+
+    resp = handler({}, None)
+    body = json.loads(resp["body"])
+    item = body[0]
+    assert item["title"] == "Old Entry"
+    assert item["genre"] is None
+    assert item["recommended-at"] == "2025-01-01T10:00:00Z"

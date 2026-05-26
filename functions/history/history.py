@@ -25,6 +25,7 @@ def handler(event, context):
     items = [
         {
             "title":          item["movieTitle"],
+            "genre":          item.get("genre"),
             "recommended-at": item["timestamp"],
         }
         for item in resp.get("Items", [])

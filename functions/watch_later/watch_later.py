@@ -9,10 +9,16 @@ Environment variables: shared db/auth vars
 import json
 from datetime import datetime, timezone
 
-from shared.auth import get_sub, get_method
-from shared.db import get_user, users, write_log
 from shared.movies import resolve_movie
+from shared.auth import get_sub, get_method
+from shared.db import get_user, movies, users, write_log
 from shared.response import ok, created, bad_request, unauthorized
+
+
+def _resolve_movie(movie_id: str) -> dict | None:
+    """Return a movie entry from the Movies table by movieId, or None if not found."""
+    return movies().get_item(Key={"movieId": movie_id}).get("Item")
+
 
 
 def handler(event, context):

@@ -17,8 +17,7 @@ import random
 from datetime import datetime, timezone
 
 from shared.auth import get_sub
-from shared.db import get_user, historico, write_log
-from shared.movies import GENRE_INDEX, MOCK_CATALOGUE
+from shared.db import get_user, historico, movies, write_log
 from shared.response import ok, unauthorized
 
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
@@ -27,10 +26,16 @@ OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
 def _pick_movie(preferences: dict) -> dict:
     """Return one movie matching user preferences, or a random one."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
-    candidates: list[dict] = []
-    for g in genres:
-        candidates.extend(GENRE_INDEX.get(g, []))
-    pool = candidates or MOCK_CATALOGUE
+    all_movies = movies().scan().get("Items", [])
+    if not all_movies:
+        from shared.response import server_error
+        raise RuntimeError("Movies table is empty")
+
+    if genres:
+        candidates = [m for m in all_movies if m.get("genre", "").lower() in genres]
+        pool = candidates or all_movies
+    else:
+        pool = all_movies
     return random.choice(pool)
 
 
@@ -57,11 +62,19 @@ def handler(event, context):
             "sub":        sub,
             "timestamp":  now_iso,
             "movieTitle": movie["title"],
+            "movieId":    movie["movieId"],
+            "genre":      movie["genre"],
         })
         write_log(sub, now_iso, "RECOMMEND", {"movieId": movie["movieId"]})
 
     return ok({
         "title":              movie["title"],
+        "year":               movie.get("year"),
+        "rated":              movie.get("rated"),
         "genre":              movie["genre"],
-        "streaming-services": movie["streaming-services"],
+        "director":           movie.get("director"),
+        "runtime":            movie.get("runtime"),
+        "poster":             movie.get("poster"),
+        "imdbRating":         movie.get("imdbRating"),
+        "streaming-services": movie.get("streamingServices"),
     })
