@@ -1,1 +1,1 @@
-from .recommend import handler
+from .recommend import handler as handler

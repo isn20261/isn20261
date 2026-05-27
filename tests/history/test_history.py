@@ -1,23 +1,16 @@
 import json
 
-from moto import mock_aws
-
-from conftest import setup_dynamodb_tables
 from shared.db import historico
 from history import handler
 
 
-@mock_aws
 def test_history_no_auth(monkeypatch):
-    setup_dynamodb_tables()
     monkeypatch.setattr("history.history.get_sub", lambda event: None)
     resp = handler({}, None)
     assert resp["statusCode"] == 401
 
 
-@mock_aws
 def test_history_empty(monkeypatch):
-    setup_dynamodb_tables()
     monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
     resp = handler({}, None)
     assert resp["statusCode"] == 200
@@ -25,9 +18,7 @@ def test_history_empty(monkeypatch):
     assert body == []
 
 
-@mock_aws
 def test_history_returns_newest_first(monkeypatch):
-    setup_dynamodb_tables()
     monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
     historico().put_item(
         Item={
@@ -63,9 +54,7 @@ def test_history_returns_newest_first(monkeypatch):
     assert body[2]["title"] == "Old Movie"
 
 
-@mock_aws
 def test_history_response_shape(monkeypatch):
-    setup_dynamodb_tables()
     monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
     historico().put_item(
         Item={
@@ -86,9 +75,7 @@ def test_history_response_shape(monkeypatch):
     assert item["recommended-at"] == "2025-01-01T10:00:00Z"
 
 
-@mock_aws
 def test_history_backward_compat_no_genre(monkeypatch):
-    setup_dynamodb_tables()
     monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
     historico().put_item(
         Item={
@@ -104,3 +91,11 @@ def test_history_backward_compat_no_genre(monkeypatch):
     assert item["title"] == "Old Entry"
     assert item["genre"] is None
     assert item["recommended-at"] == "2025-01-01T10:00:00Z"
+
+
+def test_history_sub_without_user_record_returns_empty(monkeypatch):
+    """History only checks JWT sub, not Users table — valid sub with no User row returns 200 []."""
+    monkeypatch.setattr("history.history.get_sub", lambda event: "ghost-sub")
+    resp = handler({}, None)
+    assert resp["statusCode"] == 200
+    assert json.loads(resp["body"]) == []

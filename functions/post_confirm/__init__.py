@@ -1,1 +1,1 @@
-from .post_confirm import handler
+from .post_confirm import handler as handler

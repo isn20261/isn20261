@@ -23,12 +23,21 @@ from shared.response import ok, unauthorized
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
 
 
+def _scan_all_movies() -> list:
+    table = movies()
+    resp = table.scan()
+    items = list(resp.get("Items", []))
+    while "LastEvaluatedKey" in resp:
+        resp = table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
+        items.extend(resp.get("Items", []))
+    return items
+
+
 def _pick_movie(preferences: dict) -> dict:
     """Return one movie matching user preferences, or a random one."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
-    all_movies = movies().scan().get("Items", [])
+    all_movies = _scan_all_movies()
     if not all_movies:
-        from shared.response import server_error
         raise RuntimeError("Movies table is empty")
 
     if genres:

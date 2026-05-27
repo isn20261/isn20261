@@ -1,6 +1,3 @@
-from moto import mock_aws
-
-from conftest import setup_dynamodb_tables
 from shared.db import (
     get_user,
     get_sub_by_email,
@@ -13,9 +10,7 @@ from shared.db import (
 )
 
 
-@mock_aws
 def test_get_user_found():
-    setup_dynamodb_tables()
     users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
     user = get_user("user-1")
     assert user is not None
@@ -23,29 +18,21 @@ def test_get_user_found():
     assert user["email"] == "a@b.com"
 
 
-@mock_aws
 def test_get_user_missing():
-    setup_dynamodb_tables()
     assert get_user("nonexistent") is None
 
 
-@mock_aws
 def test_get_sub_by_email_found():
-    setup_dynamodb_tables()
     email_to_sub().put_item(Item={"email": "a@b.com", "sub": "user-1"})
     sub = get_sub_by_email("a@b.com")
     assert sub == "user-1"
 
 
-@mock_aws
 def test_get_sub_by_email_missing():
-    setup_dynamodb_tables()
     assert get_sub_by_email("unknown@b.com") is None
 
 
-@mock_aws
 def test_get_token_found():
-    setup_dynamodb_tables()
     tokens().put_item(Item={"token": "abc123", "sub": "user-1", "type": "verify-email"})
     item = get_token("abc123")
     assert item is not None
@@ -53,15 +40,11 @@ def test_get_token_found():
     assert item["sub"] == "user-1"
 
 
-@mock_aws
 def test_get_token_missing():
-    setup_dynamodb_tables()
     assert get_token("no-such-token") is None
 
 
-@mock_aws
 def test_write_log():
-    setup_dynamodb_tables()
     write_log("user-1", "2025-01-01T00:00:00Z", "RECOMMEND", {"movieId": "tt123"})
     result = logs().get_item(Key={"sub": "user-1", "timestamp": "2025-01-01T00:00:00Z"})
     item = result.get("Item")
@@ -69,3 +52,26 @@ def test_write_log():
     assert item["sub"] == "user-1"
     assert item["action"] == "RECOMMEND"
     assert item["metadata"] == {"movieId": "tt123"}
+
+
+def test_users_create_if_absent_returns_false_on_duplicate():
+    from shared.db import users_create_if_absent
+    users_create_if_absent("user-1", "a@b.com")
+    result = users_create_if_absent("user-1", "a@b.com")
+    assert result is False
+
+
+def test_users_create_if_absent_reraises_unexpected_error(monkeypatch):
+    import pytest
+    from botocore.exceptions import ClientError
+    from shared.db import users_create_if_absent
+    import shared.db as db_module
+
+    class _FakeTable:
+        def put_item(self, *args, **kwargs):
+            err = {"Error": {"Code": "ProvisionedThroughputExceededException", "Message": "throttled"}}  # noqa: E501
+            raise ClientError(err, "PutItem")
+
+    monkeypatch.setattr(db_module, "users", lambda: _FakeTable())
+    with pytest.raises(ClientError):
+        users_create_if_absent("user-99", "x@y.com")

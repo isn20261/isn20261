@@ -1,1 +1,1 @@
-from .preferences import handler
+from .preferences import handler as handler

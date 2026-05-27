@@ -5,7 +5,7 @@ Replace MOCK_CATALOGUE with a real OMDB-backed lookup in production; see
 docs/inconsistencias.md.
 
 Consumers:
-  - recommend Lambda: full catalogue + GENRE_INDEX for preference filtering
+  - recommend Lambda: full catalogue for preference filtering
   - watch_later Lambda: resolve_movie() to enrich a saved entry with title
 """
 
@@ -71,11 +71,6 @@ MOCK_CATALOGUE = [
         ],
     },
 ]
-
-GENRE_INDEX: dict[str, list[dict]] = {}
-for _m in MOCK_CATALOGUE:
-    GENRE_INDEX.setdefault(_m["genre"], []).append(_m)
-
 
 def resolve_movie(movie_id: str) -> dict | None:
     """Return a catalogue entry by movieId, or None if not found."""
