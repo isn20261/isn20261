@@ -151,7 +151,10 @@ export default function RecommendationPage() {
   // Render: 4 discriminated branches on status
   // ---------------------------------------------------------------------------
 
-  const recipe = SNACK_RECIPES[recipeIndex % SNACK_RECIPES.length];
+  // SNACK_RECIPES is non-empty (literal array of 25 entries); recipeIndex is
+  // always Math.floor(random * length) or 0, so the modulo access is in range.
+  // The `!` satisfies tsconfig `noUncheckedIndexedAccess`.
+  const recipe = SNACK_RECIPES[recipeIndex % SNACK_RECIPES.length]!;
 
   // Compute the body once; the snack modal is rendered as a sibling after
   // it so that React keeps the same SnackRecipeModal instance mounted across
