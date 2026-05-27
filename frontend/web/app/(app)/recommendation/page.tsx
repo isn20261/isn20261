@@ -36,9 +36,10 @@
  *   - rating chip: text-11 px-1.5 py-0.5      : compact pill primitive
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bookmark, BookmarkCheck, Play, RefreshCw } from "lucide-react";
 import { ServiceBadge } from "@/components/ServiceBadge";
+import { SnackRecipeModal } from "@/components/SnackRecipeModal";
 import {
   getRecommendationReal,
   type RecommendedMovie,
@@ -46,6 +47,7 @@ import {
 import { addWatchLater } from "@/lib/api/watch-later";
 import { useApiErrorUx } from "@/lib/api/useApiErrorUx";
 import type { ApiError } from "@/lib/api/client";
+import { SNACK_RECIPES } from "@/lib/data/snack-recipes";
 
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
@@ -57,6 +59,12 @@ export default function RecommendationPage() {
   const [error, setError] = useState<ApiError | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<ApiError | null>(null);
+  // Lazy init picks a random recipe on first mount; handleAnother picks a
+  // new index different from the current one so consecutive fetches don't
+  // repeat the same recipe.
+  const [recipeIndex, setRecipeIndex] = useState(() =>
+    Math.floor(Math.random() * SNACK_RECIPES.length),
+  );
   const inFlight = useRef(false);
   // React 18 Strict Mode runs effects setup→cleanup→setup in dev. The
   // `cancelled` flag below only suppresses state updates from the first run;
@@ -100,6 +108,14 @@ export default function RecommendationPage() {
   async function handleAnother() {
     setStatus("loading");
     setError(null);
+    setRecipeIndex((current) => {
+      if (SNACK_RECIPES.length <= 1) return current;
+      let next = current;
+      while (next === current) {
+        next = Math.floor(Math.random() * SNACK_RECIPES.length);
+      }
+      return next;
+    });
     const res = await getRecommendationReal();
     if (!res.ok) {
       setError(res.error);
@@ -135,17 +151,17 @@ export default function RecommendationPage() {
   // Render: 4 discriminated branches on status
   // ---------------------------------------------------------------------------
 
-  if (status === "loading") {
-    return (
-      <div
-        className="w-full min-h-screen bg-bg animate-pulse"
-        aria-busy="true"
-      />
-    );
-  }
+  const recipe = SNACK_RECIPES[recipeIndex % SNACK_RECIPES.length];
 
-  if (status === "error") {
-    return (
+  // Compute the body once; the snack modal is rendered as a sibling after
+  // it so that React keeps the same SnackRecipeModal instance mounted across
+  // status transitions — required for the open→mini CSS animation to fire.
+  let body: ReactNode = null;
+
+  if (status === "loading") {
+    body = <SkeletonHero />;
+  } else if (status === "error") {
+    body = (
       <section className="relative isolate w-full min-h-screen overflow-hidden bg-bg">
         <div className="relative z-10">
           {/* non-tokenized: pt-[220px] mobile / pt-[280px] md+ — backdrop clearance primitives */}
@@ -173,10 +189,8 @@ export default function RecommendationPage() {
         </div>
       </section>
     );
-  }
-
-  if (status === "empty" || movie === null) {
-    return (
+  } else if (status === "empty" || movie === null) {
+    body = (
       <section className="relative isolate w-full min-h-screen overflow-hidden bg-bg">
         <div className="relative z-10">
           {/* non-tokenized: pt-[220px] mobile / pt-[280px] md+ — backdrop clearance primitives */}
@@ -204,18 +218,17 @@ export default function RecommendationPage() {
         </div>
       </section>
     );
-  }
+  } else {
+    // status === "ready" && movie !== null
+    const primaryService = movie.streamingServices[0];
+    const showMetaStrip =
+      movie.match !== undefined ||
+      movie.year !== undefined ||
+      movie.rating !== undefined ||
+      movie.runtime !== undefined ||
+      (movie.genre && movie.genre.length > 0);
 
-  // status === "ready" && movie !== null
-  const primaryService = movie.streamingServices[0];
-  const showMetaStrip =
-    movie.match !== undefined ||
-    movie.year !== undefined ||
-    movie.rating !== undefined ||
-    movie.runtime !== undefined ||
-    (movie.genre && movie.genre.length > 0);
-
-  return (
+    body = (
     <section
       key={movie.title}
       className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
@@ -354,6 +367,61 @@ export default function RecommendationPage() {
 
         {/* TODO Phase 13+ (issue #70 enrichment OR dedicated /similar endpoint): similar-films rail hidden — live /recommend payload has no similar films, and the prior Phase 7 helper iterated the now-deleted MOCK dataset. */}
         {/* <SimilarFilmsRail /> */}
+      </div>
+    </section>
+    );
+  }
+
+  return (
+    <>
+      {body}
+      <SnackRecipeModal recipe={recipe} isLoading={status === "loading"} />
+    </>
+  );
+}
+
+/**
+ * Richer loading skeleton — mirrors the recommendation hero layout so the
+ * page doesn't feel empty while the snack-recipe modal is up. Tokens-only;
+ * uses the same pt/px/max-w primitives as the live hero above.
+ */
+function SkeletonHero() {
+  return (
+    <section
+      className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
+      aria-busy="true"
+    >
+      {/* non-tokenized: backdrop height + scrim recipe mirrors the live hero */}
+      <div
+        aria-hidden
+        className="absolute top-0 left-0 right-0 h-[360px] md:h-[560px] overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-surface animate-pulse" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,10,11,0.30)_0%,rgba(10,10,11,0.10)_30%,rgba(10,10,11,0.70)_70%,var(--color-bg)_100%)]" />
+      </div>
+      <div className="relative z-10">
+        {/* non-tokenized: pt-[220px] / pt-[280px] / max-w-[880px] match live hero */}
+        <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px]">
+          <div className="h-4 w-48 rounded-sm bg-surface-2 animate-pulse mb-4" />
+          <div className="h-10 md:h-14 w-3/4 rounded-md bg-surface-2 animate-pulse mb-3" />
+          <div className="h-10 md:h-14 w-1/2 rounded-md bg-surface-2 animate-pulse mb-6" />
+          <div className="flex gap-3 mb-7">
+            <div className="h-5 w-20 rounded-sm bg-surface-2 animate-pulse" />
+            <div className="h-5 w-12 rounded-sm bg-surface-2 animate-pulse" />
+            <div className="h-5 w-16 rounded-sm bg-surface-2 animate-pulse" />
+          </div>
+          {/* non-tokenized: max-w-[640px] body width primitive matches live hero */}
+          <div className="space-y-2.5 mb-8 max-w-[640px]">
+            <div className="h-4 w-full rounded-sm bg-surface-2 animate-pulse" />
+            <div className="h-4 w-11/12 rounded-sm bg-surface-2 animate-pulse" />
+            <div className="h-4 w-3/4 rounded-sm bg-surface-2 animate-pulse" />
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <div className="h-12 w-44 rounded-md bg-surface-2 animate-pulse" />
+            <div className="h-12 w-56 rounded-md bg-surface-2 animate-pulse" />
+            <div className="h-12 w-44 rounded-md bg-surface-2 animate-pulse" />
+          </div>
+        </div>
       </div>
     </section>
   );
