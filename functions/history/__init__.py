@@ -1,1 +1,1 @@
-from .history import handler
+from .history import handler as handler

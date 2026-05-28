@@ -2,26 +2,15 @@ import os
 import sys
 
 import boto3
+import pytest
+from moto import mock_aws
 
-# --- Ensure functions/ is importable ---
-_functions_dir = os.path.dirname(os.path.abspath(__file__))
+# Locate functions/ relative to this conftest (tests/../functions)
+_tests_dir = os.path.dirname(os.path.abspath(__file__))
+_functions_dir = os.path.normpath(os.path.join(_tests_dir, "..", "functions"))
+
 if _functions_dir not in sys.path:
     sys.path.insert(0, _functions_dir)
-
-# --- Skip symlinked shared/ copies under handler directories ---
-# Each handler dir has `shared -> ../shared`. This avoids running the
-# same shared tests 5 times (once per symlink + once for the real dir).
-_real_shared_dir = os.path.realpath(os.path.join(_functions_dir, "shared"))
-
-
-def pytest_ignore_collect(collection_path, config):
-    path_str = str(collection_path)
-    # Only intercept dirs that look like functions/*/shared (one level deep)
-    if path_str.endswith("/shared") and path_str.count(os.sep) == _functions_dir.count(os.sep) + 2:
-        if os.path.realpath(path_str) == _real_shared_dir:
-            return True
-    return None
-
 
 # --- Env vars set before any shared module import ---
 os.environ["USERS_TABLE"] = "Users_test"
@@ -93,6 +82,13 @@ def setup_dynamodb_tables():
         AttributeDefinitions=[{"AttributeName": "movieId", "AttributeType": "S"}],
         BillingMode="PAY_PER_REQUEST",
     )
+
+
+@pytest.fixture(autouse=True)
+def _aws_db():
+    with mock_aws():
+        setup_dynamodb_tables()
+        yield
 
 
 def seed_user(sub, email="user@example.com", preferences=None):

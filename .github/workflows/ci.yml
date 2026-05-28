@@ -22,4 +22,6 @@ jobs:
 
       - run: uv sync
 
-      - run: uv run pytest functions/ -v
+      - run: uv run ruff check functions/ tests/
+
+      - run: uv run pytest -v --cov=functions --cov-report=term-missing --cov-fail-under=85

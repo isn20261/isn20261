@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from shared.auth import get_sub, get_method
 from shared.db import get_user, users, write_log
-from shared.response import ok, bad_request, unauthorized
+from shared.response import ok, bad_request, unauthorized, server_error
 
 
 MAX_PREFERENCE_UPDATE_RETRIES = 3
@@ -95,7 +95,6 @@ def _post(event: dict, sub: str):
     # Try conditional update first (only if item exists). If it doesn't exist,
     # try conditional put to create it. If create races, retry the update.
     success = False
-    last_exception: Exception | None = None
     for _ in range(MAX_PREFERENCE_UPDATE_RETRIES):
         try:
             users().update_item(
@@ -108,7 +107,6 @@ def _post(event: dict, sub: str):
             success = True
             break
         except ClientError as exc:
-            last_exception = exc
             err = exc.response.get("Error", {})
             code = err.get("Code")
             # If item does not exist, try to create it atomically
@@ -122,9 +120,7 @@ def _post(event: dict, sub: str):
                     success = True
                     break
                 except ClientError as put_error:
-                    last_exception = put_error
-                    put_error_details = put_error.response.get("Error", {})
-                    put_error_code = put_error_details.get("Code")
+                    put_error_code = put_error.response.get("Error", {}).get("Code")
                     # Another writer created the item; retry the update
                     if put_error_code == "ConditionalCheckFailedException":
                         continue
@@ -133,7 +129,11 @@ def _post(event: dict, sub: str):
                 raise
 
     if not success:
-        raise RuntimeError(f"Failed to write preferences for sub={sub} after {MAX_PREFERENCE_UPDATE_RETRIES} attempts") from last_exception
+        msg = (
+            f"Failed to write preferences for sub={sub}"
+            f" after {MAX_PREFERENCE_UPDATE_RETRIES} attempts"
+        )
+        return server_error(msg)
 
     write_log(sub, now_iso, "PREFERENCES_UPDATED", {
         k: v for k, v in body.items()

@@ -86,3 +86,19 @@ def test_decimal_serialization_int():
     data = json.loads(resp["body"])
     assert data["count"] == 10
     assert isinstance(data["count"], int)
+
+
+def test_non_serializable_type_raises():
+    import pytest
+    with pytest.raises(TypeError):
+        ok({"value": {1, 2, 3}})
+
+
+def test_error_responses_all_include_cors_header():
+    for resp in [bad_request(), unauthorized(), forbidden(), not_found(), server_error()]:
+        assert resp["headers"]["Access-Control-Allow-Origin"] == "*", (
+            f"Missing CORS header on status {resp['statusCode']}"
+        )
+        assert resp["headers"]["Content-Type"] == "application/json", (
+            f"Missing Content-Type on status {resp['statusCode']}"
+        )
