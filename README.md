@@ -67,7 +67,12 @@ Em `prod`, essa opção é bloqueada.
 ### Testes
 
 ```bash
-uv run pytest functions/ -v         # testes unitários com pytest + moto
+# Executa todos os testes da pasta tests/ com saída detalhada
+uv run pytest tests/ -v
+
+# Executa os testes + mede cobertura da pasta functions/
+# Mostra linhas não cobertas e falha se cobertura < 85%
+uv run pytest -v --cov=functions --cov-report=term-missing --cov-fail-under=85
 ```
 
 Os testes usam `moto` para simular DynamoDB e Cognito, sem precisar de Docker ou credenciais AWS. O plano de testes está documentado em [`docs/test-plan-layer1.md`](docs/test-plan-layer1.md).
