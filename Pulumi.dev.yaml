@@ -4,3 +4,11 @@ config:
   isn20261:disableAuth: true
   isn20261:sesFromEmail: etorresini@ifsc.edu.br
   isn20261:sesFromName: Cine Dica
+  # OAuth 2.0 / Google Hosted UI (issue #181). Domain prefix must be globally
+  # unique within the region — adjust if `pulumi up` reports it's taken.
+  # googleClientId / googleClientSecret are set as secrets via the CLI, not here.
+  isn20261:cognitoDomainPrefix: cinedica-dev
+  isn20261:oauthCallbackUrls:
+    - http://localhost:3000/callback
+  isn20261:oauthLogoutUrls:
+    - http://localhost:3000/login
