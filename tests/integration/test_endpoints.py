@@ -22,8 +22,10 @@ import requests
 @pytest.fixture(scope="session")
 def base_url():
     url = os.environ["INTEGRATION_BASE_URL"].rstrip("/")
+    if os.getenv("INTEGRATION_STACK") == "dev":
+        sub = os.environ["INTEGRATION_TEST_EMAIL"]
+        return f"{url}?sub={sub}"
     return url
-
 
 @pytest.fixture(scope="session")
 def access_token():
@@ -42,12 +44,14 @@ def access_token():
 
 @pytest.fixture(scope="session")
 def auth_headers(access_token):
-    base = {"Authorization": f"Bearer {access_token}"}
+    #    base = {"Authorization": f"Bearer {access_token}"}
     # na stack dev, o API Gateway não tem JWT authorizer, então o sub
     # precisa ser passado via header para o DISABLE_AUTH funcionar
-    if os.getenv("INTEGRATION_STACK") == "dev":
-        base["x-dev-sub"] = os.environ["INTEGRATION_TEST_EMAIL"]
-    return base
+#    if os.getenv("INTEGRATION_STACK") == "dev":
+#        base["x-dev-sub"] = os.environ["INTEGRATION_TEST_EMAIL"]
+# return base
+    return {"Authorization": f"Bearer {access_token}"}
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/recommend
