@@ -131,7 +131,7 @@ jobs:
           TEST_PASSWORD: ${{ secrets.INTEGRATION_TEST_PASSWORD }}
         run: |
           set -euo pipefail
-          python - <<'EOF'
+          uv run python - <<'EOF'
           import os, boto3
           from botocore.exceptions import ClientError
  
@@ -161,7 +161,7 @@ jobs:
           idp.admin_set_user_password(
               UserPoolId=pool, Username=email, Password=pwd, Permanent=True
           )
-          print(f"✅ Usuário de teste criado: {email}")
+          print(f"Usuário de teste criado: {email}")
           EOF
  
       - name: Rodar testes de integração
