@@ -1,8 +1,8 @@
 import pulumi
 import pulumi_aws as aws
+import pulumi_command as command
 import json
-import os
-import mimetypes
+import time
 
 # -- 1. Configurações do Ambiente (12-Factor) --
 
@@ -642,20 +642,6 @@ stage = aws.apigatewayv2.Stage(
 
 bucket = aws.s3.Bucket(f"frontend-bucket-{env}")
 
-frontend_dir = "frontend/web/out"
-for root, dirs, files in os.walk(frontend_dir, followlinks=True):
-    for file in files:
-        file_path = os.path.join(root, file)
-        relative_path = os.path.relpath(file_path, frontend_dir)
-        content_type, _ = mimetypes.guess_type(file_path)
-        aws.s3.BucketObject(
-            f"static-file-{relative_path}-{env}",
-            bucket=bucket.id,
-            key=relative_path.replace("\\", "/"),
-            source=pulumi.FileAsset(file_path),
-            content_type=content_type or "application/octet-stream",
-        )
-
 oac = aws.cloudfront.OriginAccessControl(
     f"frontend-oac-{env}",
     description="OAC para frontend",
@@ -865,6 +851,48 @@ if is_prod and domain_name:
             )
         ],
     )
+
+# --- 7a. Frontend Build & Deploy ---
+
+deploy_ts = str(int(time.time()))
+public_url = pulumi.Output.concat("https://", distribution.domain_name)
+
+frontend_build = command.local.Command(
+    f"build-frontend-{env}",
+    create="pnpm install --frozen-lockfile && pnpm build",
+    update="pnpm install --frozen-lockfile && pnpm build",
+    dir="./frontend/web",
+    environment={
+        "NEXT_PUBLIC_COGNITO_REGION": region.region,
+        "NEXT_PUBLIC_COGNITO_USER_POOL_ID": user_pool.id,
+        "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID": user_pool_client.id,
+        "NEXT_PUBLIC_API_BASE_URL": public_url,
+    },
+    triggers=[deploy_ts],
+    opts=pulumi.ResourceOptions(
+        depends_on=[user_pool, user_pool_client, distribution],
+    ),
+)
+
+frontend_deploy = command.local.Command(
+    f"deploy-frontend-{env}",
+    create=pulumi.Output.all(bucket.id, distribution.id).apply(
+        lambda args: (
+            f"aws s3 sync frontend/web/out s3://{args[0]} --delete"
+            f" && aws cloudfront create-invalidation --distribution-id {args[1]} --paths /*"
+        )
+    ),
+    update=pulumi.Output.all(bucket.id, distribution.id).apply(
+        lambda args: (
+            f"aws s3 sync frontend/web/out s3://{args[0]} --delete"
+            f" && aws cloudfront create-invalidation --distribution-id {args[1]} --paths /*"
+        )
+    ),
+    triggers=[deploy_ts],
+    opts=pulumi.ResourceOptions(
+        depends_on=[bucket, frontend_build, distribution, bucket_policy],
+    ),
+)
 
 # --- 8. Outputs ---
 
