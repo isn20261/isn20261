@@ -17,7 +17,7 @@ As dependências de teste (`pytest`, `moto`, `pyjwt`, `cryptography`) são decla
 
 ---
 
-## Executando os testes
+## Executando os testes com pytest
 
 Com o ambiente configurado, rode os testes com:
 
@@ -32,7 +32,6 @@ uv run pytest -v --cov=functions --cov-report=term-missing --cov-fail-under=85
 
 Isso descobre e executa todos os arquivos `test_*.py` dentro de `tests/`, cobrindo módulos compartilhados e handlers de cada Lambda.
 
----
 
 ### Rodando um arquivo de teste específico
 
@@ -51,9 +50,48 @@ uv run pytest tests/ -v -k "test_recommend_anonymous"
 
 ---
 
+## Executando os testes com AWS SAM
+
+Com o ambiente configurado, rode os testes com:
+
+```bash
+make sam
+```
+
+### Esse comando executa automaticamente:
+
+1. `docker compose up -d`
+    * sobe os containers locais (ex.: DynamoDB local)
+2. `sam local invoke`
+    * executa a Lambda usando o `template.yaml`
+    * utiliza o payload definido em `event.json`
+3. `docker compose down`
+    * encerra e remove os containers ao final da execução
+
+### Fluxo equivalente manualmente
+
+```bash
+# sobe infraestrutura local
+make sam-dynamodb
+
+# executa a lambda localmente
+make sam-lambda
+
+# encerra containers locais
+make sam-stop
+```
+
+Ou diretamente com o SAM CLI:
+
+```bash
+sam local invoke -t template.yaml -e event.json --docker-network sam-local
+```
+
+---
+
 ## Integração contínua
 
-Os mesmos testes são executados automaticamente no CI a cada push na branch `main` e em todo pull request, via `.github/workflows/ci.yml`. O comando executado é idêntico ao local: `uv run pytest tests/ -v`.
+Os mesmos testes são executados automaticamente no CI a cada push na branch `main` e em todo pull request, via `.github/workflows/ci.yml`. O comando executado é idêntico ao local: `uv run pytest -v --cov=functions --cov-report=term-missing --cov-fail-under=85`.
 
 ---
 
