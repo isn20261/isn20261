@@ -17,6 +17,7 @@ dev = [
     "pyjwt>=2",
     "cryptography>=44",
     "ruff>=0.15.14",
+    "requests>=2.0",
 ]
 
 [tool.pytest.ini_options]
