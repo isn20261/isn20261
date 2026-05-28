@@ -21,15 +21,18 @@ import requests
 
 @pytest.fixture(scope="session")
 def base_url():
-    url = os.environ["INTEGRATION_BASE_URL"].rstrip("/")
+    return os.environ["INTEGRATION_BASE_URL"].rstrip("/")
+
+
+@pytest.fixture(scope="session")
+def dev_params():
     if os.getenv("INTEGRATION_STACK") == "dev":
-        sub = os.environ["INTEGRATION_TEST_EMAIL"]
-        return f"{url}?sub={sub}"
-    return url
+        return {"sub": os.environ["INTEGRATION_TEST_EMAIL"]}
+    return {}
+
 
 @pytest.fixture(scope="session")
 def access_token():
-    """Autentica o usuário de teste e devolve o JWT Access Token."""
     idp = boto3.client("cognito-idp", region_name=os.environ.get("AWS_DEFAULT_REGION", "sa-east-1"))
     resp = idp.initiate_auth(
         AuthFlow="USER_PASSWORD_AUTH",
@@ -44,12 +47,6 @@ def access_token():
 
 @pytest.fixture(scope="session")
 def auth_headers(access_token):
-    #    base = {"Authorization": f"Bearer {access_token}"}
-    # na stack dev, o API Gateway não tem JWT authorizer, então o sub
-    # precisa ser passado via header para o DISABLE_AUTH funcionar
-#    if os.getenv("INTEGRATION_STACK") == "dev":
-#        base["x-dev-sub"] = os.environ["INTEGRATION_TEST_EMAIL"]
-# return base
     return {"Authorization": f"Bearer {access_token}"}
 
 
@@ -84,25 +81,27 @@ class TestRecommend:
 # ---------------------------------------------------------------------------
 
 class TestPreferences:
-    def test_get_returns_200(self, base_url, auth_headers):
-        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers)
+    def test_get_returns_200(self, base_url, auth_headers, dev_params):
+        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
         assert resp.status_code == 200
 
-    def test_post_returns_200(self, base_url, auth_headers):
+    def test_post_returns_200(self, base_url, auth_headers, dev_params):
         resp = requests.post(
             f"{base_url}/api/v1/preferences",
             headers=auth_headers,
+            params=dev_params,
             json={"genres": ["sci-fi"]},
         )
         assert resp.status_code == 200
 
-    def test_post_persists_preferences(self, base_url, auth_headers):
+    def test_post_persists_preferences(self, base_url, auth_headers, dev_params):
         requests.post(
             f"{base_url}/api/v1/preferences",
             headers=auth_headers,
+            params=dev_params,
             json={"genres": ["action"]},
         )
-        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers)
+        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
         body = resp.json()
         assert "action" in body.get("genres", [])
 
