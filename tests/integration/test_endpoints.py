@@ -81,10 +81,6 @@ class TestRecommend:
 # ---------------------------------------------------------------------------
 
 class TestPreferences:
-    def test_get_returns_200(self, base_url, auth_headers, dev_params):
-        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
-        assert resp.status_code == 200
-
     def test_post_returns_200(self, base_url, auth_headers, dev_params):
         resp = requests.post(
             f"{base_url}/api/v1/preferences",
@@ -92,6 +88,10 @@ class TestPreferences:
             params=dev_params,
             json={"genres": ["sci-fi"]},
         )
+        assert resp.status_code == 200
+        
+    def test_get_returns_200(self, base_url, auth_headers, dev_params):
+        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
         assert resp.status_code == 200
 
     def test_post_persists_preferences(self, base_url, auth_headers, dev_params):
