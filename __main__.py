@@ -490,14 +490,30 @@ if oauth_enabled:
         domain=cognito_domain_prefix,
         user_pool_id=user_pool.id,
     )
+    # Credentials come from CI-injected env vars (GitHub secrets
+    # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) when present, else
+    # from `pulumi config set --secret` for local `pulumi up`. The env-var path
+    # is wrapped in Output.secret so it stays secret-marked in state.
+    google_client_id_env = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    google_client_secret_env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    google_client_id = (
+        pulumi.Output.secret(google_client_id_env)
+        if google_client_id_env
+        else config.require_secret("googleClientId")
+    )
+    google_client_secret = (
+        pulumi.Output.secret(google_client_secret_env)
+        if google_client_secret_env
+        else config.require_secret("googleClientSecret")
+    )
     google_idp = aws.cognito.IdentityProvider(
         f"app-google-idp-{env}",
         user_pool_id=user_pool.id,
         provider_name="Google",
         provider_type="Google",
         provider_details={
-            "client_id": config.require_secret("googleClientId"),
-            "client_secret": config.require_secret("googleClientSecret"),
+            "client_id": google_client_id,
+            "client_secret": google_client_secret,
             "authorize_scopes": "openid email profile",
         },
         # Google's OIDC claims -> Cognito attributes. `username` <- `sub` keeps
