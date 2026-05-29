@@ -9,7 +9,7 @@ from boto3.dynamodb.conditions import Key
 
 from shared.auth import get_sub
 from shared.db import historico
-from shared.response import ok, unauthorized
+from shared.response import ok, unauthorized, server_error
 
 
 def handler(event, context):
@@ -17,10 +17,13 @@ def handler(event, context):
     if not sub:
         return unauthorized()
 
-    resp = historico().query(
-        KeyConditionExpression=Key("sub").eq(sub),
-        ScanIndexForward=False,  # newest first
-    )
+    try:
+        resp = historico().query(
+            KeyConditionExpression=Key("sub").eq(sub),
+            ScanIndexForward=False,  # newest first
+        )
+    except Exception:
+        return server_error()
 
     items = [
         {

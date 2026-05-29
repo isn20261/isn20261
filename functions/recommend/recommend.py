@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 from shared.auth import get_sub
 from shared.db import get_user, historico, movies, write_log
-from shared.response import ok, unauthorized
+from shared.response import ok, unauthorized, server_error
 
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
 
@@ -33,12 +33,12 @@ def _scan_all_movies() -> list:
     return items
 
 
-def _pick_movie(preferences: dict) -> dict:
-    """Return one movie matching user preferences, or a random one."""
+def _pick_movie(preferences: dict) -> dict | None:
+    """Return one movie matching user preferences, or a random one. Returns None if table empty."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
     all_movies = _scan_all_movies()
     if not all_movies:
-        raise RuntimeError("Movies table is empty")
+        return None
 
     if genres:
         candidates = [m for m in all_movies if m.get("genre", "").lower() in genres]
@@ -63,7 +63,14 @@ def handler(event, context):
     else:
         prefs = {}
 
-    movie   = _pick_movie(prefs)
+    try:
+        movie = _pick_movie(prefs)
+    except Exception:
+        return server_error()
+
+    if movie is None:
+        return server_error()
+
     now_iso = datetime.now(timezone.utc).isoformat()
 
     if sub:

@@ -223,3 +223,18 @@ def test_post_user_not_found_returns_401(monkeypatch):
     resp = handler(event, None)
     assert resp["statusCode"] == 401
     assert "Item" not in users().get_item(Key={"sub": "ghost-sub"})
+
+
+def test_get_returns_500_on_dynamodb_error(monkeypatch):
+    from unittest.mock import MagicMock
+    from botocore.exceptions import ClientError
+    fake_table = MagicMock()
+    fake_table.get_item.side_effect = ClientError(
+        {"Error": {"Code": "InternalServerError", "Message": "DynamoDB failure"}},
+        "GetItem",
+    )
+    import shared.db as db_module
+    monkeypatch.setattr(db_module, "users", lambda: fake_table)
+    monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
+    resp = handler({"httpMethod": "GET"}, None)
+    assert resp["statusCode"] == 500
