@@ -20,10 +20,13 @@
 
 import {
   AuthenticationDetails,
+  CognitoAccessToken,
+  CognitoIdToken,
+  CognitoRefreshToken,
   CognitoUser,
   CognitoUserAttribute,
   CognitoUserPool,
-  type CognitoUserSession,
+  CognitoUserSession,
   type ISignUpResult,
 } from "amazon-cognito-identity-js";
 
@@ -204,6 +207,151 @@ export function getSession(): Promise<Session | null> {
       resolve(toSession(cognitoSession));
     });
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * OAuth 2.0 — Google via Cognito Hosted UI (issue #181).
+ *
+ * The amazon-cognito-identity-js SDK has no Hosted-UI flow, so we drive the
+ * authorization-code-with-PKCE dance by hand:
+ *   1. startGoogleSignIn  -> redirect the browser to /oauth2/authorize
+ *   2. (Cognito brokers Google, redirects back to /callback?code=…&state=…)
+ *   3. completeGoogleSignIn -> exchange the code at /oauth2/token, then hand
+ *      the tokens back to the SDK via setSignInUserSession so they land on the
+ *      same localStorage keys getSession()/refresh already use. Everything
+ *      downstream (getSession, client.ts, AuthContext) stays unchanged.
+ * ------------------------------------------------------------------ */
+
+const PKCE_VERIFIER_KEY = "oauth_pkce_verifier";
+const OAUTH_STATE_KEY = "oauth_state";
+const OAUTH_FROM_KEY = "oauth_from";
+
+function getOAuthConfig(): { domain: string; clientId: string; redirectUri: string } {
+  const domain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+  const clientId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID;
+  const redirectUri = process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI;
+  if (!domain || !clientId || !redirectUri) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_COGNITO_DOMAIN, NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID, or NEXT_PUBLIC_OAUTH_REDIRECT_URI. Copy .env.example to .env.local.",
+    );
+  }
+  return { domain: domain.replace(/\/$/, ""), clientId, redirectUri };
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function randomUrlToken(byteLength: number): string {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+}
+
+async function pkceChallenge(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+/**
+ * Redirects the browser to Cognito's Hosted UI, pre-selecting Google. Stashes
+ * the PKCE verifier + state in sessionStorage for completeGoogleSignIn to read
+ * back after Cognito redirects to /callback.
+ */
+export async function startGoogleSignIn(from?: string): Promise<void> {
+  const { domain, clientId, redirectUri } = getOAuthConfig();
+  const verifier = randomUrlToken(32);
+  const state = randomUrlToken(16);
+  sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  // The redirect_uri is fixed (must match a registered callback), so the
+  // post-login return path rides along in sessionStorage instead of the URL.
+  if (from) sessionStorage.setItem(OAUTH_FROM_KEY, from);
+  else sessionStorage.removeItem(OAUTH_FROM_KEY);
+  const challenge = await pkceChallenge(verifier);
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    identity_provider: "Google",
+    scope: "openid email profile",
+    redirect_uri: redirectUri,
+    state,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+  });
+  window.location.assign(`${domain}/oauth2/authorize?${params.toString()}`);
+}
+
+/**
+ * Exchanges the authorization code for tokens and persists them through the
+ * Cognito SDK. Validates `state` against the value stashed by startGoogleSignIn
+ * to defend against CSRF / mismatched callbacks.
+ */
+export async function completeGoogleSignIn(code: string, state: string): Promise<Session> {
+  const { domain, clientId, redirectUri } = getOAuthConfig();
+
+  const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+  const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
+  sessionStorage.removeItem(OAUTH_STATE_KEY);
+  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+  if (!expectedState || state !== expectedState || !verifier) {
+    throw new NotAuthorizedException("Sessão de login inválida. Tente novamente.");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: clientId,
+    code,
+    redirect_uri: redirectUri,
+    code_verifier: verifier,
+  });
+
+  let tokens: { id_token?: string; access_token?: string; refresh_token?: string };
+  try {
+    const res = await fetch(`${domain}/oauth2/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    if (!res.ok) {
+      throw new NotAuthorizedException("Não foi possível concluir o login com o Google.");
+    }
+    tokens = await res.json();
+  } catch (err) {
+    if (err instanceof NotAuthorizedException) throw err;
+    throw translateError(err);
+  }
+
+  if (!tokens.id_token || !tokens.access_token || !tokens.refresh_token) {
+    throw new NotAuthorizedException("Resposta de token inválida do provedor.");
+  }
+
+  // Hand the tokens to the SDK so they persist on the same localStorage keys
+  // getSession()/refresh use. Username must match the IdToken's cognito:username.
+  const session = new CognitoUserSession({
+    IdToken: new CognitoIdToken({ IdToken: tokens.id_token }),
+    AccessToken: new CognitoAccessToken({ AccessToken: tokens.access_token }),
+    RefreshToken: new CognitoRefreshToken({ RefreshToken: tokens.refresh_token }),
+  });
+  const claims = decodeJwtPayload(tokens.id_token);
+  const username =
+    (typeof claims["cognito:username"] === "string" && claims["cognito:username"]) ||
+    (typeof claims.sub === "string" && claims.sub) ||
+    "";
+  const user = new CognitoUser({ Username: username, Pool: getPool() });
+  user.setSignInUserSession(session);
+
+  return toSession(session);
+}
+
+/** Reads and clears the return path stashed by startGoogleSignIn. */
+export function takeOAuthReturnPath(): string | null {
+  if (typeof window === "undefined") return null;
+  const from = sessionStorage.getItem(OAUTH_FROM_KEY);
+  sessionStorage.removeItem(OAUTH_FROM_KEY);
+  return from;
 }
 
 /**

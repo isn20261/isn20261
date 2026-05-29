@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { Field } from "@/components/Field";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { NotAuthorizedException, UserNotConfirmedException } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -99,7 +100,19 @@ function LoginForm() {
         Continue de onde parou na sua fila e histórico.
       </p>
 
-      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-6">
+      <div className="flex flex-col gap-3.5 mt-6">
+        <GoogleSignInButton
+          from={searchParams.get("from") ?? undefined}
+          disabled={isSubmitting}
+        />
+        <div className="flex items-center gap-3 text-text-muted text-12">
+          <span className="h-px flex-1 bg-border" />
+          ou
+          <span className="h-px flex-1 bg-border" />
+        </div>
+      </div>
+
+      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-3.5 mt-3.5">
         <Field
           label="E-mail"
           type="email"

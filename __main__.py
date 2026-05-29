@@ -469,11 +469,86 @@ aws.lambda_.Permission(
     source_arn=user_pool.arn,
 )
 
-user_pool_client = aws.cognito.UserPoolClient(
-    f"app-user-pool-client-{env}",
+# --- OAuth 2.0 / Hosted UI (issue #181) ---
+# Opt-in: only wired when the stack has OAuth config set. This keeps a
+# `pulumi up` on stacks without these values (e.g. prod) behaving exactly as
+# before. To enable on dev:
+#   pulumi config set cognitoDomainPrefix cinedica-dev
+#   pulumi config set --secret googleClientId <...>
+#   pulumi config set --secret googleClientSecret <...>
+#   pulumi config set --path oauthCallbackUrls[0] http://localhost:3000/callback
+#   pulumi config set --path oauthLogoutUrls[0]   http://localhost:3000/login
+cognito_domain_prefix = config.get("cognitoDomainPrefix")
+oauth_callback_urls = config.get_object("oauthCallbackUrls")
+oauth_enabled = bool(cognito_domain_prefix and oauth_callback_urls)
+
+user_pool_domain = None
+google_idp = None
+if oauth_enabled:
+    user_pool_domain = aws.cognito.UserPoolDomain(
+        f"app-user-pool-domain-{env}",
+        domain=cognito_domain_prefix,
+        user_pool_id=user_pool.id,
+    )
+    # Credentials come from CI-injected env vars (GitHub secrets
+    # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) when present, else
+    # from `pulumi config set --secret` for local `pulumi up`. The env-var path
+    # is wrapped in Output.secret so it stays secret-marked in state.
+    # Imported here (not relying on a module-level import) so this block stays
+    # self-contained — main's import set has drifted and no longer includes os.
+    import os
+
+    google_client_id_env = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    google_client_secret_env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    google_client_id = (
+        pulumi.Output.secret(google_client_id_env)
+        if google_client_id_env
+        else config.require_secret("googleClientId")
+    )
+    google_client_secret = (
+        pulumi.Output.secret(google_client_secret_env)
+        if google_client_secret_env
+        else config.require_secret("googleClientSecret")
+    )
+    google_idp = aws.cognito.IdentityProvider(
+        f"app-google-idp-{env}",
+        user_pool_id=user_pool.id,
+        provider_name="Google",
+        provider_type="Google",
+        provider_details={
+            "client_id": google_client_id,
+            "client_secret": google_client_secret,
+            "authorize_scopes": "openid email profile",
+        },
+        # Google's OIDC claims -> Cognito attributes. `username` <- `sub` keeps
+        # the federated user keyed by Google's stable subject id.
+        attribute_mapping={"email": "email", "username": "sub", "name": "name"},
+    )
+
+user_pool_client_args = dict(
     user_pool_id=user_pool.id,
+    # Keep password flow for existing email/senha login; REFRESH_TOKEN_AUTH is
+    # also what lets the SDK refresh OAuth-issued tokens.
     explicit_auth_flows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
     generate_secret=False,
+)
+user_pool_client_opts = None
+if oauth_enabled:
+    user_pool_client_args.update(
+        allowed_oauth_flows=["code"],
+        allowed_oauth_flows_user_pool_client=True,
+        allowed_oauth_scopes=["openid", "email", "profile"],
+        supported_identity_providers=["COGNITO", "Google"],
+        callback_urls=oauth_callback_urls,
+        logout_urls=config.require_object("oauthLogoutUrls"),
+    )
+    # The client references the Google provider by name, so it must exist first.
+    user_pool_client_opts = pulumi.ResourceOptions(depends_on=[google_idp])
+
+user_pool_client = aws.cognito.UserPoolClient(
+    f"app-user-pool-client-{env}",
+    **user_pool_client_args,
+    opts=user_pool_client_opts,
 )
 
 # --- 7. AWS Lambdas (protegidos por JWT) ---
@@ -913,6 +988,15 @@ pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
 pulumi.export("user_pool_id", user_pool.id)
 pulumi.export("user_pool_client_id", user_pool_client.id)
+if oauth_enabled:
+    # Hosted-UI base URL the frontend uses to build /oauth2/authorize + /oauth2/token.
+    pulumi.export(
+        "cognito_hosted_ui_domain",
+        pulumi.Output.concat(
+            "https://", user_pool_domain.domain,
+            ".auth.", region.region, ".amazoncognito.com",
+        ),
+    )
 
 # ---------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES
