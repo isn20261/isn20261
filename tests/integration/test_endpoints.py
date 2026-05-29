@@ -42,7 +42,7 @@ def access_token():
         },
         ClientId=os.environ["INTEGRATION_CLIENT_ID"],
     )
-    return resp["AuthenticationResult"]["AccessToken"]
+    return resp["AuthenticationResult"]["IdToken"]
 
 
 @pytest.fixture(scope="session")
