@@ -97,7 +97,8 @@
                 "cognito-idp:DescribeUserPoolClient",
                 "cognito-idp:UpdateUserPoolClient",
                 "cognito-idp:ListUserPoolClients",
-                "cognito-idp:Get*"
+                "cognito-idp:Get*",
+                "cognito-idp:AdminDeleteUser"
             ],
             "Resource": "arn:aws:cognito-idp:sa-east-1:*:userpool/*"
         },
