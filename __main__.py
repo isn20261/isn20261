@@ -494,6 +494,10 @@ if oauth_enabled:
     # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) when present, else
     # from `pulumi config set --secret` for local `pulumi up`. The env-var path
     # is wrapped in Output.secret so it stays secret-marked in state.
+    # Imported here (not relying on a module-level import) so this block stays
+    # self-contained — main's import set has drifted and no longer includes os.
+    import os
+
     google_client_id_env = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
     google_client_secret_env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
     google_client_id = (
