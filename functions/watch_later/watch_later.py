@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from shared.movies import resolve_movie
 from shared.auth import get_sub, get_method
 from shared.db import get_user, movies, users, write_log
-from shared.response import ok, created, bad_request, unauthorized
+from shared.response import ok, created, bad_request, unauthorized, server_error
 
 
 def handler(event, context):
@@ -30,7 +30,10 @@ def handler(event, context):
 
 
 def _get(sub: str):
-    user = get_user(sub)
+    try:
+        user = get_user(sub)
+    except Exception:
+        return server_error()
     if not user:
         return unauthorized()
 

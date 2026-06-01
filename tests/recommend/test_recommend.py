@@ -124,11 +124,10 @@ def test_recommend_response_includes_all_fields(monkeypatch):
     assert "streaming-services" in body
 
 
-def test_recommend_raises_when_movies_table_empty(monkeypatch):
-    import pytest
+def test_recommend_returns_500_when_movies_table_empty(monkeypatch):
     monkeypatch.setattr("recommend.recommend.get_sub", lambda event: None)
-    with pytest.raises(RuntimeError, match="Movies table is empty"):
-        handler({}, None)
+    resp = handler({}, None)
+    assert resp["statusCode"] == 500
 
 
 def test_recommend_genre_with_no_match_falls_back_to_all(monkeypatch):

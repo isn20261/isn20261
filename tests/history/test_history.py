@@ -99,3 +99,17 @@ def test_history_sub_without_user_record_returns_empty(monkeypatch):
     resp = handler({}, None)
     assert resp["statusCode"] == 200
     assert json.loads(resp["body"]) == []
+
+
+def test_history_returns_500_on_dynamodb_error(monkeypatch):
+    from unittest.mock import MagicMock
+    from botocore.exceptions import ClientError
+    fake_table = MagicMock()
+    fake_table.query.side_effect = ClientError(
+        {"Error": {"Code": "InternalServerError", "Message": "DynamoDB failure"}},
+        "Query",
+    )
+    monkeypatch.setattr("history.history.historico", lambda: fake_table)
+    monkeypatch.setattr("history.history.get_sub", lambda event: "user-1")
+    resp = handler({}, None)
+    assert resp["statusCode"] == 500

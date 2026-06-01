@@ -17,21 +17,27 @@ Run `uv sync`.
 ## File structure
 
 ```
-functions/
-├── conftest.py                    # shared fixtures + sys.path fix
+tests/
+├── conftest.py                          # fixtures + sys.path fix
 ├── shared/
-│   ├── test_response.py           # 8 cases, pure Python
-│   ├── test_db.py                 # 6 cases, moto dynamodb
-│   └── test_auth.py               # 3 cases, self-signed JWT
+│   ├── test_response.py                 # 14 casos, puro Python
+│   ├── test_db.py                       # 8 casos, moto dynamodb
+│   └── test_auth.py                     # 27 casos, JWT auto-assinado
 ├── recommend/
-│   └── test_recommend.py          # 6 cases
+│   └── test_recommend.py               # 11 casos
 ├── history/
-│   └── test_history.py            # 4 cases
+│   └── test_history.py                 # 7 casos
+├── post_confirm/
+│   └── test_post_confirm.py            # 7 casos
 ├── preferences/
-│   └── test_preferences.py        # 7 cases
-└── watch_later/
-    └── test_watch_later.py        # 6 cases
+│   └── test_preferences.py             # 19 casos
+├── watch_later/
+│   └── test_watch_later.py             # 19 casos
+└── contracts/
+    └── test_openapi_contract.py         # 23 casos (validação vs openapi.yaml)
 ```
+
+Total: 127 testes | Cobertura: 99% | Gate CI: 85%
 
 ## conftest.py — shared concerns
 
@@ -154,8 +160,14 @@ monkeypatch `_jwks_client.get_signing_key_from_jwt` to return that key.
 ## CI command
 
 ```bash
-uv run pytest functions/ -v
+uv run pytest -v --cov=functions --cov-report=term-missing --cov-fail-under=85
 ```
+
+> **IMPORTANTE:** Nunca use `python -m pytest`. O ambiente tem dois Pythons:
+> - `python` / `python3` no PATH (v3.12.1) — tem `_cffi_backend` quebrado, todos os testes falham
+> - Python gerenciado pelo `uv` (v3.14.5) — funciona corretamente
+>
+> O `pyproject.toml` já define `testpaths = ["tests"]`. O diretório correto é `tests/`, não `functions/`.
 
 ## Known limitations
 
