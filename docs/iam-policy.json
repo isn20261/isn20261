@@ -68,7 +68,7 @@
         "logs:DeleteRetentionPolicy",
         "logs:DescribeLogGroups",
         "logs:DescribeLogStreams",
-        "logs:ListTagsForResource",
+        "logs:List*",
         "logs:TagResource",
         "logs:UntagResource",
         "logs:PutResourcePolicy",
@@ -76,8 +76,7 @@
         "logs:CreateLogDelivery",
         "logs:Get*",
         "logs:UpdateLogDelivery",
-        "logs:DeleteLogDelivery",
-        "logs:ListLogDeliveries"
+        "logs:DeleteLogDelivery"
       ],
       "Resource": "*"
     },
@@ -85,22 +84,23 @@
       "Sid": "CognitoManagement",
       "Effect": "Allow",
       "Action": [
-        "cognito-idp:CreateUserPool",
-        "cognito-idp:DeleteUserPool",
-        "cognito-idp:DescribeUserPool",
-        "cognito-idp:UpdateUserPool",
+        "cognito-idp:*UserPool",
         "cognito-idp:TagResource",
         "cognito-idp:UntagResource",
         "cognito-idp:List*",
-        "cognito-idp:CreateUserPoolClient",
-        "cognito-idp:DeleteUserPoolClient",
-        "cognito-idp:DescribeUserPoolClient",
-        "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:*UserPoolClient",
         "cognito-idp:Get*",
         "cognito-idp:*User*",
-        "cognito-idp:InitiateAuth"
+        "cognito-idp:InitiateAuth",
+        "cognito-idp:*IdentityProvider"
       ],
       "Resource": "arn:aws:cognito-idp:sa-east-1:*:userpool/*"
+    },
+    {
+      "Sid": "CognitoUserPoolDomains",
+      "Effect": "Allow",
+      "Action": ["cognito-idp:*UserPoolDomain"],
+      "Resource": "*"
     },
     {
       "Sid": "DynamoDBTableManagement",
@@ -122,9 +122,7 @@
         "dynamodb:DescribeImport",
         "dynamodb:Scan"
       ],
-      "Resource": [
-        "arn:aws:dynamodb:sa-east-1:*:table/*"
-      ]
+      "Resource": ["arn:aws:dynamodb:sa-east-1:*:table/*"]
     },
     {
       "Sid": "IAMPassRole",
@@ -278,11 +276,7 @@
     {
       "Sid": "S3ObjectManagement",
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::*"
     },
     {
