@@ -1047,11 +1047,20 @@ uploaded_files = frontend_build.id.apply(upload_frontend_files)
 # depends_on inclui `uploaded_files` para garantir a ordem: build -> upload de
 # TODOS os arquivos -> invalidação. Sem isso a invalidação poderia limpar o
 # cache antes de o novo HTML existir no S3, e o CloudFront recachearia o antigo.
+#
+# `create` E `update` apontam para o MESMO comando: hoje a invalidação roda a
+# cada deploy porque `triggers=[deploy_ts]` força a recriação do recurso (e o
+# `create` dispara). Mas se algum dia `deploy_ts` for estabilizado para parar o
+# diff perpétuo, o recurso passaria a sofrer `update` em vez de replace — sem um
+# `update` definido, a invalidação pararia de rodar silenciosamente. Definir os
+# dois mantém a garantia "invalida a cada deploy" independente dessa escolha.
+invalidate_cmd = distribution.id.apply(
+    lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths /*"
+)
 cloudfront_invalidation = command.local.Command(
     f"invalidate-cloudfront-{env}",
-    create=distribution.id.apply(
-        lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths /*"
-    ),
+    create=invalidate_cmd,
+    update=invalidate_cmd,
     triggers=[deploy_ts], # Executa a cada novo deploy_ts
     opts=pulumi.ResourceOptions(
         depends_on=[frontend_build, distribution, uploaded_files],
