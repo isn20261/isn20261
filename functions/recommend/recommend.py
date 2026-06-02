@@ -1,47 +1,36 @@
 """GET /recommend — auth optional (works for anonymous and logged-in users).
 
-Recommendation engine is MOCKED. Replace _omdb_lookup() with a real
-OMDB API call when OMDB_API_KEY is set — see inconsistencias.md.
-
 Authenticated users:
   - recommendations filtered by their stored preferences
   - result saved to Historico table
 Anonymous users:
   - random recommendation from the full catalogue
 
-Environment variables:
-  OMDB_API_KEY (optional, for future OMDB integration), + shared db/auth vars
+Environment variables: shared db/auth vars
 """
 import os
 import random
 from datetime import datetime, timezone
 
 from shared.auth import get_sub
-from shared.db import get_user, historico, movies, write_log
+from shared.db import get_user, historico, write_log
+from shared.movies import get_all_movies
 from shared.response import ok, unauthorized, server_error
 
-OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
 
-
-def _scan_all_movies() -> list:
-    table = movies()
-    resp = table.scan()
-    items = list(resp.get("Items", []))
-    while "LastEvaluatedKey" in resp:
-        resp = table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
-        items.extend(resp.get("Items", []))
-    return items
+def _genre_matches(movie_genre: str, wanted: list[str]) -> bool:
+    movie_genres = {g.strip() for g in movie_genre.lower().split(",")}
+    return bool(movie_genres & set(wanted))
 
 
 def _pick_movie(preferences: dict) -> dict | None:
-    """Return one movie matching user preferences, or a random one. Returns None if table empty."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
-    all_movies = _scan_all_movies()
+    all_movies = get_all_movies()
     if not all_movies:
         return None
 
     if genres:
-        candidates = [m for m in all_movies if m.get("genre", "").lower() in genres]
+        candidates = [m for m in all_movies if _genre_matches(m.get("genre", ""), genres)]
         pool = candidates or all_movies
     else:
         pool = all_movies
@@ -49,7 +38,7 @@ def _pick_movie(preferences: dict) -> dict | None:
 
 
 def handler(event, context):
-    sub = get_sub(event)  # may be None for anonymous requests
+    sub = get_sub(event)
 
     if sub:
         user = get_user(sub)
