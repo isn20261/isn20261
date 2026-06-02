@@ -1054,6 +1054,13 @@ uploads_marker = uploaded_files.apply(lambda objs: str(len(objs)))
 # 3. Invalidação do CloudFront (Apenas quando houver um novo build)
 # Como não usamos mais o sync, precisamos isolar a invalidação.
 #
+# IMPORTANTE: o path precisa ir ENTRE ASPAS SIMPLES (`'/*'`). Sem aspas, o shell
+# faz glob de `/*` contra o filesystem ANTES de chamar o `aws`, expandindo para
+# os diretórios da raiz (/bin /etc /home ...) — foi exatamente isso que gerou uma
+# invalidação com "Quantity": 27 (paths errados) em vez do curinga, deixando o
+# cache de `/` (index.html) sem ser limpo. Com aspas, o `aws` recebe `/*` literal
+# e invalida tudo.
+#
 # `create` E `update` apontam para o MESMO comando: hoje a invalidação roda a
 # cada deploy porque `triggers=[deploy_ts]` força a recriação do recurso (e o
 # `create` dispara). Mas se algum dia `deploy_ts` for estabilizado para parar o
@@ -1061,21 +1068,22 @@ uploads_marker = uploaded_files.apply(lambda objs: str(len(objs)))
 # `update` definido, a invalidação pararia de rodar silenciosamente. Definir os
 # dois mantém a garantia "invalida a cada deploy" independente dessa escolha.
 #
-# O comando referencia `uploads_marker` num comentário shell inócuo (`# uploads=N`)
-# só para criar a dependência de dados: como o `create`/`update` depende desse
-# Output, o Pulumi espera todos os BucketObjectv2 antes de invalidar.
-invalidate_cmd = pulumi.Output.all(distribution.id, uploads_marker).apply(
-    lambda args: (
-        f"aws cloudfront create-invalidation --distribution-id {args[0]} --paths /*"
-        f"  # uploads={args[1]}"
-    )
+# A dependência de dados que garante "uploads -> invalidação" vem de
+# `uploads_marker` nos `triggers` (o Pulumi resolve esse Output, esperando todos
+# os BucketObjectv2, antes de criar o recurso). NÃO costuramos o marker no
+# comando shell — fazer isso (ex.: `# uploads=N`) é frágil e foi o que mascarou
+# o bug do glob acima.
+invalidate_cmd = distribution.id.apply(
+    lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths '/*'"
 )
 cloudfront_invalidation = command.local.Command(
     f"invalidate-cloudfront-{env}",
     create=invalidate_cmd,
     update=invalidate_cmd,
-    # `uploads_marker` também entra nos triggers para forçar re-execução quando o
-    # conjunto de arquivos muda, além do `deploy_ts` que muda a cada deploy.
+    # `uploads_marker` entra nos triggers para (a) forçar re-execução quando o
+    # conjunto de arquivos muda e (b) criar a dependência de dados que faz o
+    # Pulumi esperar todos os uploads antes de invalidar. `deploy_ts` muda a cada
+    # deploy, garantindo que a invalidação rode sempre.
     triggers=[deploy_ts, uploads_marker],
     opts=pulumi.ResourceOptions(
         depends_on=[frontend_build, distribution],
