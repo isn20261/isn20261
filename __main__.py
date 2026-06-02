@@ -947,7 +947,13 @@ frontend_build_env = {
     "NEXT_PUBLIC_COGNITO_REGION": region.region,
     "NEXT_PUBLIC_COGNITO_USER_POOL_ID": user_pool.id,
     "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID": user_pool_client.id,
-    "NEXT_PUBLIC_API_BASE_URL": public_url,
+    # Public-facing URL (custom domain in prod), NOT the raw CloudFront domain.
+    # The site is served from https://cinedica.video, so calling the API at the
+    # cloudfront.net hostname is cross-origin and fails the CORS preflight (the
+    # API only allows the cinedica.video origin). final_public_url keeps the API
+    # call same-origin -> no preflight. Matches the dev workflow, which feeds the
+    # `public_url` stack output (= final_public_url) into this same var.
+    "NEXT_PUBLIC_API_BASE_URL": final_public_url,
 }
 if oauth_enabled:
     frontend_build_env["NEXT_PUBLIC_COGNITO_DOMAIN"] = pulumi.Output.concat(
