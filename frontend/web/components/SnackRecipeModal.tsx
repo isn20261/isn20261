@@ -2,14 +2,14 @@
 
 /**
  * A two-state floating card shown around the recommendation fetch: a recipe
- * card anchored TOP-RIGHT while loading (and for a short linger after), then a
- * small popcorn bubble in the same corner once it auto-collapses.
+ * card anchored BOTTOM-RIGHT while loading (and for a short linger after), then
+ * a small popcorn bubble in the same corner once it auto-collapses.
  *
- * Why top-right (not centered): the /recommend fetch is very fast, so a centered
- * modal used to flash in and out jarringly. Anchoring the card where the bubble
- * lives means the open→mini transition is an in-place shrink, not a fly-across,
- * and a brief post-fetch linger keeps the recipe readable even on a sub-second
- * fetch.
+ * Why bottom-right (not centered): the /recommend fetch is very fast, so a
+ * centered modal used to flash in and out jarringly. Anchoring the card where
+ * the bubble lives means the open→mini transition is an in-place shrink, not a
+ * fly-across, and a brief post-fetch linger keeps the recipe readable even on a
+ * sub-second fetch.
  *
  * Timing:
  *   - isLoading true            → card open (forced).
@@ -84,12 +84,12 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
 
   return (
     <>
-      {/* Open state — recipe card, anchored top-right (in-place with the bubble). */}
+      {/* Open state — recipe card, anchored bottom-right (in-place with the bubble). */}
       <div
         aria-hidden={!open}
         className={cn(
-          // non-tokenized: top-6 right-6 anchor; w-[min(380px,92vw)] modal width primitive.
-          "fixed top-6 right-6 z-50 w-[min(380px,92vw)] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
+          // non-tokenized: bottom-6 right-6 anchor; w-[min(380px,92vw)] modal width primitive.
+          "fixed bottom-6 right-6 z-50 w-[min(380px,92vw)] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
           open ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
       >
@@ -138,7 +138,7 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
         </div>
       </div>
 
-      {/* Mini state — top-right popcorn bubble (same corner as the card). */}
+      {/* Mini state — bottom-right popcorn bubble (same corner as the card). */}
       <button
         type="button"
         aria-hidden={open}
@@ -146,8 +146,8 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
         tabIndex={open ? -1 : 0}
         onClick={() => setReopened(true)}
         className={cn(
-          // non-tokenized: top-6 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
-          "fixed top-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+          // non-tokenized: bottom-6 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
+          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
           open ? "opacity-0 pointer-events-none" : "opacity-100",
         )}
       >
