@@ -789,6 +789,33 @@ api_origin_request_policy = aws.cloudfront.OriginRequestPolicy(
 
 # --- 2. Distribuição do CloudFront ---
 
+# CloudFront Function (viewer-request) that maps subdirectory requests to their
+# index.html. The frontend is a Next.js static export with trailingSlash, so a
+# route like /login lives at the S3 key `login/index.html`. CloudFront's
+# default_root_object only resolves `/` -> index.html, not subpaths, so a direct
+# load or refresh of /login/ hit a missing key and returned 403 AccessDenied
+# (the bucket is private via OAC). This rewrite fixes deep-links/refresh on every
+# sub-route. It is attached only to the S3 default behavior, never to /api/v1/*.
+spa_rewrite_function = aws.cloudfront.Function(
+    f"spa-rewrite-{env}",
+    runtime="cloudfront-js-2.0",
+    comment=f"Map subdirectory requests to index.html for the static export ({env})",
+    publish=True,
+    code="""function handler(event) {
+    var request = event.request;
+    var uri = request.uri;
+    if (uri.endsWith('/')) {
+        request.uri += 'index.html';
+    } else {
+        var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+        if (lastSegment.indexOf('.') === -1) {
+            request.uri += '/index.html';
+        }
+    }
+    return request;
+}""",
+)
+
 distribution = aws.cloudfront.Distribution(
     f"cdn-{env}",
     enabled=True,
@@ -819,6 +846,12 @@ distribution = aws.cloudfront.Distribution(
         allowed_methods=["GET", "HEAD"],
         cached_methods=["GET", "HEAD"],
         cache_policy_id=s3_cache_policy.id,
+        function_associations=[
+            aws.cloudfront.DistributionDefaultCacheBehaviorFunctionAssociationArgs(
+                event_type="viewer-request",
+                function_arn=spa_rewrite_function.arn,
+            )
+        ],
     ),
     ordered_cache_behaviors=[
         aws.cloudfront.DistributionOrderedCacheBehaviorArgs(
