@@ -3,6 +3,8 @@ import pulumi_aws as aws
 import pulumi_command as command
 import json
 import time
+import os
+import mimetypes
 
 # -- 1. Configurações do Ambiente (12-Factor) --
 
@@ -980,23 +982,52 @@ frontend_build = command.local.Command(
     ),
 )
 
-frontend_deploy = command.local.Command(
-    f"deploy-frontend-{env}",
-    create=pulumi.Output.all(bucket.id, distribution.id).apply(
-        lambda args: (
-            f"aws s3 sync frontend/web/out s3://{args[0]} --delete"
-            f" && aws cloudfront create-invalidation --distribution-id {args[1]} --paths /*"
-        )
+
+# 2. Em vez do 'aws s3 sync', o Pulumi gerencia os arquivos nativamente
+frontend_dist_dir = "./frontend/web/out"
+
+# Esta função vai rodar durante o 'pulumi up' após o build terminar
+def upload_frontend_files(_):
+    # Verifica se a pasta existe (evita quebras na primeira execução antes do build)
+    if not os.path.exists(frontend_dist_dir):
+        return
+
+    for root, dirs, files in os.walk(frontend_dist_dir):
+        for file in files:
+            file_path = os.path.join(root, file)
+            # Cria um caminho relativo para ser a chave (key) no S3 (ex: assets/index.js)
+            relative_path = os.path.relpath(file_path, frontend_dist_dir)
+            
+            # Descobre o Content-Type correto para o navegador não baixar o HTML/CSS como anexo
+            mime_type, _ = mimetypes.guess_type(file_path)
+            content_type = mime_type or "application/octet-stream"
+
+            # O Pulumi assume o controle do arquivo aqui
+            aws.s3.BucketObjectv2(
+                f"frontend-file-{relative_path}",
+                bucket=bucket.id,
+                key=relative_path,
+                source=pulumi.FileAsset(file_path),
+                content_type=content_type,
+                opts=pulumi.ResourceOptions(
+                    depends_on=[bucket_policy] # Garante que as permissões existem
+                )
+            )
+
+# O output do build engatilha a leitura e upload dos arquivos de forma sincronizada
+frontend_build.id.apply(upload_frontend_files)
+
+
+# 3. Invalidação do CloudFront (Apenas quando houver um novo build)
+# Como não usamos mais o sync, precisamos isolar a invalidação
+cloudfront_invalidation = command.local.Command(
+    f"invalidate-cloudfront-{env}",
+    create=distribution.id.apply(
+        lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths /*"
     ),
-    update=pulumi.Output.all(bucket.id, distribution.id).apply(
-        lambda args: (
-            f"aws s3 sync frontend/web/out s3://{args[0]} --delete"
-            f" && aws cloudfront create-invalidation --distribution-id {args[1]} --paths /*"
-        )
-    ),
-    triggers=[deploy_ts],
+    triggers=[deploy_ts], # Executa a cada novo deploy_ts
     opts=pulumi.ResourceOptions(
-        depends_on=[bucket, frontend_build, distribution, bucket_policy],
+        depends_on=[frontend_build, distribution],
     ),
 )
 
