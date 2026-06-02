@@ -102,6 +102,9 @@
 
   --animate-fade-up: fade-up 0.4s ease-out backwards;
   --animate-fade-in: fade-in 0.3s ease-out backwards;
+  /* Easter egg (type "boi"): a jumpscare — image snaps from tiny to full very
+     fast, then a quick shake. See components/BoiEasterEgg.tsx. */
+  --animate-jumpscare: jumpscare 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 @keyframes fade-up {
@@ -121,6 +124,37 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Jumpscare: explode from a tiny dot to full-screen in the first ~60% of the
+   timeline, then a brief violent shake. Intentionally abrupt. */
+@keyframes jumpscare {
+  0% {
+    opacity: 0;
+    transform: scale(0.04) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1) rotate(0deg);
+  }
+  68% {
+    transform: scale(1.04) rotate(-3deg) translate(-1.5%, 1%);
+  }
+  76% {
+    transform: scale(1.06) rotate(3deg) translate(1.5%, -1%);
+  }
+  84% {
+    transform: scale(1.04) rotate(-2deg) translate(-1%, 0);
+  }
+  92% {
+    transform: scale(1.05) rotate(2deg) translate(1%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05) rotate(0deg);
   }
 }
 
