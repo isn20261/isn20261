@@ -291,3 +291,52 @@ export function apiPost<T>(
 ): Promise<Result<T, ApiError>> {
   return request<T>("POST", path, body, opts);
 }
+
+// For public endpoints that require no auth token (e.g. /recommend_anon).
+// Reuses the same timeout and error-classification logic but never attaches Authorization.
+export async function apiGetNoAuth<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<Result<T, ApiError>> {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const { signal, cancelTimeout } = composeSignals(timeoutMs, opts.signal);
+  const url = `${getBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, { method: "GET", headers: {}, signal });
+  } catch (err) {
+    cancelTimeout();
+    const cause = err instanceof Error ? err : new Error(String(err));
+    const isAbort = cause.name === "AbortError" || cause.message === "Request timed out";
+    return {
+      ok: false,
+      error: {
+        kind: "network",
+        message: isAbort
+          ? "Tempo limite esgotado. Tente novamente."
+          : "Erro de rede. Verifique sua conexão.",
+        cause,
+      },
+    };
+  }
+  cancelTimeout();
+
+  if (!response.ok) {
+    const error = await classifyError(response);
+    return { ok: false, error };
+  }
+
+  let data: T;
+  try {
+    const text = await response.text();
+    data = (text === "" ? (null as unknown) : JSON.parse(text)) as T;
+  } catch (err) {
+    const cause = err instanceof Error ? err : new Error(String(err));
+    return {
+      ok: false,
+      error: { kind: "server", status: response.status, message: "Recebemos uma resposta inválida do servidor.", cause },
+    };
+  }
+  return { ok: true, data };
+}
