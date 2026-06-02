@@ -51,7 +51,8 @@
         "cloudfront:DeleteOriginRequestPolicy",
         "cloudfront:TagResource",
         "cloudfront:UntagResource",
-        "cloudfront:CreateInvalidation"
+        "cloudfront:CreateInvalidation",
+        "cloudfront:*Function"
       ],
       "Resource": "*"
     },
