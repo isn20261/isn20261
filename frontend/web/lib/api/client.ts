@@ -62,13 +62,11 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 let cachedBaseUrl: string | null = null;
 function getBaseUrl(): string {
   if (cachedBaseUrl !== null) return cachedBaseUrl;
-  const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!raw) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_API_BASE_URL. Copy .env.example to .env.local and fill in the Pulumi `api_internal_url` stack output.",
-    );
-  }
-  cachedBaseUrl = raw.replace(/\/+$/, ""); // defensive: strip trailing slashes per CONTEXT decision
+  // Empty = relative-URL mode: Next.js dev rewrites (API_PROXY_TARGET) or CloudFront
+  // (/api/v1/* behavior) handle routing. Set to full API Gateway URL only for
+  // localhost dev where the gateway CORS allowlist includes http://localhost:3000.
+  const raw = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  cachedBaseUrl = raw.replace(/\/+$/, "");
   return cachedBaseUrl;
 }
 
