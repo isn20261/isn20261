@@ -6,7 +6,7 @@ Resources:
   HandlerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: function
+      CodeUri: functions
       Handler: handler.handler
       Runtime: python3.13
       Timeout: 30
