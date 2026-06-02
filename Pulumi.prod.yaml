@@ -9,3 +9,17 @@ config:
   # condition Cognito↔SES em __main__.py.
   isn20261:sesFromEmail: etorresini@ifsc.edu.br
   isn20261:sesFromName: Cine Dica
+  # OAuth 2.0 / Google Hosted UI (issue #181) for prod. Mirrors the dev setup
+  # in Pulumi.dev.yaml but with the production domain. The prefix must be
+  # globally unique within the region and differs from dev (`cinedica-dev`),
+  # so the prod Hosted UI lives at
+  # https://cinedica-prod.auth.sa-east-1.amazoncognito.com — that
+  # /oauth2/idpresponse URL must be registered in the Google OAuth client.
+  # googleClientId / googleClientSecret come from the GitHub Actions secrets
+  # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET (see deploy-prod.yml),
+  # never committed here.
+  isn20261:cognitoDomainPrefix: cinedica-prod
+  isn20261:oauthCallbackUrls:
+    - https://cinedica.video/callback
+  isn20261:oauthLogoutUrls:
+    - https://cinedica.video/login

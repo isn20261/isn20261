@@ -23,6 +23,12 @@ jobs:
       PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       UV_PROJECT_ENVIRONMENT: venv
+      # OAuth 2.0 / Google (issue #181). __main__.py reads these at `pulumi up`
+      # and injects them into the Cognito Google IdP (secret-marked in state).
+      # Required now that prod enables OAuth via Pulumi.prod.yaml — without them
+      # `config.require_secret("googleClientId")` would fail the prod deploy.
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
