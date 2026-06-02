@@ -27,7 +27,9 @@ api_default_route_throttling_burst_limit = config.get_int(
 if api_default_route_throttling_burst_limit is None:
     api_default_route_throttling_burst_limit = 500
 
-ses_from_email = config.require("sesFromEmail") if is_prod else config.get("sesFromEmail")
+ses_from_email = (
+    config.require("sesFromEmail") if is_prod else config.get("sesFromEmail")
+)
 ses_from_name = config.get("sesFromName") or "App"
 ses_reply_to_email = config.get("sesReplyToEmail") or ses_from_email
 
@@ -86,7 +88,9 @@ logs_table = aws.dynamodb.Table(
 
 movies_import_bucket = aws.s3.Bucket(
     f"movies-import-bucket-{env}",
-    bucket=pulumi.Output.concat("movies-import-", env, "-", aws.get_caller_identity().account_id),
+    bucket=pulumi.Output.concat(
+        "movies-import-", env, "-", aws.get_caller_identity().account_id
+    ),
     acl="private",
     force_destroy=True,
 )
@@ -95,15 +99,19 @@ aws.s3.BucketPolicy(
     f"movies-import-bucket-policy-{env}",
     bucket=movies_import_bucket.id,
     policy=pulumi.Output.all(movies_import_bucket.arn).apply(
-        lambda args: json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Principal": {"Service": "dynamodb.amazonaws.com"},
-                "Action": ["s3:GetObject", "s3:ListBucket"],
-                "Resource": [args[0], f"{args[0]}/*"],
-            }],
-        })
+        lambda args: json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": "dynamodb.amazonaws.com"},
+                        "Action": ["s3:GetObject", "s3:ListBucket"],
+                        "Resource": [args[0], f"{args[0]}/*"],
+                    }
+                ],
+            }
+        )
     ),
 )
 
@@ -224,9 +232,7 @@ shared_layer = aws.lambda_.LayerVersion(
             ),
             "python/shared/auth.py": pulumi.FileAsset("./functions/shared/auth.py"),
             "python/shared/db.py": pulumi.FileAsset("./functions/shared/db.py"),
-            "python/shared/movies.py": pulumi.FileAsset(
-                "./functions/shared/movies.py"
-            ),
+            "python/shared/movies.py": pulumi.FileAsset("./functions/shared/movies.py"),
             "python/shared/response.py": pulumi.FileAsset(
                 "./functions/shared/response.py"
             ),
@@ -392,6 +398,17 @@ if ses_use_domain_identity and zone:
         ttl=300,
         records=["v=spf1 include:amazonses.com ~all"],
     )
+
+    # DMARC record
+    aws.route53.Record(
+        f"ses-dmarc-record-{env}",
+        zone_id=zone.zone_id,
+        name=f"_dmarc.{domain_name}",
+        type="TXT",
+        ttl=300,
+        records=[f"v=DMARC1; p=none; rua=mailto:{ses_reply_to_email}"],
+    )
+
 
 from_email_address_formatted = f"{ses_from_name} <{ses_from_email}>"
 
@@ -963,11 +980,15 @@ frontend_build_env = {
 }
 if oauth_enabled:
     frontend_build_env["NEXT_PUBLIC_COGNITO_DOMAIN"] = pulumi.Output.concat(
-        "https://", user_pool_domain.domain,
-        ".auth.", region.region, ".amazoncognito.com",
+        "https://",
+        user_pool_domain.domain,
+        ".auth.",
+        region.region,
+        ".amazoncognito.com",
     )
     frontend_build_env["NEXT_PUBLIC_OAUTH_REDIRECT_URI"] = pulumi.Output.concat(
-        final_public_url, "/callback",
+        final_public_url,
+        "/callback",
     )
 
 frontend_build = command.local.Command(
@@ -986,6 +1007,7 @@ frontend_build = command.local.Command(
 # 2. Em vez do 'aws s3 sync', o Pulumi gerencia os arquivos nativamente
 frontend_dist_dir = "./frontend/web/out"
 
+
 # Esta função vai rodar durante o 'pulumi up' após o build terminar
 def upload_frontend_files(_):
     # Verifica se a pasta existe (evita quebras na primeira execução antes do build)
@@ -997,7 +1019,7 @@ def upload_frontend_files(_):
             file_path = os.path.join(root, file)
             # Cria um caminho relativo para ser a chave (key) no S3 (ex: assets/index.js)
             relative_path = os.path.relpath(file_path, frontend_dist_dir)
-            
+
             # Descobre o Content-Type correto para o navegador não baixar o HTML/CSS como anexo
             mime_type, _ = mimetypes.guess_type(file_path)
             content_type = mime_type or "application/octet-stream"
@@ -1010,9 +1032,10 @@ def upload_frontend_files(_):
                 source=pulumi.FileAsset(file_path),
                 content_type=content_type,
                 opts=pulumi.ResourceOptions(
-                    depends_on=[bucket_policy] # Garante que as permissões existem
-                )
+                    depends_on=[bucket_policy]  # Garante que as permissões existem
+                ),
             )
+
 
 # O output do build engatilha a leitura e upload dos arquivos de forma sincronizada
 frontend_build.id.apply(upload_frontend_files)
@@ -1025,7 +1048,7 @@ cloudfront_invalidation = command.local.Command(
     create=distribution.id.apply(
         lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths /*"
     ),
-    triggers=[deploy_ts], # Executa a cada novo deploy_ts
+    triggers=[deploy_ts],  # Executa a cada novo deploy_ts
     opts=pulumi.ResourceOptions(
         depends_on=[frontend_build, distribution],
     ),
@@ -1045,8 +1068,11 @@ if oauth_enabled:
     pulumi.export(
         "cognito_hosted_ui_domain",
         pulumi.Output.concat(
-            "https://", user_pool_domain.domain,
-            ".auth.", region.region, ".amazoncognito.com",
+            "https://",
+            user_pool_domain.domain,
+            ".auth.",
+            region.region,
+            ".amazoncognito.com",
         ),
     )
 
