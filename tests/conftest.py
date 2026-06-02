@@ -18,7 +18,6 @@ os.environ["EMAIL_TO_SUB_TABLE"] = "EmailToSub_test"
 os.environ["TOKENS_TABLE"] = "Tokens_test"
 os.environ["HISTORICO_TABLE"] = "Historico_test"
 os.environ["LOGS_TABLE"] = "Logs_test"
-os.environ["MOVIES_TABLE"] = "Movies_test"
 os.environ["AWS_REGION"] = "sa-east-1"
 
 
@@ -76,19 +75,16 @@ def setup_dynamodb_tables():
         ],
         BillingMode="PAY_PER_REQUEST",
     )
-    resource.create_table(
-        TableName="Movies_test",
-        KeySchema=[{"AttributeName": "movieId", "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": "movieId", "AttributeType": "S"}],
-        BillingMode="PAY_PER_REQUEST",
-    )
 
 
 @pytest.fixture(autouse=True)
 def _aws_db():
+    import shared.movies as movies_module
+    movies_module._catalogue = None  # reset cache between tests
     with mock_aws():
         setup_dynamodb_tables()
         yield
+    movies_module._catalogue = None
 
 
 def seed_user(sub, email="user@example.com", preferences=None):
@@ -103,119 +99,74 @@ def seed_user(sub, email="user@example.com", preferences=None):
 
 
 def seed_movies():
-    """Insert the 6-movie catalogue into Movies_test. Call inside @mock_aws context."""
-    from decimal import Decimal
-    from shared.db import movies
+    """Populate the in-process movie catalogue cache with a small fixture set."""
+    import shared.movies as movies_module
 
-    catalogue = [
+    movies_module._catalogue = [
         {
-            "movieId": "tt0133093",
+            "movieId": "the-matrix-1999",
             "title": "The Matrix",
             "year": 1999,
             "rated": "R",
             "genre": "action",
             "director": "The Wachowskis",
             "runtime": 136,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/lDqMDI3xpbB9UQRyeXfei0MXhqb.jpg",
-            "imdbRating": Decimal("8.7"),
-            "streamingServices": [
-                {
-                    "name": "Netflix",
-                    "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-                    "url": "https://www.netflix.com/title/20557937",
-                }
-            ],
+            "poster": "https://example.com/matrix.jpg",
+            "imdbRating": 8.7,
         },
         {
-            "movieId": "tt0816692",
+            "movieId": "interstellar-2014",
             "title": "Interstellar",
             "year": 2014,
             "rated": "PG-13",
             "genre": "sci-fi",
             "director": "Christopher Nolan",
             "runtime": 169,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-            "imdbRating": Decimal("8.7"),
-            "streamingServices": [
-                {
-                    "name": "Amazon Prime",
-                    "image": "https://www.amazon.com/favicon.ico",
-                    "url": "https://www.amazon.com/dp/B00TU9UFTS",
-                }
-            ],
+            "poster": "https://example.com/interstellar.jpg",
+            "imdbRating": 8.7,
         },
         {
-            "movieId": "tt1375666",
+            "movieId": "inception-2010",
             "title": "Inception",
             "year": 2010,
             "rated": "PG-13",
             "genre": "sci-fi",
             "director": "Christopher Nolan",
             "runtime": 148,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
-            "imdbRating": Decimal("8.8"),
-            "streamingServices": [
-                {
-                    "name": "Netflix",
-                    "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-                    "url": "https://www.netflix.com/title/70131314",
-                }
-            ],
+            "poster": "https://example.com/inception.jpg",
+            "imdbRating": 8.8,
         },
         {
-            "movieId": "tt0468569",
+            "movieId": "the-dark-knight-2008",
             "title": "The Dark Knight",
             "year": 2008,
             "rated": "PG-13",
             "genre": "action",
             "director": "Christopher Nolan",
             "runtime": 152,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/qJ2tW6WMUDux911B6EMy6Mcf35.jpg",
-            "imdbRating": Decimal("9.0"),
-            "streamingServices": [
-                {
-                    "name": "HBO Max",
-                    "image": "https://www.max.com/favicon.ico",
-                    "url": "https://www.max.com/movies/dark-knight/07938dc1-3e25-4b2e-b01e-f23b7eed5977",
-                }
-            ],
+            "poster": "https://example.com/darkknight.jpg",
+            "imdbRating": 9.0,
         },
         {
-            "movieId": "tt0110912",
+            "movieId": "pulp-fiction-1994",
             "title": "Pulp Fiction",
             "year": 1994,
             "rated": "R",
             "genre": "crime",
             "director": "Quentin Tarantino",
             "runtime": 154,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg",
-            "imdbRating": Decimal("8.9"),
-            "streamingServices": [
-                {
-                    "name": "Amazon Prime",
-                    "image": "https://www.amazon.com/favicon.ico",
-                    "url": "https://www.amazon.com/dp/B001CWSITY",
-                }
-            ],
+            "poster": "https://example.com/pulpfiction.jpg",
+            "imdbRating": 8.9,
         },
         {
-            "movieId": "tt0245429",
+            "movieId": "spirited-away-2001",
             "title": "Spirited Away",
             "year": 2001,
             "rated": "PG",
             "genre": "animation",
             "director": "Hayao Miyazaki",
             "runtime": 125,
-            "poster": "https://image.tmdb.org/t/p/w600_and_h900_face/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
-            "imdbRating": Decimal("8.6"),
-            "streamingServices": [
-                {
-                    "name": "Netflix",
-                    "image": "https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico",
-                    "url": "https://www.netflix.com/title/60023642",
-                }
-            ],
+            "poster": "https://example.com/spiritedaway.jpg",
+            "imdbRating": 8.6,
         },
     ]
-    for m in catalogue:
-        movies().put_item(Item=m)

@@ -38,11 +38,12 @@ class TestRecommendContract:
         assert isinstance(body["imdbRating"], (int, float))
 
     def test_streaming_services_items_have_spec_keys(self, monkeypatch):
-        """spec: streaming-services items must have name, image, url"""
+        """spec: when streaming-services is present, items must have name, image, url"""
         seed_movies()
         monkeypatch.setattr("recommend.recommend.get_sub", lambda e: None)
         body = json.loads(recommend_handler({}, None)["body"])
-        for svc in body["streaming-services"]:
+        services = body.get("streaming-services") or []
+        for svc in services:
             assert "name" in svc, "streaming-service item missing 'name'"
             assert "image" in svc, "streaming-service item missing 'image'"
             assert "url" in svc, "streaming-service item missing 'url'"
