@@ -66,7 +66,9 @@ class TestPreferences:
         assert resp.status_code == 200
         
     def test_get_returns_200(self, base_url, auth_headers, dev_params):
-        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
+        resp = requests.get(f"{base_url}/api/v1/preferences", 
+                            headers=auth_headers, 
+                            params=dev_params)
         assert resp.status_code == 200
 
     def test_post_persists_preferences(self, base_url, auth_headers, dev_params):
@@ -76,7 +78,9 @@ class TestPreferences:
             params=dev_params,
             json={"genres": ["action"]},
         )
-        resp = requests.get(f"{base_url}/api/v1/preferences", headers=auth_headers, params=dev_params)
+        resp = requests.get(f"{base_url}/api/v1/preferences", 
+                            headers=auth_headers, 
+                            params=dev_params)
         body = resp.json()
         assert "action" in body.get("genres", [])
 
