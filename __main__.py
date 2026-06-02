@@ -1037,16 +1037,22 @@ def upload_frontend_files(_):
     return uploaded
 
 # O output do build engatilha a leitura e upload dos arquivos de forma sincronizada.
-# `uploaded_files` é um Output[list] resolvido depois que todos os BucketObjectv2
-# são criados; a invalidação abaixo depende dele para rodar SÓ após os uploads.
+# `uploaded_files` é um Output[list[BucketObjectv2]] resolvido depois que todos os
+# BucketObjectv2 são criados.
 uploaded_files = frontend_build.id.apply(upload_frontend_files)
+
+# A ordem build -> upload de TODOS os arquivos -> invalidação é garantida por
+# DEPENDÊNCIA DE DADOS, não por `depends_on`. Passar `uploaded_files`
+# (Output[list]) direto em `depends_on` quebra: o Pulumi tenta colocar a lista
+# resolvida num set e estoura `TypeError: unhashable type: 'list'`. Em vez disso,
+# derivamos um marcador a partir de `uploaded_files` (contagem de objetos) e o
+# costuramos tanto no comando quanto nos `triggers` — o Pulumi precisa resolver
+# esse Output (esperando todos os uploads) antes de criar/rodar o comando.
+uploads_marker = uploaded_files.apply(lambda objs: str(len(objs)))
 
 
 # 3. Invalidação do CloudFront (Apenas quando houver um novo build)
 # Como não usamos mais o sync, precisamos isolar a invalidação.
-# depends_on inclui `uploaded_files` para garantir a ordem: build -> upload de
-# TODOS os arquivos -> invalidação. Sem isso a invalidação poderia limpar o
-# cache antes de o novo HTML existir no S3, e o CloudFront recachearia o antigo.
 #
 # `create` E `update` apontam para o MESMO comando: hoje a invalidação roda a
 # cada deploy porque `triggers=[deploy_ts]` força a recriação do recurso (e o
@@ -1054,16 +1060,25 @@ uploaded_files = frontend_build.id.apply(upload_frontend_files)
 # diff perpétuo, o recurso passaria a sofrer `update` em vez de replace — sem um
 # `update` definido, a invalidação pararia de rodar silenciosamente. Definir os
 # dois mantém a garantia "invalida a cada deploy" independente dessa escolha.
-invalidate_cmd = distribution.id.apply(
-    lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths /*"
+#
+# O comando referencia `uploads_marker` num comentário shell inócuo (`# uploads=N`)
+# só para criar a dependência de dados: como o `create`/`update` depende desse
+# Output, o Pulumi espera todos os BucketObjectv2 antes de invalidar.
+invalidate_cmd = pulumi.Output.all(distribution.id, uploads_marker).apply(
+    lambda args: (
+        f"aws cloudfront create-invalidation --distribution-id {args[0]} --paths /*"
+        f"  # uploads={args[1]}"
+    )
 )
 cloudfront_invalidation = command.local.Command(
     f"invalidate-cloudfront-{env}",
     create=invalidate_cmd,
     update=invalidate_cmd,
-    triggers=[deploy_ts], # Executa a cada novo deploy_ts
+    # `uploads_marker` também entra nos triggers para forçar re-execução quando o
+    # conjunto de arquivos muda, além do `deploy_ts` que muda a cada deploy.
+    triggers=[deploy_ts, uploads_marker],
     opts=pulumi.ResourceOptions(
-        depends_on=[frontend_build, distribution, uploaded_files],
+        depends_on=[frontend_build, distribution],
     ),
 )
 
