@@ -23,6 +23,12 @@ jobs:
       PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       UV_PROJECT_ENVIRONMENT: venv
+      # OAuth 2.0 / Google (issue #181). __main__.py reads these at `pulumi up`
+      # and injects them into the Cognito Google IdP (secret-marked in state).
+      # Required now that prod enables OAuth via Pulumi.prod.yaml — without them
+      # `config.require_secret("googleClientId")` would fail the prod deploy.
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
@@ -40,10 +46,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/web/pnpm-lock.yaml
 
-      - name: Install frontend deps
-        working-directory: frontend/web
-        run: pnpm install --frozen-lockfile
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -57,11 +59,8 @@ jobs:
       - name: Install Python deps into ./venv (where Pulumi.yaml expects)
         run: uv sync --frozen
 
-      # Pass 1: provision Cognito + API + (empty/stale) S3 bucket. The S3 sync
-      # at __main__.py:597 walks frontend/web/out — on first run it's empty,
-      # on later runs it re-uploads the previous bundle. Either is fine; pass 2
-      # ships the freshly built bundle once we have the real env vars.
-      - name: Pulumi up (pass 1 — provision infra)
+      # Frontend build/deploy is handled inside Pulumi via command.local.Command.
+      - name: Pulumi up (infra + frontend)
         uses: pulumi/actions@v6
         with:
           command: up
@@ -75,49 +74,15 @@ jobs:
           USER_POOL_ID="$(pulumi stack output user_pool_id --stack prod)"
           USER_POOL_CLIENT_ID="$(pulumi stack output user_pool_client_id --stack prod)"
           PUBLIC_URL="$(pulumi stack output public_url --stack prod)"
-          CLOUDFRONT_ID="$(pulumi stack output cloudfront_id --stack prod)"
           : "${USER_POOL_ID:?empty user_pool_id from pulumi}"
           : "${USER_POOL_CLIENT_ID:?empty user_pool_client_id from pulumi}"
           : "${PUBLIC_URL:?empty public_url from pulumi}"
-          : "${CLOUDFRONT_ID:?empty cloudfront_id from pulumi}"
-          echo "Pool=$USER_POOL_ID Client=$USER_POOL_CLIENT_ID Url=$PUBLIC_URL Cdn=$CLOUDFRONT_ID"
+          echo "Pool=$USER_POOL_ID Client=$USER_POOL_CLIENT_ID Url=$PUBLIC_URL"
           {
-            echo "NEXT_PUBLIC_COGNITO_REGION=sa-east-1"
             echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$USER_POOL_ID"
             echo "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID"
             echo "NEXT_PUBLIC_API_BASE_URL=$PUBLIC_URL"
-            echo "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID"
           } >> "$GITHUB_ENV"
-
-      - name: Build frontend (Next.js static export)
-        working-directory: frontend/web
-        env:
-          NEXT_PUBLIC_COGNITO_REGION: ${{ env.NEXT_PUBLIC_COGNITO_REGION }}
-          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-          NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
-          NEXT_PUBLIC_API_BASE_URL: ${{ env.NEXT_PUBLIC_API_BASE_URL }}
-        run: |
-          set -euo pipefail
-          : "${NEXT_PUBLIC_COGNITO_USER_POOL_ID:?empty at build time}"
-          : "${NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID:?empty at build time}"
-          : "${NEXT_PUBLIC_API_BASE_URL:?empty at build time}"
-          echo "Building with pool=$NEXT_PUBLIC_COGNITO_USER_POOL_ID api=$NEXT_PUBLIC_API_BASE_URL"
-          pnpm build
-
-      # Pass 2: re-runs os.walk(frontend/web/out) and ships the just-built
-      # bundle to S3. Cognito/API/etc are no-ops on this pass.
-      - name: Pulumi up (pass 2 — sync built frontend)
-        uses: pulumi/actions@v6
-        with:
-          command: up
-          stack-name: prod
-          work-dir: .
-
-      - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
-            --paths "/*"
 
       # VALIDAÇÃO PÓS-DEPLOY (INTEGRAÇÃO)
       # Cria ou reseta um usuário de teste no Cognito e executa os testes de integração
@@ -125,29 +90,29 @@ jobs:
       # estão funcionando na prática antes de liberar a nova versão.
       - name: Criar usuário de teste no Cognito
         env:
-          USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-          CLIENT_ID:    ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
-          TEST_EMAIL:   ${{ secrets.INTEGRATION_TEST_EMAIL }}
+          USER_POOL_ID:  ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          CLIENT_ID:     ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
+          TEST_EMAIL:    ${{ secrets.INTEGRATION_TEST_EMAIL }}
           TEST_PASSWORD: ${{ secrets.INTEGRATION_TEST_PASSWORD }}
         run: |
           set -euo pipefail
           uv run python - <<'EOF'
           import os, boto3
           from botocore.exceptions import ClientError
- 
+
           idp = boto3.client("cognito-idp")
-          pool  = os.environ["USER_POOL_ID"]
-          email = os.environ["TEST_EMAIL"]
-          pwd   = os.environ["TEST_PASSWORD"]
+          pool      = os.environ["USER_POOL_ID"]
+          email     = os.environ["TEST_EMAIL"]
+          pwd       = os.environ["TEST_PASSWORD"]
           client_id = os.environ["CLIENT_ID"]
- 
+
           # idempotente: remove se já existir
           try:
               idp.admin_delete_user(UserPoolId=pool, Username=email)
           except ClientError as e:
               if e.response["Error"]["Code"] != "UserNotFoundException":
                   raise
- 
+
           idp.admin_create_user(
               UserPoolId=pool,
               Username=email,
@@ -163,13 +128,13 @@ jobs:
           )
           print(f"Usuário de teste criado: {email}")
           EOF
- 
+
       - name: Rodar testes de integração
         env:
-          INTEGRATION_BASE_URL:       ${{ env.NEXT_PUBLIC_API_BASE_URL }}
-          INTEGRATION_USER_POOL_ID:   ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-          INTEGRATION_CLIENT_ID:      ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
-          INTEGRATION_TEST_EMAIL:     ${{ secrets.INTEGRATION_TEST_EMAIL }}
-          INTEGRATION_TEST_PASSWORD:  ${{ secrets.INTEGRATION_TEST_PASSWORD }}
+          INTEGRATION_BASE_URL:      ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+          INTEGRATION_USER_POOL_ID:  ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          INTEGRATION_CLIENT_ID:     ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
+          INTEGRATION_TEST_EMAIL:    ${{ secrets.INTEGRATION_TEST_EMAIL }}
+          INTEGRATION_TEST_PASSWORD: ${{ secrets.INTEGRATION_TEST_PASSWORD }}
         run: |
           uv run pytest tests/integration/ -v
