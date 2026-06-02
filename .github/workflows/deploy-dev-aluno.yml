@@ -23,6 +23,10 @@ jobs:
       PULUMI_ACCESS_TOKEN:        ${{ secrets.PULUMI_ACCESS_TOKEN }}
       UV_PROJECT_ENVIRONMENT:     venv
       INTEGRATION_STACK:          dev
+      # OAuth 2.0 / Google (issue #181). __main__.py reads these at `pulumi up`
+      # and injects them into the Cognito Google IdP (secret-marked in state).
+      GOOGLE_OAUTH_CLIENT_ID:     ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,13 +70,20 @@ jobs:
           USER_POOL_CLIENT_ID="$(pulumi stack output user_pool_client_id --stack dev)"
           PUBLIC_URL="$(pulumi stack output public_url --stack dev)"
           CLOUDFRONT_ID="$(pulumi stack output cloudfront_id --stack dev)"
-          : "${USER_POOL_ID:?}" : "${USER_POOL_CLIENT_ID:?}" : "${PUBLIC_URL:?}" : "${CLOUDFRONT_ID:?}"
+          COGNITO_DOMAIN="$(pulumi stack output cognito_hosted_ui_domain --stack dev)"
+          : "${USER_POOL_ID:?}" : "${USER_POOL_CLIENT_ID:?}" : "${PUBLIC_URL:?}" : "${CLOUDFRONT_ID:?}" : "${COGNITO_DOMAIN:?}"
+          # Register the deployed site's OAuth URLs alongside the committed
+          # localhost entries ([0]). Pass 2 (pulumi up) applies them to the client.
+          pulumi config set --path 'oauthCallbackUrls[1]' "$PUBLIC_URL/callback" --stack dev
+          pulumi config set --path 'oauthLogoutUrls[1]'   "$PUBLIC_URL/login"    --stack dev
           {
             echo "NEXT_PUBLIC_COGNITO_REGION=sa-east-1"
             echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$USER_POOL_ID"
             echo "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID"
             echo "NEXT_PUBLIC_API_BASE_URL=$PUBLIC_URL"
             echo "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID"
+            echo "NEXT_PUBLIC_COGNITO_DOMAIN=$COGNITO_DOMAIN"
+            echo "NEXT_PUBLIC_OAUTH_REDIRECT_URI=$PUBLIC_URL/callback"
           } >> "$GITHUB_ENV"
 
       - name: Build frontend
@@ -82,6 +93,8 @@ jobs:
           NEXT_PUBLIC_COGNITO_USER_POOL_ID:        ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
           NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
           NEXT_PUBLIC_API_BASE_URL:                ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_COGNITO_DOMAIN:              ${{ env.NEXT_PUBLIC_COGNITO_DOMAIN }}
+          NEXT_PUBLIC_OAUTH_REDIRECT_URI:          ${{ env.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
         run: pnpm build
 
       - name: Pulumi up (pass 2 — sync frontend)

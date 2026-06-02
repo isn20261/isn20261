@@ -1,6 +1,8 @@
 import pulumi
 import pulumi_aws as aws
+import pulumi_command as command
 import json
+import time
 import os
 import mimetypes
 
@@ -82,58 +84,11 @@ logs_table = aws.dynamodb.Table(
     ],
 )
 
-movies_import_bucket = aws.s3.Bucket(
-    f"movies-import-bucket-{env}",
-    bucket=pulumi.Output.concat("movies-import-", env, "-", aws.get_caller_identity().account_id),
-    acl="private",
-    force_destroy=True,
-)
-
-aws.s3.BucketPolicy(
-    f"movies-import-bucket-policy-{env}",
-    bucket=movies_import_bucket.id,
-    policy=pulumi.Output.all(movies_import_bucket.arn).apply(
-        lambda args: json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Principal": {"Service": "dynamodb.amazonaws.com"},
-                "Action": ["s3:GetObject", "s3:ListBucket"],
-                "Resource": [args[0], f"{args[0]}/*"],
-            }],
-        })
-    ),
-)
-
-movies_import_object = aws.s3.BucketObject(
-    f"movies-import-object-{env}",
-    bucket=movies_import_bucket.id,
-    key="movies.json",
-    source=pulumi.FileAsset("./datasets/movies.json"),
-    content_type="application/json",
-)
-
-movies_table = aws.dynamodb.Table(
-    f"movies-table-{env}",
-    name=f"Movies_{env}",
-    billing_mode="PAY_PER_REQUEST",
-    hash_key="movieId",
-    attributes=[aws.dynamodb.TableAttributeArgs(name="movieId", type="S")],
-    import_table=aws.dynamodb.TableImportTableArgs(
-        input_format="DYNAMODB_JSON",
-        s3_bucket_source=aws.dynamodb.TableImportTableS3BucketSourceArgs(
-            bucket=movies_import_bucket.id,
-            key_prefix="movies.json",
-        ),
-    ),
-)
-
 dynamodb_tables = {
     "email-to-sub": email_to_sub_table,
     "users": users_table,
     "historico": historico_table,
     "logs": logs_table,
-    "movies": movies_table,
 }
 
 for table_name, table in dynamodb_tables.items():
@@ -175,7 +130,6 @@ aws.iam.RolePolicy(
         users_table.arn,
         historico_table.arn,
         logs_table.arn,
-        movies_table.arn,
     ).apply(
         lambda arns: json.dumps(
             {
@@ -224,6 +178,9 @@ shared_layer = aws.lambda_.LayerVersion(
             "python/shared/db.py": pulumi.FileAsset("./functions/shared/db.py"),
             "python/shared/movies.py": pulumi.FileAsset(
                 "./functions/shared/movies.py"
+            ),
+            "python/shared/movies_catalogue.json": pulumi.FileAsset(
+                "./functions/shared/movies_catalogue.json"
             ),
             "python/shared/response.py": pulumi.FileAsset(
                 "./functions/shared/response.py"
@@ -469,11 +426,86 @@ aws.lambda_.Permission(
     source_arn=user_pool.arn,
 )
 
-user_pool_client = aws.cognito.UserPoolClient(
-    f"app-user-pool-client-{env}",
+# --- OAuth 2.0 / Hosted UI (issue #181) ---
+# Opt-in: only wired when the stack has OAuth config set. This keeps a
+# `pulumi up` on stacks without these values (e.g. prod) behaving exactly as
+# before. To enable on dev:
+#   pulumi config set cognitoDomainPrefix cinedica-dev
+#   pulumi config set --secret googleClientId <...>
+#   pulumi config set --secret googleClientSecret <...>
+#   pulumi config set --path oauthCallbackUrls[0] http://localhost:3000/callback
+#   pulumi config set --path oauthLogoutUrls[0]   http://localhost:3000/login
+cognito_domain_prefix = config.get("cognitoDomainPrefix")
+oauth_callback_urls = config.get_object("oauthCallbackUrls")
+oauth_enabled = bool(cognito_domain_prefix and oauth_callback_urls)
+
+user_pool_domain = None
+google_idp = None
+if oauth_enabled:
+    user_pool_domain = aws.cognito.UserPoolDomain(
+        f"app-user-pool-domain-{env}",
+        domain=cognito_domain_prefix,
+        user_pool_id=user_pool.id,
+    )
+    # Credentials come from CI-injected env vars (GitHub secrets
+    # GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET) when present, else
+    # from `pulumi config set --secret` for local `pulumi up`. The env-var path
+    # is wrapped in Output.secret so it stays secret-marked in state.
+    # Imported here (not relying on a module-level import) so this block stays
+    # self-contained — main's import set has drifted and no longer includes os.
+    import os
+
+    google_client_id_env = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    google_client_secret_env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    google_client_id = (
+        pulumi.Output.secret(google_client_id_env)
+        if google_client_id_env
+        else config.require_secret("googleClientId")
+    )
+    google_client_secret = (
+        pulumi.Output.secret(google_client_secret_env)
+        if google_client_secret_env
+        else config.require_secret("googleClientSecret")
+    )
+    google_idp = aws.cognito.IdentityProvider(
+        f"app-google-idp-{env}",
+        user_pool_id=user_pool.id,
+        provider_name="Google",
+        provider_type="Google",
+        provider_details={
+            "client_id": google_client_id,
+            "client_secret": google_client_secret,
+            "authorize_scopes": "openid email profile",
+        },
+        # Google's OIDC claims -> Cognito attributes. `username` <- `sub` keeps
+        # the federated user keyed by Google's stable subject id.
+        attribute_mapping={"email": "email", "username": "sub", "name": "name"},
+    )
+
+user_pool_client_args = dict(
     user_pool_id=user_pool.id,
+    # Keep password flow for existing email/senha login; REFRESH_TOKEN_AUTH is
+    # also what lets the SDK refresh OAuth-issued tokens.
     explicit_auth_flows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
     generate_secret=False,
+)
+user_pool_client_opts = None
+if oauth_enabled:
+    user_pool_client_args.update(
+        allowed_oauth_flows=["code"],
+        allowed_oauth_flows_user_pool_client=True,
+        allowed_oauth_scopes=["openid", "email", "profile"],
+        supported_identity_providers=["COGNITO", "Google"],
+        callback_urls=oauth_callback_urls,
+        logout_urls=config.require_object("oauthLogoutUrls"),
+    )
+    # The client references the Google provider by name, so it must exist first.
+    user_pool_client_opts = pulumi.ResourceOptions(depends_on=[google_idp])
+
+user_pool_client = aws.cognito.UserPoolClient(
+    f"app-user-pool-client-{env}",
+    **user_pool_client_args,
+    opts=user_pool_client_opts,
 )
 
 # --- 7. AWS Lambdas (protegidos por JWT) ---
@@ -483,7 +515,6 @@ env_vars = {
     "USERS_TABLE": users_table.name,
     "HISTORICO_TABLE": historico_table.name,
     "LOGS_TABLE": logs_table.name,
-    "MOVIES_TABLE": movies_table.name,
     "DISABLE_AUTH": "0",
 }
 
@@ -607,6 +638,7 @@ create_route("/api/v1/history", "GET", history_lambda, auth_id=auth)
 create_route("/api/v1/preferences", "GET", preferences_lambda, auth_id=auth)
 create_route("/api/v1/preferences", "POST", preferences_lambda, auth_id=auth)
 create_route("/api/v1/recommend", "GET", recommend_lambda, auth_id=auth)
+create_route("/api/v1/recommend_anon", "GET", recommend_lambda)  # public — no JWT; Lambda returns random movie without saving history
 create_route("/api/v1/watch-later", "GET", watch_later_lambda, auth_id=auth)
 create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=auth)
 
@@ -641,20 +673,6 @@ stage = aws.apigatewayv2.Stage(
 # --- 7. Frontend: S3, Automação de Upload e CloudFront ---
 
 bucket = aws.s3.Bucket(f"frontend-bucket-{env}")
-
-frontend_dir = "frontend/web/out"
-for root, dirs, files in os.walk(frontend_dir, followlinks=True):
-    for file in files:
-        file_path = os.path.join(root, file)
-        relative_path = os.path.relpath(file_path, frontend_dir)
-        content_type, _ = mimetypes.guess_type(file_path)
-        aws.s3.BucketObject(
-            f"static-file-{relative_path}-{env}",
-            bucket=bucket.id,
-            key=relative_path.replace("\\", "/"),
-            source=pulumi.FileAsset(file_path),
-            content_type=content_type or "application/octet-stream",
-        )
 
 oac = aws.cloudfront.OriginAccessControl(
     f"frontend-oac-{env}",
@@ -772,6 +790,33 @@ api_origin_request_policy = aws.cloudfront.OriginRequestPolicy(
 
 # --- 2. Distribuição do CloudFront ---
 
+# CloudFront Function (viewer-request) that maps subdirectory requests to their
+# index.html. The frontend is a Next.js static export with trailingSlash, so a
+# route like /login lives at the S3 key `login/index.html`. CloudFront's
+# default_root_object only resolves `/` -> index.html, not subpaths, so a direct
+# load or refresh of /login/ hit a missing key and returned 403 AccessDenied
+# (the bucket is private via OAC). This rewrite fixes deep-links/refresh on every
+# sub-route. It is attached only to the S3 default behavior, never to /api/v1/*.
+spa_rewrite_function = aws.cloudfront.Function(
+    f"spa-rewrite-{env}",
+    runtime="cloudfront-js-2.0",
+    comment=f"Map subdirectory requests to index.html for the static export ({env})",
+    publish=True,
+    code="""function handler(event) {
+    var request = event.request;
+    var uri = request.uri;
+    if (uri.endsWith('/')) {
+        request.uri += 'index.html';
+    } else {
+        var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+        if (lastSegment.indexOf('.') === -1) {
+            request.uri += '/index.html';
+        }
+    }
+    return request;
+}""",
+)
+
 distribution = aws.cloudfront.Distribution(
     f"cdn-{env}",
     enabled=True,
@@ -802,6 +847,12 @@ distribution = aws.cloudfront.Distribution(
         allowed_methods=["GET", "HEAD"],
         cached_methods=["GET", "HEAD"],
         cache_policy_id=s3_cache_policy.id,
+        function_associations=[
+            aws.cloudfront.DistributionDefaultCacheBehaviorFunctionAssociationArgs(
+                event_type="viewer-request",
+                function_arn=spa_rewrite_function.arn,
+            )
+        ],
     ),
     ordered_cache_behaviors=[
         aws.cloudfront.DistributionOrderedCacheBehaviorArgs(
@@ -866,7 +917,10 @@ if is_prod and domain_name:
         ],
     )
 
-# --- 8. Outputs ---
+# --- 7a. Frontend Build & Deploy ---
+
+deploy_ts = str(int(time.time()))
+public_url = pulumi.Output.concat("https://", distribution.domain_name)
 
 
 def format_url(args):
@@ -876,15 +930,184 @@ def format_url(args):
     return f"https://{dist_domain}"
 
 
+# Public-facing site URL — custom domain in prod, CloudFront otherwise. The
+# frontend's OAuth redirect_uri must equal this exactly; deriving it from the
+# CloudFront `public_url` would mismatch the Cognito callback URL on prod.
+# Computed here (not in the Outputs section) so the frontend build can consume
+# it below.
 final_public_url = pulumi.Output.all(
     distribution.domain_name, is_prod, domain_name
 ).apply(format_url)
+
+# Frontend build-time env. The OAuth vars are only injected when the stack
+# provisions the Hosted UI (oauth_enabled); without them signInWithGoogle
+# throws by design (frontend/web/lib/api/auth.ts). NEXT_PUBLIC_COGNITO_DOMAIN
+# mirrors the cognito_hosted_ui_domain output exactly.
+frontend_build_env = {
+    "NEXT_PUBLIC_COGNITO_REGION": region.region,
+    "NEXT_PUBLIC_COGNITO_USER_POOL_ID": user_pool.id,
+    "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID": user_pool_client.id,
+    # Public-facing URL (custom domain in prod), NOT the raw CloudFront domain.
+    # The site is served from https://cinedica.video, so calling the API at the
+    # cloudfront.net hostname is cross-origin and fails the CORS preflight (the
+    # API only allows the cinedica.video origin). final_public_url keeps the API
+    # call same-origin -> no preflight. Matches the dev workflow, which feeds the
+    # `public_url` stack output (= final_public_url) into this same var.
+    "NEXT_PUBLIC_API_BASE_URL": final_public_url,
+}
+if oauth_enabled:
+    frontend_build_env["NEXT_PUBLIC_COGNITO_DOMAIN"] = pulumi.Output.concat(
+        "https://", user_pool_domain.domain,
+        ".auth.", region.region, ".amazoncognito.com",
+    )
+    frontend_build_env["NEXT_PUBLIC_OAUTH_REDIRECT_URI"] = pulumi.Output.concat(
+        final_public_url, "/callback",
+    )
+
+frontend_build = command.local.Command(
+    f"build-frontend-{env}",
+    create="pnpm install --frozen-lockfile && pnpm build",
+    update="pnpm install --frozen-lockfile && pnpm build",
+    dir="./frontend/web",
+    environment=frontend_build_env,
+    triggers=[deploy_ts],
+    opts=pulumi.ResourceOptions(
+        depends_on=[user_pool, user_pool_client, distribution],
+    ),
+)
+
+
+# 2. Em vez do 'aws s3 sync', o Pulumi gerencia os arquivos nativamente
+frontend_dist_dir = "./frontend/web/out"
+
+# Esta função vai rodar durante o 'pulumi up' após o build terminar.
+# Retorna a lista de objetos criados para que a invalidação do CloudFront
+# possa depender deles — sem isso, a invalidação corre em paralelo com os
+# uploads (são criados neste callback `.apply()` desacoplado) e pode disparar
+# ANTES de o novo index.html chegar ao S3, fazendo o CloudFront recachear o
+# HTML antigo. Esse race é exatamente o que deixava cinedica.video servindo um
+# chunk JS velho com a URL da API no domínio cloudfront.net (erro de CORS).
+def upload_frontend_files(_):
+    uploaded = []
+    # Verifica se a pasta existe (evita quebras na primeira execução antes do build)
+    if not os.path.exists(frontend_dist_dir):
+        return uploaded
+
+    for root, dirs, files in os.walk(frontend_dist_dir):
+        for file in files:
+            file_path = os.path.join(root, file)
+            # Cria um caminho relativo para ser a chave (key) no S3 (ex: assets/index.js)
+            relative_path = os.path.relpath(file_path, frontend_dist_dir)
+            # Normaliza separadores do Windows (\) para chaves S3 (/), senão o
+            # deploy local geraria chaves com \ e divergiria do GitHub Actions.
+            s3_key = relative_path.replace(os.sep, "/")
+
+            # Descobre o Content-Type correto para o navegador não baixar o HTML/CSS como anexo
+            mime_type, _ = mimetypes.guess_type(file_path)
+            content_type = mime_type or "application/octet-stream"
+
+            # Cache-Control por tipo de arquivo:
+            #   - *.html: no-cache. O HTML é o ponto de entrada e referencia os
+            #     chunks JS por nome (hash de conteúdo). Forçar revalidação aqui
+            #     garante que um novo deploy seja pego de imediato, mesmo que a
+            #     invalidação do CloudFront falhe ou atrase.
+            #   - _next/static/*: imutável e cacheável "para sempre" — o nome do
+            #     arquivo muda a cada build (hash), então nunca serve conteúdo velho.
+            if s3_key.endswith(".html"):
+                cache_control = "no-cache"
+            elif s3_key.startswith("_next/static/"):
+                cache_control = "public, max-age=31536000, immutable"
+            else:
+                cache_control = "public, max-age=3600"
+
+            # O Pulumi assume o controle do arquivo aqui
+            uploaded.append(
+                aws.s3.BucketObjectv2(
+                    f"frontend-file-{relative_path}",
+                    bucket=bucket.id,
+                    key=s3_key,
+                    source=pulumi.FileAsset(file_path),
+                    content_type=content_type,
+                    cache_control=cache_control,
+                    opts=pulumi.ResourceOptions(
+                        depends_on=[bucket_policy] # Garante que as permissões existem
+                    )
+                )
+            )
+    return uploaded
+
+# O output do build engatilha a leitura e upload dos arquivos de forma sincronizada.
+# `uploaded_files` é um Output[list[BucketObjectv2]] resolvido depois que todos os
+# BucketObjectv2 são criados.
+uploaded_files = frontend_build.id.apply(upload_frontend_files)
+
+# A ordem build -> upload de TODOS os arquivos -> invalidação é garantida por
+# DEPENDÊNCIA DE DADOS, não por `depends_on`. Passar `uploaded_files`
+# (Output[list]) direto em `depends_on` quebra: o Pulumi tenta colocar a lista
+# resolvida num set e estoura `TypeError: unhashable type: 'list'`. Em vez disso,
+# derivamos um marcador a partir de `uploaded_files` (contagem de objetos) e o
+# costuramos tanto no comando quanto nos `triggers` — o Pulumi precisa resolver
+# esse Output (esperando todos os uploads) antes de criar/rodar o comando.
+uploads_marker = uploaded_files.apply(lambda objs: str(len(objs)))
+
+
+# 3. Invalidação do CloudFront (Apenas quando houver um novo build)
+# Como não usamos mais o sync, precisamos isolar a invalidação.
+#
+# IMPORTANTE: o path precisa ir ENTRE ASPAS SIMPLES (`'/*'`). Sem aspas, o shell
+# faz glob de `/*` contra o filesystem ANTES de chamar o `aws`, expandindo para
+# os diretórios da raiz (/bin /etc /home ...) — foi exatamente isso que gerou uma
+# invalidação com "Quantity": 27 (paths errados) em vez do curinga, deixando o
+# cache de `/` (index.html) sem ser limpo. Com aspas, o `aws` recebe `/*` literal
+# e invalida tudo.
+#
+# `create` E `update` apontam para o MESMO comando: hoje a invalidação roda a
+# cada deploy porque `triggers=[deploy_ts]` força a recriação do recurso (e o
+# `create` dispara). Mas se algum dia `deploy_ts` for estabilizado para parar o
+# diff perpétuo, o recurso passaria a sofrer `update` em vez de replace — sem um
+# `update` definido, a invalidação pararia de rodar silenciosamente. Definir os
+# dois mantém a garantia "invalida a cada deploy" independente dessa escolha.
+#
+# A dependência de dados que garante "uploads -> invalidação" vem de
+# `uploads_marker` nos `triggers` (o Pulumi resolve esse Output, esperando todos
+# os BucketObjectv2, antes de criar o recurso). NÃO costuramos o marker no
+# comando shell — fazer isso (ex.: `# uploads=N`) é frágil e foi o que mascarou
+# o bug do glob acima.
+invalidate_cmd = distribution.id.apply(
+    lambda dist_id: f"aws cloudfront create-invalidation --distribution-id {dist_id} --paths '/*'"
+)
+cloudfront_invalidation = command.local.Command(
+    f"invalidate-cloudfront-{env}",
+    create=invalidate_cmd,
+    update=invalidate_cmd,
+    # `uploads_marker` entra nos triggers para (a) forçar re-execução quando o
+    # conjunto de arquivos muda e (b) criar a dependência de dados que faz o
+    # Pulumi esperar todos os uploads antes de invalidar. `deploy_ts` muda a cada
+    # deploy, garantindo que a invalidação rode sempre.
+    triggers=[deploy_ts, uploads_marker],
+    opts=pulumi.ResourceOptions(
+        depends_on=[frontend_build, distribution],
+    ),
+)
+
+# --- 8. Outputs ---
+# format_url / final_public_url are defined above (section 7a) so the frontend
+# build can consume the resolved public URL for the OAuth redirect_uri.
 
 pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
 pulumi.export("cloudfront_id", distribution.id)
 pulumi.export("user_pool_id", user_pool.id)
 pulumi.export("user_pool_client_id", user_pool_client.id)
+if oauth_enabled:
+    # Hosted-UI base URL the frontend uses to build /oauth2/authorize + /oauth2/token.
+    pulumi.export(
+        "cognito_hosted_ui_domain",
+        pulumi.Output.concat(
+            "https://", user_pool_domain.domain,
+            ".auth.", region.region, ".amazoncognito.com",
+        ),
+    )
 
 # ---------------------------------------------------------------------------
 # NOVO — Outputs relacionados ao SES

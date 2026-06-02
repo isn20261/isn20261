@@ -40,7 +40,10 @@ def handler(event, context):
 
 
 def _get(sub: str):
-    user = get_user(sub)
+    try:
+        user = get_user(sub)
+    except Exception:
+        return server_error()
     if not user:
         return unauthorized()
     return ok(_db_to_api(user.get("preferences") or {}))

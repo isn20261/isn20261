@@ -416,6 +416,7 @@ dependencies = [
     { name = "pulumi-aws" },
     { name = "pulumi-aws-apigateway" },
     { name = "pulumi-awsx" },
+    { name = "pulumi-command" },
 ]
 
 [package.dev-dependencies]
@@ -435,6 +436,7 @@ requires-dist = [
     { name = "pulumi-aws", specifier = ">=7.0.0,<8.0.0" },
     { name = "pulumi-aws-apigateway", specifier = ">=3.0.0,<4.0.0" },
     { name = "pulumi-awsx", specifier = ">=3.0.0,<4.0.0" },
+    { name = "pulumi-command", specifier = ">=1.2.1,<2.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -771,6 +773,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/cf/1eae9105ecc9a2f0a1d7951bdb952ac8f3493e6e69aec7be078e8464c265/pulumi_awsx-3.4.0.tar.gz", hash = "sha256:9ab423c3048fe18b71e9cb4f1c05cc0c9239b165226cec8762405e7b303525ab", size = 100479, upload-time = "2026-04-03T11:00:25.935Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1b/cf/e102fa0844ee288f0b0974480f87983be173fc8f99da390342add20a68d8/pulumi_awsx-3.4.0-py3-none-any.whl", hash = "sha256:a61f20f481606880da859374246ec3150cc3e1f4c62d2e0e8fdd3b2cfed1310d", size = 118026, upload-time = "2026-04-03T11:00:24.724Z" },
+]
+
+[[package]]
+name = "pulumi-command"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "parver" },
+    { name = "pulumi" },
+    { name = "semver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cf/56/b7f66c9d2e4536b24a5bbe4e743093c7cdd689343d86f020419f4897a88d/pulumi_command-1.2.1.tar.gz", hash = "sha256:cbc9281a6571701ac5db598dac0246a058875b62f28c40c7cc0fcdc36898918d", size = 33022, upload-time = "2026-03-04T00:23:25.84Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/ce/1e5f30f868ba0827ca3311b0b171b12606e30c05e864714764d8d943fef1/pulumi_command-1.2.1-py3-none-any.whl", hash = "sha256:c7e465338e4363f114ddff99ee249260c7770ef4451b970ab51f7e8a37c9b030", size = 36861, upload-time = "2026-03-04T00:23:24.571Z" },
 ]
 
 [[package]]

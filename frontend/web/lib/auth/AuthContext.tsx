@@ -24,6 +24,8 @@ import {
   signIn as seamSignIn,
   signUp as seamSignUp,
   signOut as seamSignOut,
+  startGoogleSignIn as seamStartGoogleSignIn,
+  completeGoogleSignIn as seamCompleteGoogleSignIn,
   type Session,
 } from "@/lib/api/auth";
 import { setOnUnauthorized } from "@/lib/api/client";
@@ -38,6 +40,8 @@ type AuthContextValue = {
   user: { email: string; sub: string } | null;
   signIn: (creds: Credentials) => Promise<void>;
   signUp: (creds: Credentials) => Promise<SignUpResult>;
+  signInWithGoogle: (from?: string) => Promise<void>;
+  completeGoogleSignIn: (code: string, state: string) => Promise<void>;
   signOut: () => void;
 };
 
@@ -75,6 +79,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Kicks off the Hosted-UI redirect; the browser leaves the app, so there is
+  // no session to set here — that happens on return via completeGoogleSignIn.
+  const signInWithGoogle = useCallback(
+    (from?: string): Promise<void> => seamStartGoogleSignIn(from),
+    [],
+  );
+
+  const completeGoogleSignIn = useCallback(async (code: string, state: string) => {
+    const next = await seamCompleteGoogleSignIn(code, state);
+    setSession(next);
+  }, []);
+
   const signOut = useCallback(() => {
     seamSignOut();
     setSession(null);
@@ -98,6 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     signIn,
     signUp,
+    signInWithGoogle,
+    completeGoogleSignIn,
     signOut,
   };
 

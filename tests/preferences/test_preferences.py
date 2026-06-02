@@ -299,3 +299,18 @@ def test_post_null_field_treated_as_absent(monkeypatch):
     user = users().get_item(Key={"sub": "user-1"})["Item"]
     assert user["preferences"]["ageRating"] == "PG-13"
     assert user["preferences"]["genres"] == ["action"]
+
+
+def test_get_returns_500_on_dynamodb_error(monkeypatch):
+    from unittest.mock import MagicMock
+    from botocore.exceptions import ClientError
+    fake_table = MagicMock()
+    fake_table.get_item.side_effect = ClientError(
+        {"Error": {"Code": "InternalServerError", "Message": "DynamoDB failure"}},
+        "GetItem",
+    )
+    import shared.db as db_module
+    monkeypatch.setattr(db_module, "users", lambda: fake_table)
+    monkeypatch.setattr("preferences.preferences.get_sub", lambda e: "user-1")
+    resp = handler({}, None)
+    assert resp["statusCode"] == 500

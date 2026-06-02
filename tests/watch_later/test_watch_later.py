@@ -1,6 +1,7 @@
 import json
 
 from boto3.dynamodb.conditions import Key
+from conftest import seed_movies
 from shared.db import users, logs
 from watch_later import handler
 
@@ -73,19 +74,20 @@ def test_get_preserves_insertion_order(monkeypatch):
 
 
 def test_post_valid_movieid_in_catalogue(monkeypatch):
+    seed_movies()
     monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
     users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
 
     event = {
         "httpMethod": "POST",
-        "body": json.dumps({"movieId": "tt0133093"}),
+        "body": json.dumps({"movieId": "the-matrix-1999"}),
     }
     resp = handler(event, None)
     assert resp["statusCode"] == 201
 
     user = users().get_item(Key={"sub": "user-1"})["Item"]
     assert len(user["watchLater"]) == 1
-    assert user["watchLater"][0]["movieId"] == "tt0133093"
+    assert user["watchLater"][0]["movieId"] == "the-matrix-1999"
     assert user["watchLater"][0]["title"] == "The Matrix"
 
 
@@ -160,14 +162,15 @@ def test_post_movieid_too_long(monkeypatch):
 
 
 def test_post_writes_audit_log(monkeypatch):
+    seed_movies()
     monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
     users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
 
-    handler({"httpMethod": "POST", "body": json.dumps({"movieId": "tt0133093"})}, None)
+    handler({"httpMethod": "POST", "body": json.dumps({"movieId": "the-matrix-1999"})}, None)
 
     log_items = logs().query(KeyConditionExpression=Key("sub").eq("user-1"))["Items"]
     log = next(item for item in log_items if item["action"] == "WATCH_LATER_ADDED")
-    assert log["metadata"]["movieId"] == "tt0133093"
+    assert log["metadata"]["movieId"] == "the-matrix-1999"
     assert log["metadata"]["title"] == "The Matrix"
 
 
@@ -201,19 +204,27 @@ def test_get_response_shape(monkeypatch):
     assert set(body[0].keys()) == {"title", "added-at"}
 
 
-def test_post_movie_not_in_mock_catalogue_resolves_title_from_db(monkeypatch):
-    """movieId absent from MOCK_CATALOGUE but present in Movies table stores the real title."""
-    from shared.db import movies
-    movies().put_item(
-        Item={"movieId": "tt0111161", "title": "The Shawshank Redemption", "genre": "drama"}
-    )
+def test_post_movie_in_catalogue_resolves_title(monkeypatch):
+    """movieId present in the catalogue stores the proper title."""
+    seed_movies()
     monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
     users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
 
-    resp = handler({"httpMethod": "POST", "body": json.dumps({"movieId": "tt0111161"})}, None)
+    resp = handler({"httpMethod": "POST", "body": json.dumps({"movieId": "the-matrix-1999"})}, None)
     assert resp["statusCode"] == 201
     user = users().get_item(Key={"sub": "user-1"})["Item"]
-    assert user["watchLater"][0]["title"] == "The Shawshank Redemption"
+    assert user["watchLater"][0]["title"] == "The Matrix"
+
+
+def test_post_movie_not_in_catalogue_uses_movie_id_as_title(monkeypatch):
+    """movieId not found in catalogue falls back to using the movieId as title."""
+    monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
+    users().put_item(Item={"sub": "user-1", "email": "a@b.com"})
+
+    resp = handler({"httpMethod": "POST", "body": json.dumps({"movieId": "unknown-film-id"})}, None)
+    assert resp["statusCode"] == 201
+    user = users().get_item(Key={"sub": "user-1"})["Item"]
+    assert user["watchLater"][0]["title"] == "unknown-film-id"
 
 
 def test_post_user_not_found_returns_401(monkeypatch):
@@ -223,3 +234,18 @@ def test_post_user_not_found_returns_401(monkeypatch):
     resp = handler(event, None)
     assert resp["statusCode"] == 401
     assert "Item" not in users().get_item(Key={"sub": "ghost-sub"})
+
+
+def test_get_returns_500_on_dynamodb_error(monkeypatch):
+    from unittest.mock import MagicMock
+    from botocore.exceptions import ClientError
+    fake_table = MagicMock()
+    fake_table.get_item.side_effect = ClientError(
+        {"Error": {"Code": "InternalServerError", "Message": "DynamoDB failure"}},
+        "GetItem",
+    )
+    import shared.db as db_module
+    monkeypatch.setattr(db_module, "users", lambda: fake_table)
+    monkeypatch.setattr("watch_later.watch_later.get_sub", lambda event: "user-1")
+    resp = handler({"httpMethod": "GET"}, None)
+    assert resp["statusCode"] == 500
