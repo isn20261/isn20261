@@ -980,40 +980,73 @@ frontend_build = command.local.Command(
 # 2. Em vez do 'aws s3 sync', o Pulumi gerencia os arquivos nativamente
 frontend_dist_dir = "./frontend/web/out"
 
-# Esta função vai rodar durante o 'pulumi up' após o build terminar
+# Esta função vai rodar durante o 'pulumi up' após o build terminar.
+# Retorna a lista de objetos criados para que a invalidação do CloudFront
+# possa depender deles — sem isso, a invalidação corre em paralelo com os
+# uploads (são criados neste callback `.apply()` desacoplado) e pode disparar
+# ANTES de o novo index.html chegar ao S3, fazendo o CloudFront recachear o
+# HTML antigo. Esse race é exatamente o que deixava cinedica.video servindo um
+# chunk JS velho com a URL da API no domínio cloudfront.net (erro de CORS).
 def upload_frontend_files(_):
+    uploaded = []
     # Verifica se a pasta existe (evita quebras na primeira execução antes do build)
     if not os.path.exists(frontend_dist_dir):
-        return
+        return uploaded
 
     for root, dirs, files in os.walk(frontend_dist_dir):
         for file in files:
             file_path = os.path.join(root, file)
             # Cria um caminho relativo para ser a chave (key) no S3 (ex: assets/index.js)
             relative_path = os.path.relpath(file_path, frontend_dist_dir)
-            
+            # Normaliza separadores do Windows (\) para chaves S3 (/), senão o
+            # deploy local geraria chaves com \ e divergiria do GitHub Actions.
+            s3_key = relative_path.replace(os.sep, "/")
+
             # Descobre o Content-Type correto para o navegador não baixar o HTML/CSS como anexo
             mime_type, _ = mimetypes.guess_type(file_path)
             content_type = mime_type or "application/octet-stream"
 
+            # Cache-Control por tipo de arquivo:
+            #   - *.html: no-cache. O HTML é o ponto de entrada e referencia os
+            #     chunks JS por nome (hash de conteúdo). Forçar revalidação aqui
+            #     garante que um novo deploy seja pego de imediato, mesmo que a
+            #     invalidação do CloudFront falhe ou atrase.
+            #   - _next/static/*: imutável e cacheável "para sempre" — o nome do
+            #     arquivo muda a cada build (hash), então nunca serve conteúdo velho.
+            if s3_key.endswith(".html"):
+                cache_control = "no-cache"
+            elif s3_key.startswith("_next/static/"):
+                cache_control = "public, max-age=31536000, immutable"
+            else:
+                cache_control = "public, max-age=3600"
+
             # O Pulumi assume o controle do arquivo aqui
-            aws.s3.BucketObjectv2(
-                f"frontend-file-{relative_path}",
-                bucket=bucket.id,
-                key=relative_path,
-                source=pulumi.FileAsset(file_path),
-                content_type=content_type,
-                opts=pulumi.ResourceOptions(
-                    depends_on=[bucket_policy] # Garante que as permissões existem
+            uploaded.append(
+                aws.s3.BucketObjectv2(
+                    f"frontend-file-{relative_path}",
+                    bucket=bucket.id,
+                    key=s3_key,
+                    source=pulumi.FileAsset(file_path),
+                    content_type=content_type,
+                    cache_control=cache_control,
+                    opts=pulumi.ResourceOptions(
+                        depends_on=[bucket_policy] # Garante que as permissões existem
+                    )
                 )
             )
+    return uploaded
 
-# O output do build engatilha a leitura e upload dos arquivos de forma sincronizada
-frontend_build.id.apply(upload_frontend_files)
+# O output do build engatilha a leitura e upload dos arquivos de forma sincronizada.
+# `uploaded_files` é um Output[list] resolvido depois que todos os BucketObjectv2
+# são criados; a invalidação abaixo depende dele para rodar SÓ após os uploads.
+uploaded_files = frontend_build.id.apply(upload_frontend_files)
 
 
 # 3. Invalidação do CloudFront (Apenas quando houver um novo build)
-# Como não usamos mais o sync, precisamos isolar a invalidação
+# Como não usamos mais o sync, precisamos isolar a invalidação.
+# depends_on inclui `uploaded_files` para garantir a ordem: build -> upload de
+# TODOS os arquivos -> invalidação. Sem isso a invalidação poderia limpar o
+# cache antes de o novo HTML existir no S3, e o CloudFront recachearia o antigo.
 cloudfront_invalidation = command.local.Command(
     f"invalidate-cloudfront-{env}",
     create=distribution.id.apply(
@@ -1021,7 +1054,7 @@ cloudfront_invalidation = command.local.Command(
     ),
     triggers=[deploy_ts], # Executa a cada novo deploy_ts
     opts=pulumi.ResourceOptions(
-        depends_on=[frontend_build, distribution],
+        depends_on=[frontend_build, distribution, uploaded_files],
     ),
 )
 
