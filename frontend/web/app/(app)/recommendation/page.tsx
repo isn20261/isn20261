@@ -41,6 +41,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bookmark, BookmarkCheck, Play, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { ServiceBadge } from "@/components/ServiceBadge";
+import { PosterImage } from "@/components/PosterImage";
+import { posterAt } from "@/lib/posters";
 import { SnackRecipeModal } from "@/components/SnackRecipeModal";
 import {
   getRecommendationReal,
@@ -250,9 +252,12 @@ export default function RecommendationPage() {
           /* non-tokenized: h-170 ambient region height primitive */
           className="absolute top-0 left-0 right-0 h-170 overflow-hidden animate-fade-in"
         >
-          {/* non-tokenized: blur-[48px] + brightness-[.45] + scale-110 ambient recipe (no token) */}
+          {/* non-tokenized: blur-[48px] + brightness-[.45] + scale-110 ambient recipe (no token).
+              Uses the tiny (~1KB) variant — it's blurred to oblivion anyway, no point
+              downloading the full poster twice. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={movie.poster}
+            src={posterAt(movie.poster, "tiny")}
             alt=""
             className="absolute inset-0 w-full h-full object-cover blur-[48px] brightness-[.45] scale-110"
           />
@@ -387,19 +392,19 @@ export default function RecommendationPage() {
             )}
           </div>
 
-          {/* RIGHT: full poster — never cropped (object-contain). Sticky on md+. */}
-          {movie.poster && (
-            <div className="order-1 md:order-2 md:sticky md:top-22 animate-fade-up [animation-delay:120ms]">
-              {/* non-tokenized: max-w-[320px] poster width + aspect-2/3 portrait ratio primitives */}
-              <div className="mx-auto w-full max-w-[320px] aspect-2/3 overflow-hidden rounded-lg bg-surface-2 border border-border-strong shadow-lg">
-                <img
-                  src={movie.poster}
-                  alt={`Pôster: ${movie.title}`}
-                  className="w-full h-full object-contain bg-black"
-                />
-              </div>
-            </div>
-          )}
+          {/* RIGHT: full poster — never cropped (object-contain). Sticky on md+.
+              PosterImage blur-ups from a 1KB placeholder and falls back to a film
+              icon if the (sometimes-404) poster fails. */}
+          <div className="order-1 md:order-2 md:sticky md:top-22 animate-fade-up [animation-delay:120ms]">
+            {/* non-tokenized: max-w-[320px] poster width + aspect-2/3 portrait ratio primitives */}
+            <PosterImage
+              src={movie.poster}
+              alt={`Pôster: ${movie.title}`}
+              width="hero"
+              fit="contain"
+              className="mx-auto w-full max-w-[320px] aspect-2/3 rounded-lg border border-border-strong shadow-lg"
+            />
+          </div>
         </div>
 
         {/* Similar films rail */}
@@ -436,16 +441,13 @@ function SimilarRail({ items }: { items: ReadonlyArray<SimilarMovie> }) {
         {items.map((m) => (
           <article key={m.movieId} className="shrink-0 w-37.5">
             {/* non-tokenized: aspect-2/3 portrait poster ratio primitive */}
-            <div className="w-37.5 aspect-2/3 overflow-hidden rounded-md bg-surface-2 border border-border">
-              {m.poster && (
-                <img
-                  src={m.poster}
-                  alt={`Pôster: ${m.title}`}
-                  loading="lazy"
-                  className="w-full h-full object-cover block"
-                />
-              )}
-            </div>
+            <PosterImage
+              src={m.poster}
+              alt={`Pôster: ${m.title}`}
+              width="card"
+              fit="cover"
+              className="w-37.5 aspect-2/3 rounded-md border border-border"
+            />
             <p className="mt-2 text-13 font-semibold text-text-primary line-clamp-2 leading-tight">
               {m.title}
             </p>
@@ -464,9 +466,9 @@ function SimilarRail({ items }: { items: ReadonlyArray<SimilarMovie> }) {
 }
 
 /**
- * Richer loading skeleton — mirrors the recommendation hero layout so the
- * page doesn't feel empty while the snack-recipe modal is up. Tokens-only;
- * uses the same pt/px/max-w primitives as the live hero above.
+ * Loading skeleton — mirrors the live poster-led layout (text column + poster
+ * column inside the max-w-300 shell) so the skeleton→content swap doesn't shift.
+ * Tokens-only; reuses the same shell / grid / poster primitives as the hero.
  */
 function SkeletonHero() {
   return (
@@ -474,35 +476,35 @@ function SkeletonHero() {
       className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
       aria-busy="true"
     >
-      {/* non-tokenized: backdrop height + scrim recipe mirrors the live hero */}
-      <div
-        aria-hidden
-        className="absolute top-0 left-0 right-0 h-[360px] md:h-[560px] overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-surface animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,10,11,0.30)_0%,rgba(10,10,11,0.10)_30%,rgba(10,10,11,0.70)_70%,var(--color-bg)_100%)]" />
-      </div>
-      <div className="relative z-10">
-        {/* non-tokenized: pt-[220px] / pt-[280px] / max-w-[880px] match live hero */}
-        <div className="pt-[220px] md:pt-[280px] px-6 md:px-14 max-w-[880px]">
-          <div className="h-4 w-48 rounded-sm bg-surface-2 animate-pulse mb-4" />
-          <div className="h-10 md:h-14 w-3/4 rounded-md bg-surface-2 animate-pulse mb-3" />
-          <div className="h-10 md:h-14 w-1/2 rounded-md bg-surface-2 animate-pulse mb-6" />
-          <div className="flex gap-3 mb-7">
-            <div className="h-5 w-20 rounded-sm bg-surface-2 animate-pulse" />
-            <div className="h-5 w-12 rounded-sm bg-surface-2 animate-pulse" />
-            <div className="h-5 w-16 rounded-sm bg-surface-2 animate-pulse" />
+      {/* non-tokenized: max-w-300 shell + md:pt-22 / pt-12 match the live hero */}
+      <div className="relative z-10 mx-auto max-w-300 px-6 md:px-10">
+        <div className="grid grid-cols-1 gap-7 pt-12 md:grid-cols-[1fr_minmax(300px,360px)] md:gap-12 md:pt-22 md:items-start">
+          {/* LEFT: text skeleton */}
+          <div className="order-2 md:order-1">
+            <div className="h-4 w-56 rounded-sm bg-surface-2 animate-pulse mb-4" />
+            <div className="h-10 md:h-12 w-3/4 rounded-md bg-surface-2 animate-pulse mb-3" />
+            <div className="h-10 md:h-12 w-1/2 rounded-md bg-surface-2 animate-pulse mb-5" />
+            <div className="flex gap-3 mb-6">
+              <div className="h-5 w-24 rounded-sm bg-surface-2 animate-pulse" />
+              <div className="h-5 w-12 rounded-sm bg-surface-2 animate-pulse" />
+              <div className="h-5 w-16 rounded-sm bg-surface-2 animate-pulse" />
+            </div>
+            {/* non-tokenized: max-w-150 body width matches live synopsis */}
+            <div className="space-y-2.5 mb-6 max-w-150">
+              <div className="h-4 w-full rounded-sm bg-surface-2 animate-pulse" />
+              <div className="h-4 w-11/12 rounded-sm bg-surface-2 animate-pulse" />
+              <div className="h-4 w-3/4 rounded-sm bg-surface-2 animate-pulse" />
+            </div>
+            <div className="flex flex-wrap gap-2.5">
+              <div className="h-12 w-44 rounded-md bg-surface-2 animate-pulse" />
+              <div className="h-12 w-56 rounded-md bg-surface-2 animate-pulse" />
+            </div>
           </div>
-          {/* non-tokenized: max-w-[640px] body width primitive matches live hero */}
-          <div className="space-y-2.5 mb-8 max-w-[640px]">
-            <div className="h-4 w-full rounded-sm bg-surface-2 animate-pulse" />
-            <div className="h-4 w-11/12 rounded-sm bg-surface-2 animate-pulse" />
-            <div className="h-4 w-3/4 rounded-sm bg-surface-2 animate-pulse" />
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            <div className="h-12 w-44 rounded-md bg-surface-2 animate-pulse" />
-            <div className="h-12 w-56 rounded-md bg-surface-2 animate-pulse" />
-            <div className="h-12 w-44 rounded-md bg-surface-2 animate-pulse" />
+
+          {/* RIGHT: poster skeleton — same dimensions as the live poster */}
+          <div className="order-1 md:order-2">
+            {/* non-tokenized: max-w-[320px] aspect-2/3 poster primitives */}
+            <div className="mx-auto w-full max-w-[320px] aspect-2/3 rounded-lg bg-surface-2 animate-pulse" />
           </div>
         </div>
       </div>
