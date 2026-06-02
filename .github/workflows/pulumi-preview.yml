@@ -11,20 +11,13 @@ on:
 
 jobs:
   preview:
-    name: Preview (${{ matrix.stack }})
+    name: Preview (dev)
     runs-on: ubuntu-latest
     if: github.event.pull_request.head.repo.fork == false
     permissions:
       contents: read
       pull-requests: write
       issues: write
-    strategy:
-      # Preview both stacks independently. `fail-fast: false` so a failure on
-      # one stack (e.g. a prod-only auth/permission issue) still lets the other
-      # stack's preview run and report.
-      fail-fast: false
-      matrix:
-        stack: [dev, prod]
     steps:
       - uses: actions/checkout@v4
 
@@ -44,11 +37,10 @@ jobs:
         id: preview
         run: |
           set -euo pipefail
-          uv run pulumi preview --stack ${{ matrix.stack }} --non-interactive 2>&1 | tee /tmp/preview.txt
+          uv run pulumi preview --stack dev --non-interactive 2>&1 | tee /tmp/preview.txt
           echo "status=success" >> "$GITHUB_OUTPUT"
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: sa-east-1
@@ -61,15 +53,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const stack = '${{ matrix.stack }}';
             const text = fs.existsSync('/tmp/preview.txt')
               ? fs.readFileSync('/tmp/preview.txt', 'utf8')
               : '(sem output — preview não chegou a rodar)';
             const status = '${{ steps.preview.outputs.status }}' === 'success' ? '✅' : '❌';
-            // One stable comment per stack (distinct marker) so dev and prod
-            // each get their own updated-in-place comment instead of clobbering.
-            const marker = `<!-- pulumi-preview-comment-${stack} -->`;
-            const body = `${marker}\n## ${status} Pulumi Preview — stack \`${stack}\`\n\`\`\`\n${text.slice(0, 65000)}\n\`\`\``;
+            const marker = '<!-- pulumi-preview-comment -->';
+            const body = `${marker}\n## ${status} Pulumi Preview — stack \`dev\`\n\`\`\`\n${text.slice(0, 65000)}\n\`\`\``;
             const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
