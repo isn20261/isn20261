@@ -38,10 +38,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bookmark, BookmarkCheck, Play, RefreshCw } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { ServiceBadge } from "@/components/ServiceBadge";
 import { SnackRecipeModal } from "@/components/SnackRecipeModal";
 import {
   getRecommendationReal,
+  getRecommendationAnon,
   type RecommendedMovie,
 } from "@/lib/api/recommend.real";
 import { addWatchLater } from "@/lib/api/watch-later";
@@ -52,6 +54,7 @@ import { SNACK_RECIPES } from "@/lib/data/snack-recipes";
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
 export default function RecommendationPage() {
+  const { isAuthenticated } = useAuth();
   const [movie, setMovie] = useState<RecommendedMovie | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">(
     "loading",
@@ -85,7 +88,7 @@ export default function RecommendationPage() {
     void (async () => {
       setStatus("loading");
       setError(null);
-      const res = await getRecommendationReal();
+      const res = await (isAuthenticated ? getRecommendationReal() : getRecommendationAnon());
       if (!res.ok) {
         setError(res.error);
         setStatus("error");
@@ -103,7 +106,7 @@ export default function RecommendationPage() {
       setSaved(false);
       setStatus("ready");
     })();
-  }, []);
+  }, [isAuthenticated]);
 
   async function handleAnother() {
     setStatus("loading");
@@ -116,7 +119,7 @@ export default function RecommendationPage() {
       }
       return next;
     });
-    const res = await getRecommendationReal();
+    const res = await (isAuthenticated ? getRecommendationReal() : getRecommendationAnon());
     if (!res.ok) {
       setError(res.error);
       setStatus("error");
@@ -237,11 +240,17 @@ export default function RecommendationPage() {
       className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
     >
       {/* Backdrop — fades in on its own */}
-      {/* non-tokenized: backdrop image suppressed until issue #70 adds backdrop URL — gradient scrims provide tonal hierarchy on their own. */}
       <div
         aria-hidden
         className="absolute top-0 left-0 right-0 h-[360px] md:h-[560px] overflow-hidden animate-fade-in"
       >
+        {movie.poster && (
+          <img
+            src={movie.poster}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+        )}
         {/* non-tokenized: stacked top-down + left-right legibility scrims */}
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,10,11,0.30)_0%,rgba(10,10,11,0.10)_30%,rgba(10,10,11,0.70)_70%,var(--color-bg)_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(10,10,11,0.85)_0%,rgba(10,10,11,0.20)_60%)]" />
@@ -303,20 +312,22 @@ export default function RecommendationPage() {
                 Assistir em {primaryService.name}
               </a>
             )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saved}
-              aria-pressed={saved}
-              className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-surface-2 border border-border hover:border-border-strong text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-70 disabled:cursor-default disabled:hover:border-border"
-            >
-              {saved ? (
-                <BookmarkCheck size={16} aria-hidden />
-              ) : (
-                <Bookmark size={16} aria-hidden />
-              )}
-              {saved ? "Salvo" : "Salvar para assistir depois"}
-            </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saved}
+                aria-pressed={saved}
+                className="inline-flex items-center gap-2 h-12 px-5 rounded-md bg-surface-2 border border-border hover:border-border-strong text-text-primary text-14 font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:opacity-70 disabled:cursor-default disabled:hover:border-border"
+              >
+                {saved ? (
+                  <BookmarkCheck size={16} aria-hidden />
+                ) : (
+                  <Bookmark size={16} aria-hidden />
+                )}
+                {saved ? "Salvo" : "Salvar para assistir depois"}
+              </button>
+            )}
             {/* Note: no disabled/aria-busy here — entering "loading" replaces the entire screen with the skeleton in the branch above, so the button is unmounted while a fetch is in flight. */}
             <button
               type="button"

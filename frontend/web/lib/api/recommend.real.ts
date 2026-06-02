@@ -39,7 +39,7 @@
  * screen layer (plan 13-02) is responsible for rendering the empty state.
  */
 
-import { apiGet, type ApiError, type Result } from "@/lib/api/client";
+import { apiGet, apiGetNoAuth, type ApiError, type Result } from "@/lib/api/client";
 
 // -----------------------------------------------------------------------------
 // Wire types — literal shape returned by functions/recommend/recommend.py
@@ -55,6 +55,7 @@ export type RecommendationResponse = {
   readonly title: string;
   readonly genre: string;
   readonly "streaming-services": ReadonlyArray<RecommendationServiceWire>;
+  readonly poster?: string | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -71,6 +72,7 @@ export type RecommendedMovie = {
   readonly title: string;
   readonly genre: string;
   readonly streamingServices: ReadonlyArray<RecommendedService>;
+  readonly poster?: string;
   // Optional fields — not returned by the current Lambda. Kept for
   // forward-compat with issue #70 (OMDb + Streaming Availability enrichment).
   readonly year?: number;
@@ -100,6 +102,7 @@ function adaptResponse(wire: RecommendationResponse): RecommendedMovie {
     title: wire.title,
     genre: wire.genre,
     streamingServices,
+    ...(wire.poster ? { poster: wire.poster } : {}),
   };
 }
 
@@ -109,6 +112,13 @@ function adaptResponse(wire: RecommendationResponse): RecommendedMovie {
 
 export async function getRecommendationReal(): Promise<Result<RecommendedMovie | null, ApiError>> {
   const result = await apiGet<RecommendationResponse | null>("/api/v1/recommend");
+  if (!result.ok) return result;
+  if (result.data === null) return { ok: true, data: null };
+  return { ok: true, data: adaptResponse(result.data) };
+}
+
+export async function getRecommendationAnon(): Promise<Result<RecommendedMovie | null, ApiError>> {
+  const result = await apiGetNoAuth<RecommendationResponse | null>("/api/v1/recommend_anon");
   if (!result.ok) return result;
   if (result.data === null) return { ok: true, data: null };
   return { ok: true, data: adaptResponse(result.data) };
