@@ -932,17 +932,48 @@ if is_prod and domain_name:
 deploy_ts = str(int(time.time()))
 public_url = pulumi.Output.concat("https://", distribution.domain_name)
 
+
+def format_url(args):
+    dist_domain, prod_mode, custom_domain = args
+    if prod_mode and custom_domain:
+        return f"https://{custom_domain}"
+    return f"https://{dist_domain}"
+
+
+# Public-facing site URL — custom domain in prod, CloudFront otherwise. The
+# frontend's OAuth redirect_uri must equal this exactly; deriving it from the
+# CloudFront `public_url` would mismatch the Cognito callback URL on prod.
+# Computed here (not in the Outputs section) so the frontend build can consume
+# it below.
+final_public_url = pulumi.Output.all(
+    distribution.domain_name, is_prod, domain_name
+).apply(format_url)
+
+# Frontend build-time env. The OAuth vars are only injected when the stack
+# provisions the Hosted UI (oauth_enabled); without them signInWithGoogle
+# throws by design (frontend/web/lib/api/auth.ts). NEXT_PUBLIC_COGNITO_DOMAIN
+# mirrors the cognito_hosted_ui_domain output exactly.
+frontend_build_env = {
+    "NEXT_PUBLIC_COGNITO_REGION": region.region,
+    "NEXT_PUBLIC_COGNITO_USER_POOL_ID": user_pool.id,
+    "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID": user_pool_client.id,
+    "NEXT_PUBLIC_API_BASE_URL": public_url,
+}
+if oauth_enabled:
+    frontend_build_env["NEXT_PUBLIC_COGNITO_DOMAIN"] = pulumi.Output.concat(
+        "https://", user_pool_domain.domain,
+        ".auth.", region.region, ".amazoncognito.com",
+    )
+    frontend_build_env["NEXT_PUBLIC_OAUTH_REDIRECT_URI"] = pulumi.Output.concat(
+        final_public_url, "/callback",
+    )
+
 frontend_build = command.local.Command(
     f"build-frontend-{env}",
     create="pnpm install --frozen-lockfile && pnpm build",
     update="pnpm install --frozen-lockfile && pnpm build",
     dir="./frontend/web",
-    environment={
-        "NEXT_PUBLIC_COGNITO_REGION": region.region,
-        "NEXT_PUBLIC_COGNITO_USER_POOL_ID": user_pool.id,
-        "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID": user_pool_client.id,
-        "NEXT_PUBLIC_API_BASE_URL": public_url,
-    },
+    environment=frontend_build_env,
     triggers=[deploy_ts],
     opts=pulumi.ResourceOptions(
         depends_on=[user_pool, user_pool_client, distribution],
@@ -970,18 +1001,8 @@ frontend_deploy = command.local.Command(
 )
 
 # --- 8. Outputs ---
-
-
-def format_url(args):
-    dist_domain, prod_mode, custom_domain = args
-    if prod_mode and custom_domain:
-        return f"https://{custom_domain}"
-    return f"https://{dist_domain}"
-
-
-final_public_url = pulumi.Output.all(
-    distribution.domain_name, is_prod, domain_name
-).apply(format_url)
+# format_url / final_public_url are defined above (section 7a) so the frontend
+# build can consume the resolved public URL for the OAuth redirect_uri.
 
 pulumi.export("api_internal_url", api.api_endpoint)
 pulumi.export("public_url", final_public_url)
