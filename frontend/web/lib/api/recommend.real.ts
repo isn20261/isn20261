@@ -51,11 +51,31 @@ export type RecommendationServiceWire = {
   readonly url: string;
 };
 
+// Lightweight similar-movie card returned in the `similar` array (rail).
+export type SimilarMovieWire = {
+  readonly movieId: string;
+  readonly title: string;
+  readonly year?: number | null;
+  readonly genre: string;
+  readonly poster?: string | null;
+  readonly imdbRating?: number | null;
+};
+
 export type RecommendationResponse = {
   readonly title: string;
   readonly genre: string;
-  readonly "streaming-services": ReadonlyArray<RecommendationServiceWire>;
+  readonly "streaming-services": ReadonlyArray<RecommendationServiceWire> | null;
   readonly poster?: string | null;
+  // Enriched fields the Lambda returns as of the recommend-rich-fields change.
+  // All optional/nullable — the adapter coerces absent values to `undefined`.
+  readonly year?: number | null;
+  readonly rated?: string | null;
+  readonly director?: string | null;
+  readonly runtime?: number | null;
+  readonly imdbRating?: number | null;
+  readonly synopsis?: string | null;
+  readonly cast?: ReadonlyArray<string> | null;
+  readonly similar?: ReadonlyArray<SimilarMovieWire> | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -68,26 +88,57 @@ export type RecommendedService = {
   readonly url: string;
 };
 
+// Screen-facing similar-movie card (camelCase, the rail consumes this).
+export type SimilarMovie = {
+  readonly movieId: string;
+  readonly title: string;
+  readonly genre: string;
+  readonly year?: number;
+  readonly poster?: string;
+  readonly imdbRating?: number;
+};
+
 export type RecommendedMovie = {
   readonly title: string;
   readonly genre: string;
   readonly streamingServices: ReadonlyArray<RecommendedService>;
   readonly poster?: string;
-  // Optional fields — not returned by the current Lambda. Kept for
-  // forward-compat with issue #70 (OMDb + Streaming Availability enrichment).
+  // Enriched fields. As of the recommend-rich-fields change the live Lambda
+  // returns year / rated / director / runtime / imdbRating / synopsis / cast /
+  // similar. Still optional so the screen degrades gracefully if any are absent
+  // (older Lambda, partial data).
   readonly year?: number;
   readonly runtime?: string;
   readonly rating?: string;
+  readonly imdbRating?: number;
   readonly match?: number;
   readonly director?: string;
   readonly cast?: ReadonlyArray<string>;
   readonly synopsis?: string;
   readonly mood?: ReadonlyArray<string>;
+  readonly similar?: ReadonlyArray<SimilarMovie>;
 };
 
 // -----------------------------------------------------------------------------
 // Adapter — sole kebab→camel boundary in the frontend
 // -----------------------------------------------------------------------------
+
+// Coerce nullable wire values to `undefined` so optional screen fields stay off
+// when the backend omits them (null) rather than rendering empty UI.
+function opt<T>(v: T | null | undefined): T | undefined {
+  return v ?? undefined;
+}
+
+function adaptSimilar(wire: SimilarMovieWire): SimilarMovie {
+  return {
+    movieId: wire.movieId,
+    title: wire.title,
+    genre: wire.genre,
+    ...(wire.year != null ? { year: wire.year } : {}),
+    ...(wire.poster ? { poster: wire.poster } : {}),
+    ...(wire.imdbRating != null ? { imdbRating: wire.imdbRating } : {}),
+  };
+}
 
 function adaptResponse(wire: RecommendationResponse): RecommendedMovie {
   // The bracket-string access below is the ONE place in the frontend that
@@ -98,11 +149,29 @@ function adaptResponse(wire: RecommendationResponse): RecommendedMovie {
     image: s.image,
     url: s.url,
   }));
+  // runtime arrives as a number of minutes (e.g. 175); the screen renders a
+  // human string. rated (cert, e.g. "A") maps to the screen's `rating` slot.
+  const runtime =
+    wire.runtime != null ? `${wire.runtime} min` : undefined;
+  const cast =
+    wire.cast && wire.cast.length > 0 ? [...wire.cast] : undefined;
+  const similar =
+    wire.similar && wire.similar.length > 0
+      ? wire.similar.map(adaptSimilar)
+      : undefined;
   return {
     title: wire.title,
     genre: wire.genre,
     streamingServices,
     ...(wire.poster ? { poster: wire.poster } : {}),
+    ...(opt(wire.year) !== undefined ? { year: wire.year as number } : {}),
+    ...(runtime !== undefined ? { runtime } : {}),
+    ...(opt(wire.rated) !== undefined ? { rating: wire.rated as string } : {}),
+    ...(opt(wire.imdbRating) !== undefined ? { imdbRating: wire.imdbRating as number } : {}),
+    ...(opt(wire.director) !== undefined ? { director: wire.director as string } : {}),
+    ...(opt(wire.synopsis) !== undefined ? { synopsis: wire.synopsis as string } : {}),
+    ...(cast !== undefined ? { cast } : {}),
+    ...(similar !== undefined ? { similar } : {}),
   };
 }
 
