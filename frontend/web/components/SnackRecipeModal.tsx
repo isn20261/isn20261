@@ -1,17 +1,29 @@
 "use client";
 
 /**
- * A two-state floating card shown while the recommendation fetch is in
- * flight: a centered recipe modal during loading, a small popcorn bubble
- * in the top-right when minimized. The two states are separate elements
- * cross-faded via opacity — no morphing layout, just fade-out / fade-in.
+ * A two-state floating card shown around the recommendation fetch: a recipe
+ * card anchored BOTTOM-RIGHT while loading (and for a short linger after), then
+ * a small popcorn bubble in the same corner once it auto-collapses.
  *
- * `isLoading` from the consumer forces the open state. `userOpen` is the
- * self-managed re-open after a load completes. When loading kicks in again
- * (next /recommend fetch), userOpen resets so the modal re-opens centered.
+ * Why bottom-right (not centered): the /recommend fetch is very fast, so a
+ * centered modal used to flash in and out jarringly. Anchoring the card where
+ * the bubble lives means the open→mini transition is an in-place shrink, not a
+ * fly-across, and a brief post-fetch linger keeps the recipe readable even on a
+ * sub-second fetch.
+ *
+ * Timing:
+ *   - isLoading true            → card open (forced).
+ *   - isLoading true → false    → keep the card open for LINGER_MS, then
+ *                                 auto-collapse to the bubble.
+ *   - user clicks minimize      → collapse immediately (cancels the linger).
+ *   - user clicks the bubble    → re-open the card (stays until minimized).
+ *   - next fetch (isLoading true) → re-opens.
+ *
+ * The two visual states are separate elements cross-faded via opacity — no
+ * layout morphing.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Minimize2, Popcorn } from "lucide-react";
 import type { SnackRecipe } from "@/lib/data/snack-recipes";
 import { cn } from "@/lib/utils";
@@ -21,23 +33,63 @@ type Props = {
   isLoading: boolean;
 };
 
+// How long the card lingers after a fetch completes before auto-collapsing.
+const LINGER_MS = 2500;
+
 export function SnackRecipeModal({ recipe, isLoading }: Props) {
-  const [userOpen, setUserOpen] = useState(false);
+  // The card is open when any of these hold:
+  //   - isLoading (derived from props — no state needed)
+  //   - lingering: the brief post-fetch hold before auto-collapse
+  //   - reopened: the user re-opened it from the bubble
+  // Minimizing clears lingering+reopened.
+  const [lingering, setLingering] = useState(false);
+  const [reopened, setReopened] = useState(false);
+  // Tracks the previous isLoading to detect the true→false edge during render
+  // (the React-recommended "adjust state while rendering" pattern — avoids
+  // synchronous setState inside an effect, i.e. react-hooks/set-state-in-effect).
+  const [prevLoading, setPrevLoading] = useState(isLoading);
+  const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  function clearLinger() {
+    if (lingerTimer.current) {
+      clearTimeout(lingerTimer.current);
+      lingerTimer.current = null;
+    }
+  }
+
+  // Edge-detect during render: when a fetch just finished, start lingering.
+  if (prevLoading !== isLoading) {
+    setPrevLoading(isLoading);
+    if (!isLoading) setLingering(true); // fetch settled → hold briefly
+  }
+
+  // The effect only SCHEDULES the collapse timer (and cleans it up). The
+  // setState happens in the timer callback, outside the render pass.
   useEffect(() => {
-    if (isLoading) setUserOpen(false);
-  }, [isLoading]);
+    if (!lingering) return;
+    lingerTimer.current = setTimeout(() => {
+      lingerTimer.current = null;
+      setLingering(false);
+    }, LINGER_MS);
+    return clearLinger;
+  }, [lingering]);
 
-  const open = isLoading || userOpen;
+  const open = isLoading || lingering || reopened;
+
+  function minimizeNow() {
+    clearLinger();
+    setLingering(false);
+    setReopened(false);
+  }
 
   return (
     <>
-      {/* Open state — centered recipe card */}
+      {/* Open state — recipe card, anchored bottom-right (in-place with the bubble). */}
       <div
         aria-hidden={!open}
         className={cn(
-          // non-tokenized: top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 centering recipe; w-[min(420px,92vw)] modal width primitive.
-          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[min(420px,92vw)] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
+          // non-tokenized: bottom-6 right-6 anchor; w-[min(380px,92vw)] modal width primitive.
+          "fixed bottom-6 right-6 z-50 w-[min(380px,92vw)] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
           open ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
       >
@@ -50,10 +102,9 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
             </p>
             <button
               type="button"
-              onClick={() => setUserOpen(false)}
-              disabled={isLoading}
+              onClick={minimizeNow}
               aria-label="Minimizar"
-              className="text-text-muted hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
+              className="text-text-muted hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 rounded-sm"
             >
               <Minimize2 size={16} aria-hidden />
             </button>
@@ -87,16 +138,16 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
         </div>
       </div>
 
-      {/* Mini state — top-right popcorn bubble */}
+      {/* Mini state — bottom-right popcorn bubble (same corner as the card). */}
       <button
         type="button"
         aria-hidden={open}
         aria-label="Ver receita"
         tabIndex={open ? -1 : 0}
-        onClick={() => setUserOpen(true)}
+        onClick={() => setReopened(true)}
         className={cn(
-          // non-tokenized: top-20 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
-          "fixed top-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+          // non-tokenized: bottom-6 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
+          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
           open ? "opacity-0 pointer-events-none" : "opacity-100",
         )}
       >

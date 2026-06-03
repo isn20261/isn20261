@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import {
@@ -34,10 +34,37 @@ import { relativeTime } from "@/lib/time";
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
 export default function WatchLaterPage() {
+  const router = useRouter();
   const [items, setItems] = useState<readonly WatchLaterItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPicking, setIsPicking] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   useApiErrorUx(error);
+
+  // "Surpreenda-me desta lista" (issue #221): pick a random saved movie and
+  // open its /movie?id=<movieId> detail page. The v1 /watch-later GET returns
+  // only titles, so we resolve title→movieId through the catalogue seam, loaded
+  // via a dynamic import so the ~647KB catalogue is fetched on click, not on
+  // page load. findMovieIdByTitle also unwraps the `live:<title>` form that
+  // recommendation saves produce. Titles with no catalogue match are skipped;
+  // if none resolve we fall back to a fresh recommendation.
+  async function handleSurprise() {
+    if (!items || items.length === 0 || isPicking) return;
+    setIsPicking(true);
+    try {
+      const { findMovieIdByTitle } = await import("@/lib/api/movie");
+      const resolvable = items
+        .map((item) => findMovieIdByTitle(item.title))
+        .filter((id): id is string => id !== null);
+      const picked =
+        resolvable.length > 0
+          ? resolvable[Math.floor(Math.random() * resolvable.length)]
+          : undefined;
+      router.push(picked ? `/movie?id=${picked}` : "/recommendation");
+    } finally {
+      setIsPicking(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -75,21 +102,23 @@ export default function WatchLaterPage() {
             salvos.
           </p>
         </div>
-        <Link
-          href="/recommendation"
-          aria-disabled={count === 0}
+        <button
+          type="button"
+          onClick={handleSurprise}
+          disabled={count === 0 || isPicking}
+          aria-busy={isPicking}
           className={`
             inline-flex items-center gap-2 h-12 px-5 rounded-md
             bg-accent hover:bg-accent-hover text-on-accent
             text-14 font-semibold
             transition-colors duration-150
             focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2
-            ${count === 0 ? "pointer-events-none opacity-50" : ""}
+            disabled:pointer-events-none disabled:opacity-50
           `}
         >
           <Sparkles size={16} aria-hidden />
           Surpreenda-me desta lista
-        </Link>
+        </button>
       </div>
 
       {isLoading || items === null ? (

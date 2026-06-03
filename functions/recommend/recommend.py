@@ -1,55 +1,97 @@
 """GET /recommend — auth optional (works for anonymous and logged-in users).
 
-Recommendation engine is MOCKED. Replace _omdb_lookup() with a real
-OMDB API call when OMDB_API_KEY is set — see inconsistencias.md.
-
 Authenticated users:
   - recommendations filtered by their stored preferences
   - result saved to Historico table
 Anonymous users:
   - random recommendation from the full catalogue
 
-Environment variables:
-  OMDB_API_KEY (optional, for future OMDB integration), + shared db/auth vars
+Environment variables: shared db/auth vars
 """
 import os
 import random
 from datetime import datetime, timezone
 
 from shared.auth import get_sub
-from shared.db import get_user, historico, movies, write_log
+from shared.db import get_user, historico, write_log
+from shared.movies import get_all_movies
 from shared.response import ok, unauthorized, server_error
 
-OMDB_API_KEY = os.environ.get("OMDB_API_KEY")
+
+SIMILAR_LIMIT = 12
 
 
-def _scan_all_movies() -> list:
-    table = movies()
-    resp = table.scan()
-    items = list(resp.get("Items", []))
-    while "LastEvaluatedKey" in resp:
-        resp = table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
-        items.extend(resp.get("Items", []))
-    return items
+def _genre_set(movie_genre: str) -> set[str]:
+    return {g.strip() for g in (movie_genre or "").lower().split(",") if g.strip()}
+
+
+def _genre_matches(movie_genre: str, wanted: list[str]) -> bool:
+    return bool(_genre_set(movie_genre) & set(wanted))
 
 
 def _pick_movie(preferences: dict) -> dict | None:
-    """Return one movie matching user preferences, or a random one. Returns None if table empty."""
     genres = [g.lower() for g in (preferences.get("genres") or [])]
-    all_movies = _scan_all_movies()
+    all_movies = get_all_movies()
     if not all_movies:
         return None
 
     if genres:
-        candidates = [m for m in all_movies if m.get("genre", "").lower() in genres]
+        candidates = [m for m in all_movies if _genre_matches(m.get("genre", ""), genres)]
         pool = candidates or all_movies
     else:
         pool = all_movies
     return random.choice(pool)
 
 
+def _similar_card(movie: dict) -> dict:
+    """Lightweight shape for the 'similar films' rail (no synopsis/cast)."""
+    return {
+        "movieId":    movie["movieId"],
+        "title":      movie["title"],
+        "year":       movie.get("year"),
+        "genre":      movie["genre"],
+        "poster":     movie.get("poster"),
+        "imdbRating": movie.get("imdbRating"),
+    }
+
+
+def _pick_similar(target: dict) -> list[dict]:
+    """Up to SIMILAR_LIMIT movies similar to `target`, as lightweight cards.
+
+    Primary rule (strict): a similar movie's genre set must be a SUPERSET of the
+    target's — it contains ALL of the target's genres, and may have more
+    (e.g. target {crime, drama} -> only movies tagged with at least crime AND
+    drama). Falls back to "shares at least one genre" only when the strict rule
+    yields nothing (≈62/1000 movies have no strict superset peer). The target
+    itself is always excluded. Result is a random sample (up to the limit).
+    """
+    target_genres = _genre_set(target.get("genre", ""))
+    target_id = target.get("movieId")
+    if not target_genres:
+        return []
+
+    pool = [
+        m for m in get_all_movies()
+        if m.get("movieId") != target_id
+    ]
+
+    strict = [m for m in pool if target_genres.issubset(_genre_set(m.get("genre", "")))]
+    chosen = strict
+    if not chosen:
+        # Fallback: anything sharing at least one genre with the target.
+        chosen = [m for m in pool if target_genres & _genre_set(m.get("genre", ""))]
+
+    if len(chosen) > SIMILAR_LIMIT:
+        chosen = random.sample(chosen, SIMILAR_LIMIT)
+    else:
+        # Shuffle so a short list isn't always in catalogue order.
+        chosen = random.sample(chosen, len(chosen))
+
+    return [_similar_card(m) for m in chosen]
+
+
 def handler(event, context):
-    sub = get_sub(event)  # may be None for anonymous requests
+    sub = get_sub(event)
 
     if sub:
         user = get_user(sub)
@@ -92,5 +134,8 @@ def handler(event, context):
         "runtime":            movie.get("runtime"),
         "poster":             movie.get("poster"),
         "imdbRating":         movie.get("imdbRating"),
+        "synopsis":           movie.get("synopsis"),
+        "cast":               movie.get("cast"),
+        "similar":            _pick_similar(movie),
         "streaming-services": movie.get("streamingServices"),
     })
