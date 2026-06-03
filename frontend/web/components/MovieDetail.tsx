@@ -41,7 +41,7 @@ export function MovieDetail({ movie, eyebrow, actions }: MovieDetailProps) {
   return (
     <section
       key={movie.title}
-      className="relative isolate w-full min-h-screen overflow-hidden bg-bg"
+      className="relative isolate w-full min-h-screen bg-bg"
     >
       {/* Ambient backdrop — the poster, heavily blurred + darkened, for mood
           only. Posters are portrait, so this never crops meaningfully; the
