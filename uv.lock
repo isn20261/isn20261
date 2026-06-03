@@ -426,6 +426,7 @@ dev = [
     { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "requests" },
     { name = "ruff" },
 ]
 
@@ -445,6 +446,7 @@ dev = [
     { name = "pyjwt", specifier = ">=2" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
+    { name = "requests", specifier = ">=2.0" },
     { name = "ruff", specifier = ">=0.15.14" },
 ]
 
