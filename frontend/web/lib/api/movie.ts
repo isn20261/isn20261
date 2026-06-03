@@ -153,11 +153,25 @@ function adapt(m: CatalogueMovie): RecommendedMovie {
 
 /**
  * Resolve a watch-later item title to its catalogue movieId, or null if the
- * title isn't in the catalogue (e.g. legacy `live:…` saves). Sync + lightweight
- * so the watch-later button can call it after a dynamic import.
+ * title isn't in the catalogue. Sync + lightweight so the watch-later button can
+ * call it after a dynamic import.
+ *
+ * Items saved from the recommendation screen carry a `live:<title>` handle: the
+ * live /recommend Lambda exposes no movieId, so recommendation.page.tsx saves
+ * `live:${movie.title}`, and the watch-later Lambda — failing to resolve that as
+ * a catalogue id — echoes the whole string back as the row's `title` (see
+ * functions/watch_later/watch_later.py). So most real rows arrive prefixed; we
+ * strip a leading `live:` and retry against the catalogue title. Without this
+ * the "Surpreenda-me" button never resolves a saved movie and always falls back
+ * to /recommendation.
  */
 export function findMovieIdByTitle(title: string): string | null {
-  return idByTitle.get(title) ?? null;
+  const direct = idByTitle.get(title);
+  if (direct) return direct;
+  if (title.startsWith("live:")) {
+    return idByTitle.get(title.slice("live:".length)) ?? null;
+  }
+  return null;
 }
 
 /**
