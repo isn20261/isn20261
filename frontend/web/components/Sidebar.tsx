@@ -22,32 +22,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Clock, Sparkles, Bookmark, User } from "lucide-react";
+import { User } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { AccountMenu } from "@/components/AccountMenu";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { NAV_ITEMS, isActive } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-
-type NavItem = {
-  href: string;
-  label: string;
-  Icon: typeof Home;
-  exact: boolean;
-  primary?: boolean;
-};
-
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/",               label: "Início",          Icon: Home,     exact: true },
-  { href: "/history",        label: "Histórico",       Icon: Clock,    exact: false },
-  { href: "/recommendation", label: "Escolher filme",  Icon: Sparkles, exact: false, primary: true },
-  { href: "/watch-later",    label: "Assistir depois", Icon: Bookmark, exact: false },
-  { href: "/preferences",    label: "Preferências",    Icon: User,     exact: false },
-] as const;
-
-function isActive(pathname: string, href: string, exact: boolean): boolean {
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -123,53 +104,13 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile tab bar — visible below md, hidden at md+ */}
-      {/* non-tokenized: bg-bg/90 (slightly more opaque than rail to mask scroll content underneath) — also approximation of reference rgba(8,8,9,...) */}
-      <nav
-        className="flex md:hidden fixed left-0 right-0 bottom-0 h-tab grid grid-cols-5 items-center px-1.5 bg-bg/90 backdrop-blur-lg border-t border-border z-30"
-        aria-label="Navegação principal"
-      >
-        {NAV_ITEMS.map(({ href, label, Icon, exact, primary }) => {
-          const active = isActive(pathname, href, exact);
-
-          if (primary) {
-            return (
-              <Link
-                key={href}
-                href={href}
-                title={label}
-                aria-label={label}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1 p-2"
-                )}
-              >
-                {/* non-tokenized: w-[52px] h-[52px] is the exact reference 52×52 px CTA (no Tailwind core scale step at 52) — see UI-SPEC §Spacing Scale row 13 */}
-                {/* non-tokenized: shadow-[0_6px_18px_rgba(245,181,68,0.35)] is the amber CTA glow — see UI-SPEC §Color Escape Hatches #1. Promote to --shadow-cta-glow if Phase 6 hero CTA reuses it. */}
-                <span className="w-[52px] h-[52px] rounded-full bg-accent text-on-accent flex items-center justify-center shadow-[0_6px_18px_rgba(245,181,68,0.35)]">
-                  <Icon size={22} />
-                </span>
-              </Link>
-            );
-          }
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={label}
-              aria-label={label}
-              className={cn(
-                "flex flex-col items-center justify-center gap-1 p-2 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
-                active ? "text-text-primary" : "text-text-muted hover:text-text-primary"
-              )}
-            >
-              <Icon size={20} />
-              {/* non-tokenized: text-[10px] is below Phase 2 type scale (smallest = text-12) — see UI-SPEC §Typography */}
-              <span className="text-[10px] font-medium leading-none">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      {/* Mobile tab bar — visible below md, hidden at md+. Markup + the #216
+          alignment fix live in <MobileTabBar>; Sidebar only supplies the
+          fixed-to-viewport chrome here. */}
+      <MobileTabBar
+        pathname={pathname}
+        className="md:hidden fixed left-0 right-0 bottom-0 z-30"
+      />
     </>
   );
 }
