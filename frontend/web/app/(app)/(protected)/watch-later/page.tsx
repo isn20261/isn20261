@@ -56,11 +56,13 @@ export default function WatchLaterPage() {
   }
 
   // "Surpreenda-me desta lista" (issue #221): pick a random saved movie and
-  // open its /movie/[movieId] detail page. The v1 /watch-later GET returns only
-  // titles, so we resolve title→movieId through the catalogue seam, loaded via
-  // a dynamic import so the ~647KB catalogue is fetched on click, not on page
-  // load. Titles that don't map to the catalogue are skipped; if none resolve
-  // we fall back to a fresh recommendation.
+all back to a fresh recommendation.
+  // open its /movie?id=<movieId> detail page. The v1 /watch-later GET returns
+  // only titles, so we resolve title→movieId through the catalogue seam, loaded
+  // via a dynamic import so the ~647KB catalogue is fetched on click, not on
+  // page load. findMovieIdByTitle also unwraps the `live:<title>` form that
+  // recommendation saves produce. Titles with no catalogue match are skipped;
+  // if none resolve we fall back to a fresh recommendation.
   async function handleSurprise() {
     if (!items || items.length === 0 || isPicking) return;
     setIsPicking(true);
