@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => "/recommendation",
+  useSearchParams: () => ({ get: vi.fn().mockReturnValue(null) }),
 }));
 
 vi.mock("@/lib/auth/AuthContext", () => ({
