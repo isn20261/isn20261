@@ -348,6 +348,16 @@ if ses_use_domain_identity and zone:
         records=["v=spf1 include:amazonses.com ~all"],
     )
 
+    # DMARC record
+    aws.route53.Record(
+        f"ses-dmarc-record-{env}",
+        zone_id=zone.zone_id,
+        name=f"_dmarc.{domain_name}",
+        type="TXT",
+        ttl=300,
+        records=[f"v=DMARC1; p=none; rua=mailto:{ses_reply_to_email}"],
+    )
+
 from_email_address_formatted = f"{ses_from_name} <{ses_from_email}>"
 
 if is_prod:
@@ -638,7 +648,8 @@ create_route("/api/v1/history", "GET", history_lambda, auth_id=auth)
 create_route("/api/v1/preferences", "GET", preferences_lambda, auth_id=auth)
 create_route("/api/v1/preferences", "POST", preferences_lambda, auth_id=auth)
 create_route("/api/v1/recommend", "GET", recommend_lambda, auth_id=auth)
-create_route("/api/v1/recommend_anon", "GET", recommend_lambda)  # public — no JWT; Lambda returns random movie without saving history
+# public — no JWT; Lambda returns random movie without saving history
+create_route("/api/v1/recommend_anon", "GET", recommend_lambda)
 create_route("/api/v1/watch-later", "GET", watch_later_lambda, auth_id=auth)
 create_route("/api/v1/watch-later", "POST", watch_later_lambda, auth_id=auth)
 
