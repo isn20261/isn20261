@@ -15,13 +15,13 @@
  * `GET /movie/{id}` Lambda, only `getMovieById` swaps to an `apiGet` call —
  * callers and the screen stay untouched.
  *
- * Bundle note: the full catalogue (~647KB) is imported here. The detail page
- * consumes it at BUILD time (generateStaticParams + server render under
- * `output: "export"`), so it never ships to the client there. The watch-later
- * button pulls `findMovieIdByTitle` via a dynamic `import()` so the catalogue
- * loads as a separate on-click chunk, not in the initial page JS. In v2 the
- * /watch-later response will carry `movieId` and the title→id lookup — the only
- * reason the client touches the catalogue at all — disappears.
+ * Bundle note: the full catalogue (~647KB) is imported here. It is code-split
+ * into the `/movie` route's client chunk (loaded only when that page is opened)
+ * and pulled by the watch-later button via a dynamic `import()` (loaded only on
+ * click) — never in the initial JS of any other page. In v2 the /watch-later
+ * response will carry `movieId`, so the title→id lookup — the only reason the
+ * client touches the whole catalogue — disappears, and `getMovieById` can swap
+ * to a real `GET /movie/{id}` fetch that ships no catalogue at all.
  */
 
 import type {
@@ -150,11 +150,6 @@ function adapt(m: CatalogueMovie): RecommendedMovie {
 // -----------------------------------------------------------------------------
 // Public surface
 // -----------------------------------------------------------------------------
-
-/** Every catalogue movieId — feeds the detail page's `generateStaticParams`. */
-export function getAllMovieIds(): string[] {
-  return CATALOGUE.map((m) => m.movieId);
-}
 
 /**
  * Resolve a watch-later item title to its catalogue movieId, or null if the

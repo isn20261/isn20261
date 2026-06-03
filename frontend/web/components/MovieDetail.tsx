@@ -191,7 +191,7 @@ function SimilarRail({ items }: { items: ReadonlyArray<SimilarMovie> }) {
         {items.map((m) => (
           <a
             key={m.movieId}
-            href={`/movie/${m.movieId}`}
+            href={`/movie?id=${m.movieId}`}
             className="shrink-0 w-37.5 group rounded-md focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
           >
             <article>

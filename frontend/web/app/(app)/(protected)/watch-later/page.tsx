@@ -59,7 +59,7 @@ export default function WatchLaterPage() {
         resolvable.length > 0
           ? resolvable[Math.floor(Math.random() * resolvable.length)]
           : undefined;
-      router.push(picked ? `/movie/${picked}` : "/recommendation");
+      router.push(picked ? `/movie?id=${picked}` : "/recommendation");
     } finally {
       setIsPicking(false);
     }
