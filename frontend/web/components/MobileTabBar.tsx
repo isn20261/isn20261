@@ -30,6 +30,7 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { NAV_ITEMS, isActive } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ type MobileTabBarProps = {
 };
 
 export function MobileTabBar({ pathname, className }: MobileTabBarProps) {
+  const router = useRouter();
   return (
     <nav
       className={cn(
@@ -50,6 +52,16 @@ export function MobileTabBar({ pathname, className }: MobileTabBarProps) {
     >
       {NAV_ITEMS.map(({ href, label, Icon, exact, primary }) => {
         const active = isActive(pathname, href, exact);
+        // #220/#222: tapping the recommendation tab while already on it forces a
+        // fresh pick (clicking a Link to the current route is otherwise a no-op).
+        // The `?r=<ts>` cache-buster changes the URL so the page re-fetches.
+        const handleRecommendClick =
+          primary && active
+            ? (e: React.MouseEvent) => {
+                e.preventDefault();
+                router.push(`${href}?r=${Date.now()}`);
+              }
+            : undefined;
 
         if (primary) {
           return (
@@ -58,6 +70,7 @@ export function MobileTabBar({ pathname, className }: MobileTabBarProps) {
               href={href}
               title={label}
               aria-label={label}
+              onClick={handleRecommendClick}
               className="flex flex-col items-center justify-center p-2"
             >
               {/* non-tokenized: w-[52px] h-[52px] is the exact reference 52×52 px CTA — see UI-SPEC §Spacing Scale row 13 */}

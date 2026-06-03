@@ -37,7 +37,8 @@
  *   - rating chip: text-11 px-1.5 py-0.5 compact pill primitive
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { Bookmark, BookmarkCheck, Play, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { MovieDetail } from "@/components/MovieDetail";
@@ -54,8 +55,13 @@ import { SNACK_RECIPES } from "@/lib/data/snack-recipes";
 
 const EYEBROW = "text-12 font-medium tracking-[0.18em] uppercase text-text-muted";
 
-export default function RecommendationPage() {
+function RecommendationPageContent() {
   const { isAuthenticated } = useAuth();
+  const searchParams = useSearchParams();
+  // "r" param is set by the Sidebar when the user clicks "Escolher filme"
+  // while already on this page — each click gets a fresh timestamp so the
+  // effect dependency changes and a new recommendation is fetched.
+  const refreshKey = searchParams.get("r") ?? "initial";
   const [movie, setMovie] = useState<RecommendedMovie | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">(
     "loading",
@@ -70,12 +76,12 @@ export default function RecommendationPage() {
     Math.floor(Math.random() * SNACK_RECIPES.length),
   );
   const inFlight = useRef(false);
-  // React 18 Strict Mode runs effects setup→cleanup→setup in dev. The
-  // `cancelled` flag below only suppresses state updates from the first run;
-  // it does NOT cancel the in-flight network call, so /recommend would fire
-  // twice and the Lambda would record both in history. This ref persists
-  // across the simulated remount and short-circuits the second invocation.
-  const initialFetchFired = useRef(false);
+  // Tracks the last refreshKey that triggered a fetch. React 18 Strict Mode
+  // runs effects setup→cleanup→setup in dev — both runs see the same key, so
+  // the second invocation hits the early return and the Lambda fires only once.
+  // When the Sidebar pushes a new ?r= value the key changes, bypassing the
+  // guard and fetching a fresh recommendation.
+  const lastFetchedKey = useRef<string | null>(null);
 
   // Wires error-class-aware UX for both the recommendation fetch and the
   // watch-later save call (toast for network/server/forbidden, no-op for
@@ -84,8 +90,8 @@ export default function RecommendationPage() {
   useApiErrorUx(saveError);
 
   useEffect(() => {
-    if (initialFetchFired.current) return;
-    initialFetchFired.current = true;
+    if (lastFetchedKey.current === refreshKey) return;
+    lastFetchedKey.current = refreshKey;
     void (async () => {
       setStatus("loading");
       setError(null);
@@ -107,7 +113,7 @@ export default function RecommendationPage() {
       setSaved(false);
       setStatus("ready");
     })();
-  }, [isAuthenticated]);
+  }, [refreshKey, isAuthenticated]);
 
   async function handleAnother() {
     setStatus("loading");
@@ -287,6 +293,14 @@ export default function RecommendationPage() {
       {body}
       <SnackRecipeModal recipe={recipe} isLoading={status === "loading"} />
     </>
+  );
+}
+
+export default function RecommendationPage() {
+  return (
+    <Suspense fallback={<SkeletonHero />}>
+      <RecommendationPageContent />
+    </Suspense>
   );
 }
 

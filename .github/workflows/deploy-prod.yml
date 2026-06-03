@@ -67,3 +67,74 @@ jobs:
           stack-name: prod
           work-dir: .
           refresh: true
+
+      - name: Read Pulumi outputs into env
+        run: |
+          set -euo pipefail
+          USER_POOL_ID="$(pulumi stack output user_pool_id --stack prod)"
+          USER_POOL_CLIENT_ID="$(pulumi stack output user_pool_client_id --stack prod)"
+          PUBLIC_URL="$(pulumi stack output public_url --stack prod)"
+          : "${USER_POOL_ID:?empty user_pool_id from pulumi}"
+          : "${USER_POOL_CLIENT_ID:?empty user_pool_client_id from pulumi}"
+          : "${PUBLIC_URL:?empty public_url from pulumi}"
+          echo "Pool=$USER_POOL_ID Client=$USER_POOL_CLIENT_ID Url=$PUBLIC_URL"
+          {
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$USER_POOL_ID"
+            echo "NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID"
+            echo "NEXT_PUBLIC_API_BASE_URL=$PUBLIC_URL"
+          } >> "$GITHUB_ENV"
+
+      # VALIDAÇÃO PÓS-DEPLOY (INTEGRAÇÃO)
+      # Cria ou reseta um usuário de teste no Cognito e executa os testes de integração
+      # contra a infraestrutura recém-provisionada. Garante que a API e a autenticação
+      # estão funcionando na prática antes de liberar a nova versão.
+      - name: Criar usuário de teste no Cognito
+        env:
+          USER_POOL_ID:  ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          CLIENT_ID:     ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
+          TEST_EMAIL:    ${{ secrets.INTEGRATION_TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.INTEGRATION_TEST_PASSWORD }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'EOF'
+          import os, boto3
+          from botocore.exceptions import ClientError
+
+          idp = boto3.client("cognito-idp")
+          pool      = os.environ["USER_POOL_ID"]
+          email     = os.environ["TEST_EMAIL"]
+          pwd       = os.environ["TEST_PASSWORD"]
+          client_id = os.environ["CLIENT_ID"]
+
+          # idempotente: remove se já existir
+          try:
+              idp.admin_delete_user(UserPoolId=pool, Username=email)
+          except ClientError as e:
+              if e.response["Error"]["Code"] != "UserNotFoundException":
+                  raise
+
+          idp.admin_create_user(
+              UserPoolId=pool,
+              Username=email,
+              TemporaryPassword=pwd,
+              UserAttributes=[
+                  {"Name": "email",          "Value": email},
+                  {"Name": "email_verified", "Value": "true"},
+              ],
+              MessageAction="SUPPRESS",
+          )
+          idp.admin_set_user_password(
+              UserPoolId=pool, Username=email, Password=pwd, Permanent=True
+          )
+          print(f"Usuário de teste criado: {email}")
+          EOF
+
+      - name: Rodar testes de integração
+        env:
+          INTEGRATION_BASE_URL:      ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+          INTEGRATION_USER_POOL_ID:  ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          INTEGRATION_CLIENT_ID:     ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID }}
+          INTEGRATION_TEST_EMAIL:    ${{ secrets.INTEGRATION_TEST_EMAIL }}
+          INTEGRATION_TEST_PASSWORD: ${{ secrets.INTEGRATION_TEST_PASSWORD }}
+        run: |
+          uv run pytest tests/integration/ -v

@@ -41,7 +41,22 @@ export default function WatchLaterPage() {
   const [error, setError] = useState<ApiError | null>(null);
   useApiErrorUx(error);
 
+  // The v1 /watch-later GET returns `title` = the raw movieId the client POSTed,
+  // which for live recommendations is `live:${movie.title}`. Strip that prefix
+  // before any display or catalogue lookup.
+  function cleanTitle(raw: string): string {
+    return raw.startsWith("live:") ? raw.slice(5) : raw;
+  }
+
+  async function handleMovieClick(rawTitle: string) {
+    const title = cleanTitle(rawTitle);
+    const { findMovieIdByTitle } = await import("@/lib/api/movie");
+    const movieId = findMovieIdByTitle(title);
+    if (movieId) router.push(`/movie?id=${movieId}`);
+  }
+
   // "Surpreenda-me desta lista" (issue #221): pick a random saved movie and
+  //all back to a fresh recommendation.
   // open its /movie?id=<movieId> detail page. The v1 /watch-later GET returns
   // only titles, so we resolve title→movieId through the catalogue seam, loaded
   // via a dynamic import so the ~647KB catalogue is fetched on click, not on
@@ -54,7 +69,7 @@ export default function WatchLaterPage() {
     try {
       const { findMovieIdByTitle } = await import("@/lib/api/movie");
       const resolvable = items
-        .map((item) => findMovieIdByTitle(item.title))
+        .map((item) => findMovieIdByTitle(cleanTitle(item.title)))
         .filter((id): id is string => id !== null);
       const picked =
         resolvable.length > 0
@@ -141,17 +156,19 @@ export default function WatchLaterPage() {
       ) : (
         <div className="flex flex-col gap-2 animate-fade-up [animation-delay:60ms]">
           {items.map((item, idx) => (
-            <div
+            <button
               key={`${item["added-at"]}-${idx}`}
-              className="flex items-center justify-between px-4 py-3 rounded-md bg-surface border border-border"
+              type="button"
+              onClick={() => handleMovieClick(item.title)}
+              className="flex items-center justify-between w-full px-4 py-3 rounded-md bg-surface border border-border text-left hover:bg-surface-elevated transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
             >
               <span className="text-14 font-medium text-text-primary truncate pr-4">
-                {item.title}
+                {cleanTitle(item.title)}
               </span>
               <span className="text-12 text-text-muted shrink-0">
                 {relativeTime(item["added-at"], now)}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}

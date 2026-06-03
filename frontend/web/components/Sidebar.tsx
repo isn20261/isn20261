@@ -21,7 +21,7 @@
  */
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const loggedIn = isAuthenticated;
   const userName = user?.email.split("@")[0] ?? "você";
@@ -51,8 +52,11 @@ export function Sidebar() {
           <BrandMark size={28} withWord={false} />
         </div>
         <ul className="flex flex-col items-center gap-1 mt-4">
-          {NAV_ITEMS.map(({ href, label, Icon, exact }) => {
+          {NAV_ITEMS.map(({ href, label, Icon, exact, primary }) => {
             const active = isActive(pathname, href, exact);
+            const handleRecommendClick = primary && active
+              ? (e: React.MouseEvent) => { e.preventDefault(); router.push(`${href}?r=${Date.now()}`); }
+              : undefined;
             return (
               <li key={href} className="relative">
                 {active && (
@@ -66,6 +70,7 @@ export function Sidebar() {
                   href={href}
                   title={label}
                   aria-label={label}
+                  onClick={handleRecommendClick}
                   className={cn(
                     "relative w-11 h-11 rounded-md flex items-center justify-center transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
                     active
@@ -104,9 +109,10 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile tab bar — visible below md, hidden at md+. Markup + the #216
-          alignment fix live in <MobileTabBar>; Sidebar only supplies the
-          fixed-to-viewport chrome here. */}
+      {/* Mobile tab bar — visible below md, hidden at md+. Markup, the #216
+          alignment fix, and the "re-roll recommendation when its tab is already
+          active" behavior (#220/#222) all live in <MobileTabBar>; Sidebar only
+          supplies the fixed-to-viewport chrome here. */}
       <MobileTabBar
         pathname={pathname}
         className="md:hidden fixed left-0 right-0 bottom-0 z-30"
