@@ -44,11 +44,21 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
   // Minimizing clears lingering+reopened.
   const [lingering, setLingering] = useState(false);
   const [reopened, setReopened] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   // Tracks the previous isLoading to detect the true→false edge during render
   // (the React-recommended "adjust state while rendering" pattern — avoids
   // synchronous setState inside an effect, i.e. react-hooks/set-state-in-effect).
   const [prevLoading, setPrevLoading] = useState(isLoading);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   function clearLinger() {
     if (lingerTimer.current) {
@@ -74,7 +84,9 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
     return clearLinger;
   }, [lingering]);
 
-  const open = isLoading || lingering || reopened;
+  const open = isMobile
+    ? reopened
+    : (isLoading || lingering || reopened);
 
   function minimizeNow() {
     clearLinger();
@@ -88,8 +100,8 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
       <div
         aria-hidden={!open}
         className={cn(
-          // non-tokenized: bottom-6 right-6 anchor; w-[min(380px,92vw)] modal width primitive.
-          "fixed bottom-6 right-6 z-50 w-[min(380px,92vw)] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
+          // non-tokenized: bottom-20 md:bottom-6 right-6 anchor; w-[min(380px,calc(100%-3rem))] responsive modal width.
+          "fixed bottom-20 md:bottom-6 right-6 z-50 w-[min(380px,calc(100%-3rem))] rounded-lg bg-surface-elevated border border-border-strong shadow-lg transition-opacity duration-300 ease-out",
           open ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
       >
@@ -146,8 +158,8 @@ export function SnackRecipeModal({ recipe, isLoading }: Props) {
         tabIndex={open ? -1 : 0}
         onClick={() => setReopened(true)}
         className={cn(
-          // non-tokenized: bottom-6 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+          // non-tokenized: bottom-20 md:bottom-6 right-6 mini bubble position; w-14 h-14 mini bubble size primitive.
+          "fixed bottom-20 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-surface-elevated border border-border-strong shadow-lg flex items-center justify-center text-accent hover:border-accent transition-opacity duration-300 ease-out focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
           open ? "opacity-0 pointer-events-none" : "opacity-100",
         )}
       >
