@@ -9,6 +9,8 @@
  * Public surface kept stable for the rest of the app:
  *   - signUp / signIn / signOut / getSession
  *   - confirmSignUp / resendConfirmationCode (new — real Cognito needs email verification)
+ *   - forgotPassword / confirmForgotPassword
+ *   - changePassword (authenticated — uses the SDK's stored AccessToken, no token arg)
  *   - Session type
  *   - UsernameExistsException / NotAuthorizedException / UserNotConfirmedException /
  *     CodeMismatchException / InvalidPasswordException — typed error names so call
@@ -36,6 +38,12 @@ export type Session = {
   RefreshToken: string;
   ExpiresAt: number;
   user: { email: string; sub: string };
+};
+
+export type CodeDeliveryDetails = {
+  AttributeName: string;
+  DeliveryMedium: string;
+  Destination: string;
 };
 
 type Credentials = { email: string; password: string };
@@ -192,6 +200,63 @@ export function signOut(): void {
   if (typeof window === "undefined") return;
   const user = getPool().getCurrentUser();
   user?.signOut();
+}
+
+/**
+ * Changes the password for the currently signed-in user.
+ * The Cognito SDK authenticates this call using the AccessToken it already
+ * holds in localStorage — no token parameter is needed or accepted here.
+ * See: https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ChangePassword.html
+ */
+export function changePassword(previousPassword: string, newPassword: string): Promise<void> {
+  const user = getPool().getCurrentUser();
+  if (!user) {
+    return Promise.reject(new NotAuthorizedException("Usuário não autenticado."));
+  }
+  return new Promise((resolve, reject) => {
+    user.changePassword(previousPassword, newPassword, (err) => {
+      if (err) {
+        reject(translateError(err));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+/**
+ * Sends a password-reset code to the user's verified email (or phone).
+ * This is unauthenticated — no session is required.
+ * The caller should route to a confirm-reset form after this resolves.
+ * See: https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ForgotPassword.html
+ */
+export function forgotPassword(email: string): Promise<CodeDeliveryDetails> {
+  const user = new CognitoUser({ Username: email, Pool: getPool() });
+  return new Promise((resolve, reject) => {
+    user.forgotPassword({
+      onSuccess: (data) => resolve(data as CodeDeliveryDetails),
+      onFailure: (err) => reject(translateError(err)),
+    });
+  });
+}
+
+/**
+ * Completes the forgot-password flow by submitting the confirmation code
+ * together with the new password chosen by the user.
+ * See: https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ConfirmForgotPassword.html
+ */
+export function confirmForgotPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  const user = new CognitoUser({ Username: email, Pool: getPool() });
+  return new Promise((resolve, reject) => {
+    user.confirmPassword(code, newPassword, {
+      onSuccess: () => resolve(),
+      onFailure: (err) => reject(translateError(err)),
+    });
+  });
 }
 
 export function getSession(): Promise<Session | null> {

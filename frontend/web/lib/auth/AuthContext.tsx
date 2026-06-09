@@ -26,6 +26,7 @@ import {
   signOut as seamSignOut,
   startGoogleSignIn as seamStartGoogleSignIn,
   completeGoogleSignIn as seamCompleteGoogleSignIn,
+  changePassword as seamChangePassword,
   type Session,
 } from "@/lib/api/auth";
 import { setOnUnauthorized } from "@/lib/api/client";
@@ -43,6 +44,8 @@ type AuthContextValue = {
   signInWithGoogle: (from?: string) => Promise<void>;
   completeGoogleSignIn: (code: string, state: string) => Promise<void>;
   signOut: () => void;
+  changePassword: (token: string, previousPassword: string, newPassword: string) => Promise<void>;
+  forgotPassword?: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -96,6 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const changePassword = useCallback(async (previousPassword: string, newPassword: string) => {
+    await seamChangePassword(previousPassword, newPassword);
+  }, []);
+
   useEffect(() => {
     // Register the wrapper's unauthorized callback. Invoked by lib/api/client when
     // getSession() returns null mid-request OR an in-flight request returns 401.
@@ -117,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle,
     completeGoogleSignIn,
     signOut,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
