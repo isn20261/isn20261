@@ -194,7 +194,8 @@
         "iam:ListRolePolicies",
         "iam:ListAttachedRolePolicies",
         "iam:DeleteRolePolicy",
-        "iam:ListInstanceProfilesForRole"
+        "iam:ListInstanceProfilesForRole",
+        "iam:DeletePolicyVersion"
       ],
       "Resource": "arn:aws:iam::*:role/CognitoSESRole-*"
     },
@@ -210,7 +211,8 @@
         "iam:ListPolicyVersions",
         "iam:ListPolicyTags",
         "iam:TagPolicy",
-        "iam:UntagPolicy"
+        "iam:UntagPolicy",
+        "iam:DeletePolicyVersion"
       ],
       "Resource": "arn:aws:iam::*:policy/CognitoSESPolicy-*"
     },
